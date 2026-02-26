@@ -19,7 +19,9 @@ app = FastAPI(
 )
 
 from arctis.routes.analysis import router as analysis_router
+from arctis.routes.probability import router as probability_router
 app.include_router(analysis_router)
+app.include_router(probability_router)
 
 
 @app.get("/health")
