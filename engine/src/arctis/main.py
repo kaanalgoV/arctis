@@ -18,6 +18,9 @@ app = FastAPI(
     description="Trading Decision Support Analysis Engine",
 )
 
+from arctis.routes.analysis import router as analysis_router
+app.include_router(analysis_router)
+
 
 @app.get("/health")
 async def health():
