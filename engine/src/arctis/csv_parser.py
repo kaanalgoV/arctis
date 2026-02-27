@@ -30,7 +30,8 @@ def parse_csv(
     else:
         df[ts_col] = pd.to_datetime(df[ts_col])
 
-    df["_ts_unix"] = df[ts_col].astype("int64") // 10**9
+    # datetime64[us] -> seconds: divide by 10^6
+    df["_ts_unix"] = df[ts_col].values.astype("int64") // 10**6
 
     df = df.sort_values("_ts_unix").reset_index(drop=True)
 
