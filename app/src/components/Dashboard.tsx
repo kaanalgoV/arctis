@@ -1,5 +1,9 @@
 import { useEffect, useState } from "react";
 import { Chart } from "./Chart";
+import { VolumePanel } from "./VolumePanel";
+import { SessionTimeline } from "./SessionTimeline";
+import { WarningsPanel } from "./WarningsPanel";
+import { SettingsPanel } from "./SettingsPanel";
 import type { CandlestickData, Time } from "lightweight-charts";
 import { fetchBars, fetchStructure } from "../api";
 
@@ -9,6 +13,7 @@ export function Dashboard() {
   const [chartData, setChartData] = useState<CandlestickData<Time>[]>([]);
   const [trend, setTrend] = useState<string>("—");
   const [error, setError] = useState<string | null>(null);
+  const [showSettings, setShowSettings] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
@@ -55,12 +60,28 @@ export function Dashboard() {
           Trend: {trend}
         </span>
         {error && <span style={{ color: "#ef5350" }}>{error}</span>}
+        <div style={{ marginLeft: "auto" }}>
+          <button
+            onClick={() => setShowSettings(true)}
+            style={{ background: "#2a2a3e", color: "#e0e0e0", border: "1px solid #3a3a4e", padding: "0.25rem 0.75rem", cursor: "pointer", borderRadius: "4px" }}
+          >
+            Einstellungen
+          </button>
+        </div>
       </div>
 
       {/* Chart */}
       <div style={{ flex: 1, padding: "0.5rem" }}>
         <Chart data={chartData} />
       </div>
+
+      {/* Panels */}
+      <VolumePanel market={market} timeframe={timeframe} />
+      <SessionTimeline market={market} timeframe={timeframe} />
+      <WarningsPanel market={market} timeframe={timeframe} />
+
+      {/* Settings Modal */}
+      {showSettings && <SettingsPanel onClose={() => setShowSettings(false)} />}
     </div>
   );
 }
