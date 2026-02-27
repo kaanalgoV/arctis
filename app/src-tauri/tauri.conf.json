@@ -13,9 +13,9 @@
     "title": "Arctis",
     "windows": [
       {
-        "title": "Arctis",
-        "width": 1200,
-        "height": 800,
+        "title": "Arctis - Trading Decision Support",
+        "width": 1400,
+        "height": 900,
         "resizable": true,
         "fullscreen": false
       }
