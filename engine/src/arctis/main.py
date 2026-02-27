@@ -4,6 +4,8 @@ import tempfile
 from pathlib import Path
 
 from fastapi import FastAPI, File, Form, Query, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from arctis.csv_parser import parse_csv
 from arctis.models import Market, Timeframe
@@ -17,6 +19,18 @@ app = FastAPI(
     version="0.1.0",
     description="Trading Decision Support Analysis Engine",
 )
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:1420", "http://127.0.0.1:1420", "tauri://localhost"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request, exc):
+    return JSONResponse(status_code=500, content={"error": str(exc)})
 
 from arctis.routes.analysis import router as analysis_router
 from arctis.routes.probability import router as probability_router
