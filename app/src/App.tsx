@@ -1,16 +1,17 @@
 import { useEffect, useState } from "react";
 import { checkHealth } from "./api";
+import { Dashboard } from "./components/Dashboard";
 
 function App() {
-  const [engineStatus, setEngineStatus] = useState<string>("connecting...");
+  const [connected, setConnected] = useState(false);
 
   useEffect(() => {
     const check = async () => {
       try {
-        const health = await checkHealth();
-        setEngineStatus(`online (v${health.version})`);
+        await checkHealth();
+        setConnected(true);
       } catch {
-        setEngineStatus("offline");
+        setConnected(false);
       }
     };
     const interval = setInterval(check, 2000);
@@ -18,15 +19,18 @@ function App() {
     return () => clearInterval(interval);
   }, []);
 
-  return (
-    <div style={{ padding: "2rem", fontFamily: "system-ui" }}>
-      <h1>Arctis</h1>
-      <p>Trading Decision Support</p>
-      <p style={{ color: engineStatus === "offline" ? "#e74c3c" : "#27ae60" }}>
-        Engine: {engineStatus}
-      </p>
-    </div>
-  );
+  if (!connected) {
+    return (
+      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh", background: "#1a1a2e", color: "#e0e0e0" }}>
+        <div style={{ textAlign: "center" }}>
+          <h1>Arctis</h1>
+          <p>Verbinde mit Engine...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return <Dashboard />;
 }
 
 export default App;
