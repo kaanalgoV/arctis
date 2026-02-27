@@ -4,6 +4,7 @@ import time
 
 from fastapi import APIRouter, Query
 
+from arctis.analysis.discipline import DisciplineContext, generate_warnings
 from arctis.analysis.sessions import classify_session, get_session_stats
 from arctis.analysis.structure import classify_trend, detect_structure_breaks, detect_swings
 from arctis.analysis.volume import detect_volume_spikes, relative_volume
@@ -91,4 +92,30 @@ async def analyze_sessions(
             for session, st in stats.items()
         },
         "bar_count": len(bars),
+    }
+
+
+@router.get("/warnings")
+async def get_warnings(
+    market: Market = Query(...),
+    timeframe: Timeframe = Query(...),
+):
+    s = _get_store()
+    bars = s.load(market, timeframe)
+    swings = detect_swings(bars)
+    trend = classify_trend(swings)
+    current_session = classify_session(int(time.time()))
+
+    ctx = DisciplineContext(
+        trend=trend,
+        session=current_session.value,
+        risk_used_pct=0.0,
+        trade_count=0,
+        max_trades=10,
+        consecutive_losses=0,
+    )
+    warnings = generate_warnings(ctx)
+
+    return {
+        "warnings": [{"message": w.message, "severity": w.severity.value} for w in warnings],
     }
