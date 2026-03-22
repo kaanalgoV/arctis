@@ -105,9 +105,11 @@ async def global_exception_handler(request, exc):
 from arctis.routes.analysis import router as analysis_router
 from arctis.routes.probability import router as probability_router
 from arctis.routes.risk import router as risk_router
+from arctis.routes.bias import router as bias_router
 app.include_router(analysis_router)
 app.include_router(probability_router)
 app.include_router(risk_router)
+app.include_router(bias_router)
 
 
 @app.get("/health")

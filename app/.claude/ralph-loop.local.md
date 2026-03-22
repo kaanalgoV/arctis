@@ -2,112 +2,136 @@
 active: true
 iteration: 2
 session_id: 
-max_iterations: 20
+max_iterations: 15
 completion_promise: "TASK COMPLETE"
-started_at: "2026-03-22T23:02:07Z"
+started_at: "2026-03-22T23:37:33Z"
 ---
 
-# PRD: Arctis SaaS Platform — Epic 0 (Foundation) + Epic 1 (Live Panels)
+# PRD: Arctis — Epic 3 (BIAS Integration)
 
 ## Objective
-Transform Arctis from a static-data prototype into a live, TimescaleDB-connected trading decision support platform. All analysis endpoints must serve real data from the DB, all frontend panels must display live analysis results, and a WebSocket system must enable real-time bar streaming.
+Implement Kaan's full BIAS trading methodology as Python analysis modules. These encode the systematic approach from the BIAS repo (~/bias/blueprint.md) and Traivend education into computable, testable backend code.
 
-## Full PRD Reference
-The complete 64-story PRD is at: `docs/superpowers/specs/2026-03-22-arctis-saas-platform-design.md`
-This PROMPT.md focuses on Epic 0 (US-001 through US-005) and Epic 1 (US-006 through US-011).
+## Context
+- Backend: Python FastAPI at `engine/src/arctis/` with 11 existing analysis modules
+- All analysis reads from TimescaleDB via `db.py` -> `fetch_bars_as_models()`
+- Existing modules: structure, volume, vwap, volume_profile, indicators, confluence, patterns, sessions, discipline, probability, risk
+- BIAS methodology reference: `/Users/kaan_macbook/bias/blueprint.md`
 
-## Current State
-- Frontend: React 19 + Tailwind v4 + Lightweight Charts v5 on port 5174
-- Backend: FastAPI on port 8001, connected to TimescaleDB on port 5532
-- DB: `ohlcv_1m` table with NQH6 (89k bars) and NQZ5 (99k bars)
-- Chart renders 12,300 NQH6 candles with volume bars
-- 5 panels exist but show STATIC demo data (not connected to API)
-- 11 analysis modules exist in `engine/src/arctis/analysis/` but read from Parquet, not DB
-- All API endpoints defined in `app/src/api.ts` (client functions ready)
-- Backend endpoint `GET /api/db/bars` already works for fetching bars from TimescaleDB
+## Requirements (US-021 to US-030)
 
-## Tech Stack
-- Frontend: React 19, TypeScript, Vite 7, Tailwind v4, Lightweight Charts v5, Framer Motion, Lucide, Zustand
-- Backend: Python FastAPI, Pandas, NumPy, SciPy, TimescaleDB (psycopg2)
-- DB: postgres://algorivo:algorivo_dev@localhost:5532/algorivo
+### US-021: Velocity Module
+Create `engine/src/arctis/analysis/velocity.py`:
+- Calculate velocity = price_change / time for each bar
+- Compute rolling average velocity over N bars (default N=20)
+- Ratio: current_velocity / avg_velocity
+- Scale 1-10: <0.5 ratio -> 1-2 (very slow), 0.5-1.0 -> 3-5 (normal), 1.0-1.5 -> 5-7 (fast), 1.5-2.5 -> 7-9 (very fast), >2.5 -> 10 (manipulative)
+- Return: list of {timestamp, velocity, avg_velocity, ratio, scale}
 
-## Requirements
+### US-022: Auction Quality Module
+Create `engine/src/arctis/analysis/auction.py`:
+- Measure traded_ticks / total_ticks per price swing
+- A swing = consecutive bars in same direction (using swings from structure.py)
+- Quality: >0.85 = "sauber" (clean), 0.60-0.85 = "moderat", <0.60 = "schlecht" (poor, will be rebalanced)
+- One-way auction (low volume move) = weak bias indicator
+- Two-way auction (balanced volume) = strong bias indicator
+- Return: {quality_score, quality_label, auction_type, traded_ticks, total_ticks}
 
-### Epic 0: Foundation
-1. **US-001: DB-backed analysis** — Modify ALL analysis route handlers in `engine/src/arctis/routes/analysis.py` to fetch bars from TimescaleDB (via `db.py`) instead of ParquetStore. The `market` and `timeframe` query params should map to DB symbols (ES->ESH6, NQ->NQH6). Keep backward-compat with existing query param names.
+### US-023: Naked POC Tracker
+Create `engine/src/arctis/analysis/naked_poc.py`:
+- Identify POC (Point of Control) for each trading day
+- Track which daily POCs have NOT been retested (price didn't touch them again)
+- These "naked POCs" act as magnets — price tends to return to them
+- Return: list of {date, poc_price, is_naked, distance_from_current}
+- Sort by distance (closest first)
 
-2. **US-002: Dynamic market selector** — Backend: `GET /api/markets` endpoint that queries `SELECT DISTINCT symbol FROM ohlcv_1m` and returns available symbols grouped by root (NQ, ES, CL, etc.). Frontend: Topbar market pills dynamically populated from this endpoint.
+### US-024: 5-Bias-State System
+Create `engine/src/arctis/analysis/bias_state.py`:
+- Replace the simple LONG/SHORT/NEUTRAL with 5 states:
+  1. LONG — clear uptrend, strong structure
+  2. RANGE_LONG — sideways with bullish lean
+  3. RANGE — no directional bias
+  4. RANGE_SHORT — sideways with bearish lean
+  5. SHORT — clear downtrend, strong structure
+- Inputs: trend (from structure.py), velocity, auction quality, VWAP position, EMA alignment
+- Scoring: each input contributes -2 to +2, sum determines state
+- Return: {state, score, components: {trend, velocity, auction, vwap, ema}}
 
-3. **US-003: Timeframe aggregation** — Backend: Support `timeframe=5min` by aggregating 1-min bars on-the-fly using pandas resample. Frontend: Timeframe selector pills trigger re-fetch with new timeframe param.
+### US-025: Bias-Switch-Level
+Create `engine/src/arctis/analysis/bias_switch.py`:
+- Calculate exactly ONE daily level where bias would flip
+- Hierarchy (pick first that applies):
+  1. Most recent defended structural point (swing high/low held 2+ times)
+  2. Bottom/top formation level
+  3. Key zone boundary (range held >=3 days)
+  4. Asia session extreme (if no better level)
+- Return: {level, type, confidence, description}
 
-4. **US-004: WebSocket endpoint** — Backend: `WS /ws/bars/{symbol}` endpoint. On connect, send latest bar. Poll DB every 1s for new bars, push to all subscribers. Use fastapi-websocket with JSON messages: `{type: "bar", data: {timestamp, open, high, low, close, volume}}`.
+### US-026: Opening Fake Detection
+Add to `engine/src/arctis/analysis/patterns.py` or create new:
+- Opening Fake = price breaks previous day's extreme in first 2 hours, then reverses
+- Conditions: break prev_high or prev_low, low volume on break, no follow-through
+- Return: {detected: bool, direction, break_price, reversal_time, confidence}
 
-5. **US-005: useMarketData hook** — Frontend: Custom React hook `useMarketData(symbol, days)` that: (a) fetches initial bars via REST, (b) connects to WebSocket for live updates, (c) appends new bars to state, (d) auto-reconnects on disconnect. Returns `{bars, isLoading, isConnected, error}`.
+### US-027: Double Fake Exhaustion
+Add to patterns or create new module:
+- Two failed breakout attempts at the same extreme with declining velocity
+- Second attempt shows higher rejection volume than first
+- Strong reversal signal
+- Return: {detected: bool, direction, attempts: [{time, price, velocity}], confidence}
 
-### Epic 1: Live Panels
-6. **US-006: Live Session Panel** — Connect SessionPanel to `GET /api/analysis/sessions`. Show current session with progress bar, update every 30s. Display all 5 sessions with filled/active/pending states.
+### US-028: 60% Correction Monitor
+Create `engine/src/arctis/analysis/correction.py`:
+- Track the current correction depth relative to the last impulse move
+- Impulse = last significant directional move (using swings)
+- Correction depth = retracement from impulse end
+- If correction > 60% of impulse = structural threat (bias weakening)
+- Return: {impulse_size, correction_size, correction_pct, is_threat, impulse_direction}
 
-7. **US-007: Live Confluence Panel** — Connect ConfluencePanel to `GET /api/analysis/confluence`. Show real score, verdict, direction, and breakdown. Update on every new bar (via WS trigger or 5s poll).
+### US-029: Key Level Identification
+Create `engine/src/arctis/analysis/key_levels.py`:
+- Identify price levels that have been respected for >=3 trading days
+- A level is "respected" if price tests it (within 0.1%) and reverses
+- These key levels never expire
+- Return: list of {level, first_test_date, test_count, last_test_date, type: support|resistance}
 
-8. **US-008: Live Patterns Panel** — Connect PatternsPanel to `GET /api/analysis/patterns`. Show active Tier 1 patterns with real win rates from backtest data. Update on new bars.
-
-9. **US-009: Live Feed Panel** — Build a real event aggregator: on each analysis update, generate feed events from confluence signals, volume spikes, pattern triggers, session changes, discipline warnings. Each event: {time, message, type, severity}. Show in FeedPanel with colored dots and timestamps.
-
-10. **US-010: Live Risk Panel** — Connect RiskPanel to `GET /api/config` for limits + `GET /api/risk/daily-check` for current state. Show real trades/maxTrades, P&L, limit percentage, contracts.
-
-11. **US-011: HUD Metrics Strip** — Add a horizontal metrics bar below the topbar showing: RVOL (from /api/analysis/volume), RSI value + divergence (from /api/analysis/indicators), EMA alignment (from /api/analysis/indicators), VWAP position (from /api/analysis/indicators), current session name, bar count. Auto-refresh every 5s or on new bar.
+### US-030: Daily Bias Endpoint
+Create `engine/src/arctis/routes/bias.py`:
+- New API router at `/api/analysis/bias`
+- Combines ALL BIAS modules into one structured response:
+  - bias_state (from US-024)
+  - bias_switch_level (from US-025)
+  - velocity (latest from US-021)
+  - auction_quality (from US-022)
+  - naked_pocs (from US-023)
+  - opening_fake (from US-026)
+  - double_fake (from US-027)
+  - correction (from US-028)
+  - key_levels (from US-029)
+- Register router in main.py
 
 ## Acceptance Criteria
+- [ ] velocity.py exists and returns velocity scale 1-10 for NQ bars
+- [ ] auction.py exists and classifies auction quality (sauber/moderat/schlecht)
+- [ ] naked_poc.py tracks unretested daily POCs across multiple days
+- [ ] bias_state.py returns one of 5 bias states with component scores
+- [ ] bias_switch.py calculates a single daily switch level
+- [ ] Opening Fake detection works (checks prev day extreme break + reversal)
+- [ ] Double Fake Exhaustion detection works (2 failed attempts + declining velocity)
+- [ ] correction.py monitors retracement depth and flags >60% as threat
+- [ ] key_levels.py identifies multi-day respected levels
+- [ ] GET /api/analysis/bias returns combined BIAS analysis
+- [ ] All new modules have pytest tests
+- [ ] All existing 49 tests still pass
+- [ ] App compiles without TypeScript errors
 
-- [ ] All analysis endpoints (`/api/analysis/*`) fetch data from TimescaleDB, not Parquet
-- [ ] `GET /api/markets` returns dynamically discovered symbols from the DB
-- [ ] Timeframe=5min works by aggregating 1-min bars server-side
-- [ ] WebSocket endpoint `WS /ws/bars/{symbol}` streams new bars to connected clients
-- [ ] `useMarketData` hook loads initial data + subscribes to WebSocket updates
-- [ ] SessionPanel shows real current session from API (not hardcoded "NY Open")
-- [ ] ConfluencePanel shows real calculated score from API (not hardcoded "+9")
-- [ ] PatternsPanel shows real detected patterns from API (not hardcoded list)
-- [ ] FeedPanel shows real timestamped events from analysis (not hardcoded list)
-- [ ] RiskPanel shows real config values from API (not hardcoded "2/10")
-- [ ] HUD metrics strip displays real RVOL, RSI, EMA alignment, VWAP, session below topbar
-- [ ] Market selector pills in topbar are dynamically populated from `/api/markets`
-- [ ] App compiles without TypeScript errors (`npx tsc --noEmit`)
-- [ ] Backend starts without errors (`uvicorn src.arctis.main:app`)
-- [ ] All existing pytest tests still pass
+## Technical Notes
+- All modules take `list[OHLCVBar]` as input (same pattern as existing modules)
+- Use structure.py's `detect_swings()` for swing detection (don't duplicate)
+- Use volume_profile.py's `build_volume_profile()` for POC calculation
+- Velocity uses M1 (1-min) bars primarily
+- Keep modules independent — each can be tested in isolation
+- BIAS blueprint at ~/bias/blueprint.md has the full methodology reference
 
-## Constraints
-
-- Work within the existing codebase structure (don't restructure unless necessary)
-- Keep the existing analysis modules — only change their data source from Parquet to DB
-- Use `engine/src/arctis/db.py` as the DB access layer (extend it, don't create a new one)
-- All frontend components use AlgoView design tokens from `index.css`
-- No emojis in UI — only SVG icons from Lucide
-- Backend must remain stateless (no in-process state except cache)
-- Frontend: files at `app/src/`, backend: files at `engine/src/arctis/`
-
-## File Inventory (key files to modify)
-
-### Backend
-- `engine/src/arctis/db.py` — Add `fetch_bars_for_analysis(symbol, days)` returning OHLCVBar list
-- `engine/src/arctis/routes/analysis.py` — Replace `store.load()` with DB calls
-- `engine/src/arctis/main.py` — Add `/api/markets` + WebSocket endpoint
-- `engine/src/arctis/models.py` — May need to update Market enum for dynamic symbols
-
-### Frontend
-- `app/src/App.tsx` — Wire up useMarketData, pass real data to panels
-- `app/src/hooks/useMarketData.ts` — New file: REST + WebSocket hook
-- `app/src/components/panels/*.tsx` — Connect to API, add useEffect data fetching
-- `app/src/components/layout/Topbar.tsx` — Dynamic market pills from /api/markets
-- `app/src/components/layout/HudStrip.tsx` — New component for metrics strip
-- `app/src/api.ts` — Already has all fetch functions defined
-
-## Current Iteration Context
-This file is used by a Ralph Loop. Each iteration:
-1. Read this PRD
-2. Check current state of implementation
-3. Work on the next uncompleted acceptance criterion
-4. Run tests to verify
-5. Mark completed criteria with [x]
-
-When ALL acceptance criteria are checked [x] and tests pass, output:
+When ALL criteria are [x] and tests pass:
 <promise>TASK COMPLETE</promise>

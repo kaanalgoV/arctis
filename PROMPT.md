@@ -1,107 +1,128 @@
-# PRD: Arctis SaaS Platform — Epic 2 (Chart Enhancements)
+# PRD: Arctis — Epic 3 (BIAS Integration)
 
 ## Objective
-Add professional-grade chart overlays to the Arctis candlestick chart. All overlays use data from existing analysis endpoints and are togglable via the chart toolbar.
+Implement Kaan's full BIAS trading methodology as Python analysis modules. These encode the systematic approach from the BIAS repo (~/bias/blueprint.md) and Traivend education into computable, testable backend code.
 
-## Current State
-- Chart renders 12,300 NQH6 candles via Lightweight Charts v5 (`SimpleChart.tsx`)
-- All analysis endpoints return real data from TimescaleDB
-- `/api/analysis/indicators` returns: VWAP (with SD bands), EMA 9/21/50, RSI, Volume Profile (POC/VAH/VAL), Session Levels
-- `/api/analysis/structure` returns: swings, trend, BOS/CHoCH breaks
-- `/api/analysis/patterns` returns: pattern annotations with timestamps, prices, directions
-- Chart toolbar exists (`ChartToolbar.tsx`) with overlay toggles
+## Context
+- Backend: Python FastAPI at `engine/src/arctis/` with 11 existing analysis modules
+- All analysis reads from TimescaleDB via `db.py` -> `fetch_bars_as_models()`
+- Existing modules: structure, volume, vwap, volume_profile, indicators, confluence, patterns, sessions, discipline, probability, risk
+- BIAS methodology reference: `/Users/kaan_macbook/bias/blueprint.md`
 
-## Requirements
+## Requirements (US-021 to US-030)
 
-### US-012: VWAP Overlay
-Add VWAP line + upper/lower 1SD and 2SD bands to the chart.
-- VWAP: solid golden yellow line (#FBBF24), opacity 0.6
-- +/-1 SD: same color, opacity 0.2, dashed
-- +/-2 SD: same color, opacity 0.1, dashed
-- Data from `/api/analysis/indicators` -> vwap array
-- Togglable via toolbar "VWAP" pill
+### US-021: Velocity Module
+Create `engine/src/arctis/analysis/velocity.py`:
+- Calculate velocity = price_change / time for each bar
+- Compute rolling average velocity over N bars (default N=20)
+- Ratio: current_velocity / avg_velocity
+- Scale 1-10: <0.5 ratio -> 1-2 (very slow), 0.5-1.0 -> 3-5 (normal), 1.0-1.5 -> 5-7 (fast), 1.5-2.5 -> 7-9 (very fast), >2.5 -> 10 (manipulative)
+- Return: list of {timestamp, velocity, avg_velocity, ratio, scale}
 
-### US-013: EMA Ribbon
-Add EMA 9/21/50 as colored lines.
-- EMA 9: #34D399 (green), lineWidth 1
-- EMA 21: #58A6FF (blue), lineWidth 1
-- EMA 50: #A855F7 (purple), lineWidth 1
-- Data from `/api/analysis/indicators` -> ema array
-- Togglable via toolbar "EMA" pill
+### US-022: Auction Quality Module
+Create `engine/src/arctis/analysis/auction.py`:
+- Measure traded_ticks / total_ticks per price swing
+- A swing = consecutive bars in same direction (using swings from structure.py)
+- Quality: >0.85 = "sauber" (clean), 0.60-0.85 = "moderat", <0.60 = "schlecht" (poor, will be rebalanced)
+- One-way auction (low volume move) = weak bias indicator
+- Two-way auction (balanced volume) = strong bias indicator
+- Return: {quality_score, quality_label, auction_type, traded_ticks, total_ticks}
 
-### US-014: Volume Profile Levels
-Add horizontal price lines for POC, VAH, VAL.
-- POC: #FBBF24 (amber), solid, with "POC" label
-- VAH: #5CB8F0 (ice blue), dashed, with "VAH" label
-- VAL: #5CB8F0 (ice blue), dashed, with "VAL" label
-- Use `createPriceLine()` on the candlestick series
-- Data from `/api/analysis/indicators` -> volume_profile
-- Togglable via toolbar "VP" pill
+### US-023: Naked POC Tracker
+Create `engine/src/arctis/analysis/naked_poc.py`:
+- Identify POC (Point of Control) for each trading day
+- Track which daily POCs have NOT been retested (price didn't touch them again)
+- These "naked POCs" act as magnets — price tends to return to them
+- Return: list of {date, poc_price, is_naked, distance_from_current}
+- Sort by distance (closest first)
 
-### US-015: Session Separators
-Add vertical lines at session boundaries.
-- NY Open (9:30 ET), Midday (10:30 ET), Power Hour (14:00 ET), Close (16:00 ET)
-- Color: rgba(92,184,240,0.15), dashed
-- Small label at top of each line
-- Calculate from bar timestamps
+### US-024: 5-Bias-State System
+Create `engine/src/arctis/analysis/bias_state.py`:
+- Replace the simple LONG/SHORT/NEUTRAL with 5 states:
+  1. LONG — clear uptrend, strong structure
+  2. RANGE_LONG — sideways with bullish lean
+  3. RANGE — no directional bias
+  4. RANGE_SHORT — sideways with bearish lean
+  5. SHORT — clear downtrend, strong structure
+- Inputs: trend (from structure.py), velocity, auction quality, VWAP position, EMA alignment
+- Scoring: each input contributes -2 to +2, sum determines state
+- Return: {state, score, components: {trend, velocity, auction, vwap, ema}}
 
-### US-016: Previous Day Levels
-Add horizontal lines for prev day high/low/close.
-- Prev High: dashed green line with "PDH" label
-- Prev Low: dashed red line with "PDL" label
-- Prev Close: dotted gray line with "PDC" label
-- Data from `/api/analysis/indicators` -> session_levels
-- Togglable via toolbar "Levels" pill
+### US-025: Bias-Switch-Level
+Create `engine/src/arctis/analysis/bias_switch.py`:
+- Calculate exactly ONE daily level where bias would flip
+- Hierarchy (pick first that applies):
+  1. Most recent defended structural point (swing high/low held 2+ times)
+  2. Bottom/top formation level
+  3. Key zone boundary (range held >=3 days)
+  4. Asia session extreme (if no better level)
+- Return: {level, type, confidence, description}
 
-### US-017: Opening Range Box
-Draw a semi-transparent rectangle for the first 15-min range.
-- Background: rgba(92,184,240,0.06)
-- Border: rgba(92,184,240,0.2)
-- From opening_range_high to opening_range_low
-- Time span: first 15 minutes of regular session
-- Data from `/api/analysis/indicators` -> session_levels
+### US-026: Opening Fake Detection
+Add to `engine/src/arctis/analysis/patterns.py` or create new:
+- Opening Fake = price breaks previous day's extreme in first 2 hours, then reverses
+- Conditions: break prev_high or prev_low, low volume on break, no follow-through
+- Return: {detected: bool, direction, break_price, reversal_time, confidence}
 
-### US-018: BOS/CHoCH Markers
-Add structure break markers on the chart.
-- BOS (Break of Structure): small green/red arrow marker
-- CHoCH (Change of Character): small triangle marker with label
-- Use `setMarkers()` on the candlestick series
-- Data from `/api/analysis/structure` -> structure_breaks
-- Each break has: type (BOS/CHoCH), direction, price, timestamp
+### US-027: Double Fake Exhaustion
+Add to patterns or create new module:
+- Two failed breakout attempts at the same extreme with declining velocity
+- Second attempt shows higher rejection volume than first
+- Strong reversal signal
+- Return: {detected: bool, direction, attempts: [{time, price, velocity}], confidence}
 
-### US-019: Pattern Markers
-Add pattern trigger markers on chart.
-- ORB breakout: colored box overlay showing the range
-- IB break: similar box for 60-min initial balance
-- Other patterns: arrow markers at trigger timestamp
-- Data from `/api/analysis/patterns` -> annotations
+### US-028: 60% Correction Monitor
+Create `engine/src/arctis/analysis/correction.py`:
+- Track the current correction depth relative to the last impulse move
+- Impulse = last significant directional move (using swings)
+- Correction depth = retracement from impulse end
+- If correction > 60% of impulse = structural threat (bias weakening)
+- Return: {impulse_size, correction_size, correction_pct, is_threat, impulse_direction}
+
+### US-029: Key Level Identification
+Create `engine/src/arctis/analysis/key_levels.py`:
+- Identify price levels that have been respected for >=3 trading days
+- A level is "respected" if price tests it (within 0.1%) and reverses
+- These key levels never expire
+- Return: list of {level, first_test_date, test_count, last_test_date, type: support|resistance}
+
+### US-030: Daily Bias Endpoint
+Create `engine/src/arctis/routes/bias.py`:
+- New API router at `/api/analysis/bias`
+- Combines ALL BIAS modules into one structured response:
+  - bias_state (from US-024)
+  - bias_switch_level (from US-025)
+  - velocity (latest from US-021)
+  - auction_quality (from US-022)
+  - naked_pocs (from US-023)
+  - opening_fake (from US-026)
+  - double_fake (from US-027)
+  - correction (from US-028)
+  - key_levels (from US-029)
+- Register router in main.py
 
 ## Acceptance Criteria
-- [ ] VWAP line with SD bands renders on chart (toggle works)
-- [ ] EMA 9/21/50 render as colored lines (toggle works)
-- [ ] POC/VAH/VAL horizontal price lines visible (toggle works)
-- [ ] Session separator vertical lines at correct times
-- [ ] Previous Day H/L/C lines with labels (toggle works)
-- [ ] Opening Range semi-transparent box on chart
-- [ ] BOS/CHoCH markers appear at structure breaks
-- [ ] Pattern markers appear at pattern triggers
-- [ ] All overlays respect toolbar toggle state
-- [ ] Chart performance acceptable with all overlays on (no lag with 12k bars)
+- [ ] velocity.py exists and returns velocity scale 1-10 for NQ bars
+- [ ] auction.py exists and classifies auction quality (sauber/moderat/schlecht)
+- [ ] naked_poc.py tracks unretested daily POCs across multiple days
+- [ ] bias_state.py returns one of 5 bias states with component scores
+- [ ] bias_switch.py calculates a single daily switch level
+- [ ] Opening Fake detection works (checks prev day extreme break + reversal)
+- [ ] Double Fake Exhaustion detection works (2 failed attempts + declining velocity)
+- [ ] correction.py monitors retracement depth and flags >60% as threat
+- [ ] key_levels.py identifies multi-day respected levels
+- [ ] GET /api/analysis/bias returns combined BIAS analysis
+- [ ] All new modules have pytest tests
+- [ ] All existing 49 tests still pass
 - [ ] App compiles without TypeScript errors
-- [ ] Backend still passes all 49 tests
 
 ## Technical Notes
-- SimpleChart.tsx uses Lightweight Charts v5 API: `chart.addSeries(LineSeries, {...})`
-- Price lines via `series.createPriceLine({price, color, lineWidth, lineStyle, axisLabelVisible, title})`
-- Markers via `series.setMarkers([{time, position, color, shape, text}])`
-- For overlays, fetch indicator data in App.tsx and pass as props to SimpleChart
-- Keep the chart component focused — pass data in, don't fetch inside
+- All modules take `list[OHLCVBar]` as input (same pattern as existing modules)
+- Use structure.py's `detect_swings()` for swing detection (don't duplicate)
+- Use volume_profile.py's `build_volume_profile()` for POC calculation
+- Velocity uses M1 (1-min) bars primarily
+- Keep modules independent — each can be tested in isolation
+- BIAS blueprint at ~/bias/blueprint.md has the full methodology reference
 
-## Constraints
-- Lightweight Charts v5 API only (not v4)
-- No emojis — labels use text only
-- Performance: must handle 12,300 bars without lag
-- All colors from chart-tokens.ts or design tokens
-
-When ALL acceptance criteria are checked [x] and tests pass, output:
+When ALL criteria are [x] and tests pass:
 <promise>TASK COMPLETE</promise>
