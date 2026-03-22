@@ -3,7 +3,7 @@ import { CHART_TOKENS } from '../../lib/chart-tokens'
 
 // ─── Overlay toggle config ──────────────────────────────────────────────────
 
-type OverlayKey = 'vwap' | 'volume' | 'vp'
+type OverlayKey = 'vwap' | 'ema' | 'volume' | 'vp' | 'levels'
 
 interface OverlayConfig {
   key: OverlayKey
@@ -12,9 +12,11 @@ interface OverlayConfig {
 }
 
 const OVERLAYS: OverlayConfig[] = [
-  { key: 'vwap', label: 'VWAP', color: CHART_TOKENS.overlay.vwap },
-  { key: 'volume', label: 'Vol', color: CHART_TOKENS.overlay.volume.bull },
-  { key: 'vp', label: 'VP', color: CHART_TOKENS.overlay.volumeProfile.poc },
+  { key: 'vwap',   label: 'VWAP',   color: CHART_TOKENS.overlay.vwap },
+  { key: 'ema',    label: 'EMA',    color: '#58A6FF' },
+  { key: 'volume', label: 'Vol',    color: CHART_TOKENS.overlay.volume.bull },
+  { key: 'vp',     label: 'VP',     color: CHART_TOKENS.overlay.volumeProfile.poc },
+  { key: 'levels', label: 'Levels', color: '#5CB8F0' },
 ]
 
 // ─── Props ──────────────────────────────────────────────────────────────────

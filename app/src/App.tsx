@@ -17,6 +17,8 @@ import type { PatternsAPIData } from '@/components/panels/PatternsPanel'
 import type { SessionAPIData } from '@/components/panels/SessionPanel'
 import type { FeedItem } from '@/components/panels/FeedPanel'
 import { SimpleChart } from '@/components/charts/SimpleChart'
+import { ChartToolbar } from '@/components/charts/ChartToolbar'
+import type { OverlayKey } from '@/components/charts/ChartToolbar'
 import type { Market, Timeframe } from '@/types/market'
 import type { IndicatorData, VolumeData, TradingConfig } from '@/types/analysis'
 
@@ -65,6 +67,17 @@ interface MarketInfo {
   symbol: string
   root: string
   description?: string
+}
+
+interface StructureBreak {
+  type: string
+  direction: string
+  price: number
+  timestamp: number
+}
+
+interface StructureAPIData {
+  structure_breaks: StructureBreak[]
 }
 
 // ---------------------------------------------------------------------------
@@ -202,6 +215,7 @@ export default function App() {
   const [indicatorData, setIndicatorData] = useState<IndicatorData | null>(null)
   const [volumeData, setVolumeData] = useState<VolumeData | null>(null)
   const [tradingConfig, setTradingConfig] = useState<TradingConfig | null>(null)
+  const [structureData, setStructureData] = useState<StructureAPIData | null>(null)
 
   // ── Status ────────────────────────────────────────────────────────────────
   const [latencyMs, setLatencyMs] = useState<number>(0)
@@ -215,6 +229,23 @@ export default function App() {
 
   // ── Poll interval ref ──────────────────────────────────────────────────────
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  // ── Overlay toggle state ───────────────────────────────────────────────────
+  const [activeOverlays, setActiveOverlays] = useState<Set<OverlayKey>>(
+    () => new Set<OverlayKey>(['vwap', 'ema', 'volume'])
+  )
+
+  const handleToggleOverlay = useCallback((key: OverlayKey) => {
+    setActiveOverlays((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) {
+        next.delete(key)
+      } else {
+        next.add(key)
+      }
+      return next
+    })
+  }, [])
 
   // ── Fetch /api/markets once on mount ──────────────────────────────────────
   useEffect(() => {
@@ -240,13 +271,14 @@ export default function App() {
     const base = `${ENGINE_URL}/api/analysis`
     const qs = `market=${market}&timeframe=${timeframe}`
 
-    const [sessR, confR, patR, indR, volR, cfgR] = await Promise.allSettled([
+    const [sessR, confR, patR, indR, volR, cfgR, strR] = await Promise.allSettled([
       fetch(`${base}/sessions?${qs}`).then((r) => (r.ok ? r.json() : null)),
       fetch(`${base}/confluence?${qs}`).then((r) => (r.ok ? r.json() : null)),
       fetch(`${base}/patterns?${qs}`).then((r) => (r.ok ? r.json() : null)),
       fetch(`${base}/indicators?${qs}`).then((r) => (r.ok ? r.json() : null)),
       fetch(`${base}/volume?${qs}`).then((r) => (r.ok ? r.json() : null)),
       fetch(`${ENGINE_URL}/api/config`).then((r) => (r.ok ? r.json() : null)),
+      fetch(`${base}/structure?${qs}`).then((r) => (r.ok ? r.json() : null)),
     ])
 
     if (sessR.status === 'fulfilled' && sessR.value)
@@ -261,6 +293,8 @@ export default function App() {
       setVolumeData(volR.value as VolumeData)
     if (cfgR.status === 'fulfilled' && cfgR.value)
       setTradingConfig(cfgR.value as TradingConfig)
+    if (strR.status === 'fulfilled' && strR.value)
+      setStructureData(strR.value as StructureAPIData)
 
     setLatencyMs(Math.round(performance.now() - t0))
     const n = new Date()
@@ -292,6 +326,7 @@ export default function App() {
       setPatternsData(null)
       setIndicatorData(null)
       setVolumeData(null)
+      setStructureData(null)
     },
     [markets],
   )
@@ -321,6 +356,21 @@ export default function App() {
 
   // ── Price ─────────────────────────────────────────────────────────────────
   const price = lastClose ?? null
+
+  // ── Derive session_levels for SimpleChart (only numeric values) ────────────
+  const sessionLevelsForChart =
+    indicatorData?.session_levels &&
+    indicatorData.session_levels.prev_high != null &&
+    indicatorData.session_levels.prev_low != null &&
+    indicatorData.session_levels.prev_close != null
+      ? {
+          prev_high: indicatorData.session_levels.prev_high as number,
+          prev_low: indicatorData.session_levels.prev_low as number,
+          prev_close: indicatorData.session_levels.prev_close as number,
+          opening_range_high: (indicatorData.session_levels.opening_range_high ?? 0) as number,
+          opening_range_low: (indicatorData.session_levels.opening_range_low ?? 0) as number,
+        }
+      : null
 
   return (
     <div
@@ -365,25 +415,48 @@ export default function App() {
       {/* Chart — col 2, row 3 */}
       <div
         className="bg-[var(--color-surface-base)] relative overflow-hidden"
-        style={{ gridColumn: '2', gridRow: '3' }}
+        style={{ gridColumn: '2', gridRow: '3', display: 'flex', flexDirection: 'column' }}
       >
-        {error ? (
-          <div className="w-full h-full flex items-center justify-center">
-            <span className="font-mono text-sm text-[var(--color-loss)]">{error}</span>
-          </div>
-        ) : isLoading ? (
-          <div className="w-full h-full flex items-center justify-center">
-            <span className="font-mono text-sm text-[var(--color-text-muted)] animate-pulse tabular-nums">
-              Loading {symbol}...
-            </span>
-          </div>
-        ) : bars.length > 0 ? (
-          <SimpleChart bars={bars} className="w-full h-full" />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <span className="font-mono text-sm text-[var(--color-text-muted)]">No data</span>
-          </div>
-        )}
+        {/* Chart toolbar */}
+        <ChartToolbar
+          symbol={symbol}
+          activeOverlays={activeOverlays}
+          onToggleOverlay={handleToggleOverlay}
+        />
+
+        {/* Chart body */}
+        <div className="flex-1 relative overflow-hidden">
+          {error ? (
+            <div className="w-full h-full flex items-center justify-center">
+              <span className="font-mono text-sm text-[var(--color-loss)]">{error}</span>
+            </div>
+          ) : isLoading ? (
+            <div className="w-full h-full flex items-center justify-center">
+              <span className="font-mono text-sm text-[var(--color-text-muted)] animate-pulse tabular-nums">
+                Loading {symbol}...
+              </span>
+            </div>
+          ) : bars.length > 0 ? (
+            <SimpleChart
+              bars={bars}
+              className="w-full h-full"
+              vwapData={indicatorData?.vwap}
+              emaData={indicatorData?.ema}
+              volumeProfile={indicatorData?.volume_profile}
+              sessionLevels={sessionLevelsForChart}
+              structureBreaks={structureData?.structure_breaks}
+              patternAnnotations={patternsData?.annotations}
+              showVwap={activeOverlays.has('vwap')}
+              showEma={activeOverlays.has('ema')}
+              showVp={activeOverlays.has('vp')}
+              showLevels={activeOverlays.has('levels')}
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center">
+              <span className="font-mono text-sm text-[var(--color-text-muted)]">No data</span>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Right panel — col 3, rows 2-3 */}

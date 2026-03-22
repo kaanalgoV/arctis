@@ -1,16 +1,137 @@
 import { useEffect, useRef } from 'react'
-import { createChart, CandlestickSeries, HistogramSeries, type IChartApi, ColorType, CrosshairMode } from 'lightweight-charts'
+import {
+  createChart,
+  createSeriesMarkers,
+  CandlestickSeries,
+  HistogramSeries,
+  LineSeries,
+  type IChartApi,
+  type ISeriesApi,
+  type ISeriesMarkersPluginApi,
+  type IPriceLine,
+  type SeriesMarker,
+  ColorType,
+  CrosshairMode,
+  LineStyle,
+} from 'lightweight-charts'
 import type { OHLCVBar } from '@/types/market'
 
-interface SimpleChartProps {
-  bars: OHLCVBar[]
-  className?: string
+// ─── Types ───────────────────────────────────────────────────────────────────
+
+interface VwapPoint {
+  timestamp: number
+  vwap: number
+  upper_1: number
+  lower_1: number
+  upper_2: number
+  lower_2: number
 }
 
-export function SimpleChart({ bars, className }: SimpleChartProps) {
+interface EmaPoint {
+  timestamp: number
+  ema9: number
+  ema21: number
+  ema50: number
+  alignment: string
+}
+
+interface VolumeProfile {
+  poc: number
+  vah: number
+  val: number
+}
+
+interface SessionLevels {
+  prev_high: number
+  prev_low: number
+  prev_close: number
+  opening_range_high: number
+  opening_range_low: number
+}
+
+interface StructureBreak {
+  type: string
+  direction: string
+  price: number
+  timestamp: number
+}
+
+interface PatternAnnotation {
+  timestamp: number
+  pattern: string
+  direction: string
+  price: number | null
+  marker_type: string
+  color: string
+}
+
+export interface SimpleChartProps {
+  bars: OHLCVBar[]
+  className?: string
+  // Overlay data
+  vwapData?: VwapPoint[]
+  emaData?: EmaPoint[]
+  volumeProfile?: VolumeProfile | null
+  sessionLevels?: SessionLevels | null
+  structureBreaks?: StructureBreak[]
+  patternAnnotations?: PatternAnnotation[]
+  // Overlay visibility
+  showVwap?: boolean
+  showEma?: boolean
+  showVp?: boolean
+  showLevels?: boolean
+}
+
+// ─── Refs state for overlay series ───────────────────────────────────────────
+
+interface OverlaySeries {
+  vwap: ISeriesApi<'Line'> | null
+  vwapUp1: ISeriesApi<'Line'> | null
+  vwapDn1: ISeriesApi<'Line'> | null
+  vwapUp2: ISeriesApi<'Line'> | null
+  vwapDn2: ISeriesApi<'Line'> | null
+  ema9: ISeriesApi<'Line'> | null
+  ema21: ISeriesApi<'Line'> | null
+  ema50: ISeriesApi<'Line'> | null
+}
+
+// ─── Component ───────────────────────────────────────────────────────────────
+
+export function SimpleChart({
+  bars,
+  className,
+  vwapData,
+  emaData,
+  volumeProfile,
+  sessionLevels,
+  structureBreaks,
+  patternAnnotations,
+  showVwap = false,
+  showEma = false,
+  showVp = false,
+  showLevels = false,
+}: SimpleChartProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const chartRef = useRef<IChartApi | null>(null)
+  // Candle series ref for price lines and markers
+  const candleRef = useRef<ISeriesApi<'Candlestick'> | null>(null)
+  // Overlay series refs
+  const overlayRef = useRef<OverlaySeries>({
+    vwap: null,
+    vwapUp1: null,
+    vwapDn1: null,
+    vwapUp2: null,
+    vwapDn2: null,
+    ema9: null,
+    ema21: null,
+    ema50: null,
+  })
+  // Price line refs so we can remove them on data change
+  const priceLineRefs = useRef<IPriceLine[]>([])
+  // Markers plugin ref (LWC v5 uses createSeriesMarkers plugin)
+  const markersPluginRef = useRef<ISeriesMarkersPluginApi<number> | null>(null)
 
+  // ── Build chart on first mount (bars change re-creates chart) ──────────────
   useEffect(() => {
     if (!containerRef.current || bars.length === 0) return
 
@@ -37,7 +158,7 @@ export function SimpleChart({ bars, className }: SimpleChartProps) {
     })
     chartRef.current = chart
 
-    // Candlesticks (v5 API: chart.addSeries)
+    // ── Candlesticks ──────────────────────────────────────────────────────────
     const candleSeries = chart.addSeries(CandlestickSeries, {
       upColor: '#008757',
       downColor: '#EF4136',
@@ -55,8 +176,9 @@ export function SimpleChart({ bars, className }: SimpleChartProps) {
         close: b.close,
       }))
     )
+    candleRef.current = candleSeries
 
-    // Volume (v5 API)
+    // ── Volume bars ───────────────────────────────────────────────────────────
     const volumeSeries = chart.addSeries(HistogramSeries, {
       priceFormat: { type: 'volume' },
       priceScaleId: 'volume',
@@ -72,8 +194,88 @@ export function SimpleChart({ bars, className }: SimpleChartProps) {
       }))
     )
 
+    // ── VWAP overlay series (always added, visibility controlled) ─────────────
+    const vwapSeries = chart.addSeries(LineSeries, {
+      color: 'rgba(251,191,36,0.9)',
+      lineWidth: 1,
+      priceLineVisible: false,
+      lastValueVisible: false,
+      visible: false,
+    })
+    const vwapUp1Series = chart.addSeries(LineSeries, {
+      color: 'rgba(251,191,36,0.35)',
+      lineWidth: 1,
+      lineStyle: LineStyle.Dashed,
+      priceLineVisible: false,
+      lastValueVisible: false,
+      visible: false,
+    })
+    const vwapDn1Series = chart.addSeries(LineSeries, {
+      color: 'rgba(251,191,36,0.35)',
+      lineWidth: 1,
+      lineStyle: LineStyle.Dashed,
+      priceLineVisible: false,
+      lastValueVisible: false,
+      visible: false,
+    })
+    const vwapUp2Series = chart.addSeries(LineSeries, {
+      color: 'rgba(251,191,36,0.15)',
+      lineWidth: 1,
+      lineStyle: LineStyle.Dotted,
+      priceLineVisible: false,
+      lastValueVisible: false,
+      visible: false,
+    })
+    const vwapDn2Series = chart.addSeries(LineSeries, {
+      color: 'rgba(251,191,36,0.15)',
+      lineWidth: 1,
+      lineStyle: LineStyle.Dotted,
+      priceLineVisible: false,
+      lastValueVisible: false,
+      visible: false,
+    })
+    overlayRef.current.vwap = vwapSeries
+    overlayRef.current.vwapUp1 = vwapUp1Series
+    overlayRef.current.vwapDn1 = vwapDn1Series
+    overlayRef.current.vwapUp2 = vwapUp2Series
+    overlayRef.current.vwapDn2 = vwapDn2Series
+
+    // ── EMA ribbon series ─────────────────────────────────────────────────────
+    const ema9Series = chart.addSeries(LineSeries, {
+      color: '#34D399',
+      lineWidth: 1,
+      lineStyle: LineStyle.Dashed,
+      priceLineVisible: false,
+      lastValueVisible: false,
+      visible: false,
+    })
+    const ema21Series = chart.addSeries(LineSeries, {
+      color: '#58A6FF',
+      lineWidth: 1,
+      lineStyle: LineStyle.Dashed,
+      priceLineVisible: false,
+      lastValueVisible: false,
+      visible: false,
+    })
+    const ema50Series = chart.addSeries(LineSeries, {
+      color: '#A855F7',
+      lineWidth: 1,
+      lineStyle: LineStyle.Dashed,
+      priceLineVisible: false,
+      lastValueVisible: false,
+      visible: false,
+    })
+    overlayRef.current.ema9 = ema9Series
+    overlayRef.current.ema21 = ema21Series
+    overlayRef.current.ema50 = ema50Series
+
+    // ── Markers plugin (LWC v5) ───────────────────────────────────────────────
+    const markersPlugin = createSeriesMarkers(candleSeries)
+    markersPluginRef.current = markersPlugin
+
     chart.timeScale().fitContent()
 
+    // ── ResizeObserver ────────────────────────────────────────────────────────
     const ro = new ResizeObserver(() => {
       if (containerRef.current) {
         chart.applyOptions({
@@ -88,8 +290,224 @@ export function SimpleChart({ bars, className }: SimpleChartProps) {
       ro.disconnect()
       chart.remove()
       chartRef.current = null
+      candleRef.current = null
+      priceLineRefs.current = []
+      markersPluginRef.current = null
+      overlayRef.current = {
+        vwap: null, vwapUp1: null, vwapDn1: null,
+        vwapUp2: null, vwapDn2: null,
+        ema9: null, ema21: null, ema50: null,
+      }
     }
   }, [bars])
+
+  // ── VWAP data + visibility ─────────────────────────────────────────────────
+  useEffect(() => {
+    const ov = overlayRef.current
+    if (!ov.vwap) return
+
+    const visible = !!(showVwap && vwapData && vwapData.length > 0)
+
+    if (visible && vwapData) {
+      const sorted = [...vwapData].sort((a, b) => a.timestamp - b.timestamp)
+      ov.vwap.setData(sorted.map((v) => ({ time: v.timestamp as any, value: v.vwap })))
+      ov.vwapUp1!.setData(sorted.map((v) => ({ time: v.timestamp as any, value: v.upper_1 })))
+      ov.vwapDn1!.setData(sorted.map((v) => ({ time: v.timestamp as any, value: v.lower_1 })))
+      ov.vwapUp2!.setData(sorted.map((v) => ({ time: v.timestamp as any, value: v.upper_2 })))
+      ov.vwapDn2!.setData(sorted.map((v) => ({ time: v.timestamp as any, value: v.lower_2 })))
+    }
+
+    ov.vwap.applyOptions({ visible })
+    ov.vwapUp1!.applyOptions({ visible })
+    ov.vwapDn1!.applyOptions({ visible })
+    ov.vwapUp2!.applyOptions({ visible })
+    ov.vwapDn2!.applyOptions({ visible })
+  }, [showVwap, vwapData])
+
+  // ── EMA data + visibility ─────────────────────────────────────────────────
+  useEffect(() => {
+    const ov = overlayRef.current
+    if (!ov.ema9) return
+
+    const visible = !!(showEma && emaData && emaData.length > 0)
+
+    if (visible && emaData) {
+      const sorted = [...emaData].sort((a, b) => a.timestamp - b.timestamp)
+      ov.ema9!.setData(sorted.map((e) => ({ time: e.timestamp as any, value: e.ema9 })))
+      ov.ema21!.setData(sorted.map((e) => ({ time: e.timestamp as any, value: e.ema21 })))
+      ov.ema50!.setData(sorted.map((e) => ({ time: e.timestamp as any, value: e.ema50 })))
+    }
+
+    ov.ema9!.applyOptions({ visible })
+    ov.ema21!.applyOptions({ visible })
+    ov.ema50!.applyOptions({ visible })
+  }, [showEma, emaData])
+
+  // ── Volume Profile price lines ────────────────────────────────────────────
+  useEffect(() => {
+    const candle = candleRef.current
+    if (!candle) return
+
+    // Remove existing VP price lines
+    priceLineRefs.current
+      .filter((_, i) => i < 3)
+      .forEach((pl) => {
+        try { candle.removePriceLine(pl) } catch (_) { /* already removed */ }
+      })
+    priceLineRefs.current = priceLineRefs.current.slice(3)
+
+    if (showVp && volumeProfile) {
+      const poc = candle.createPriceLine({
+        price: volumeProfile.poc,
+        color: '#FBBF24',
+        lineWidth: 1,
+        lineStyle: LineStyle.Solid,
+        axisLabelVisible: true,
+        title: 'POC',
+      })
+      const vah = candle.createPriceLine({
+        price: volumeProfile.vah,
+        color: '#5CB8F0',
+        lineWidth: 1,
+        lineStyle: LineStyle.Dashed,
+        axisLabelVisible: true,
+        title: 'VAH',
+      })
+      const val = candle.createPriceLine({
+        price: volumeProfile.val,
+        color: '#5CB8F0',
+        lineWidth: 1,
+        lineStyle: LineStyle.Dashed,
+        axisLabelVisible: true,
+        title: 'VAL',
+      })
+      priceLineRefs.current = [poc, vah, val, ...priceLineRefs.current]
+    }
+  }, [showVp, volumeProfile])
+
+  // ── Session / Previous Day Levels price lines ─────────────────────────────
+  useEffect(() => {
+    const candle = candleRef.current
+    if (!candle) return
+
+    // Remove existing level price lines (stored after VP lines, i.e. index 3+)
+    // We keep a separate ref slice for levels
+    const vpCount = showVp && volumeProfile ? 3 : 0
+    priceLineRefs.current
+      .slice(vpCount)
+      .forEach((pl) => {
+        try { candle.removePriceLine(pl) } catch (_) { /* already removed */ }
+      })
+    priceLineRefs.current = priceLineRefs.current.slice(0, vpCount)
+
+    if (showLevels && sessionLevels) {
+      const sl = sessionLevels
+      const lines: IPriceLine[] = []
+
+      if (sl.prev_high != null) {
+        lines.push(candle.createPriceLine({
+          price: sl.prev_high,
+          color: '#008757',
+          lineWidth: 1,
+          lineStyle: LineStyle.Dashed,
+          axisLabelVisible: true,
+          title: 'PDH',
+        }))
+      }
+      if (sl.prev_low != null) {
+        lines.push(candle.createPriceLine({
+          price: sl.prev_low,
+          color: '#EF4136',
+          lineWidth: 1,
+          lineStyle: LineStyle.Dashed,
+          axisLabelVisible: true,
+          title: 'PDL',
+        }))
+      }
+      if (sl.prev_close != null) {
+        lines.push(candle.createPriceLine({
+          price: sl.prev_close,
+          color: '#949DA8',
+          lineWidth: 1,
+          lineStyle: LineStyle.SparseDotted,
+          axisLabelVisible: true,
+          title: 'PDC',
+        }))
+      }
+      if (sl.opening_range_high != null) {
+        lines.push(candle.createPriceLine({
+          price: sl.opening_range_high,
+          color: 'rgba(92,184,240,0.6)',
+          lineWidth: 1,
+          lineStyle: LineStyle.Dashed,
+          axisLabelVisible: true,
+          title: 'ORH',
+        }))
+      }
+      if (sl.opening_range_low != null) {
+        lines.push(candle.createPriceLine({
+          price: sl.opening_range_low,
+          color: 'rgba(92,184,240,0.6)',
+          lineWidth: 1,
+          lineStyle: LineStyle.Dashed,
+          axisLabelVisible: true,
+          title: 'ORL',
+        }))
+      }
+
+      priceLineRefs.current = [...priceLineRefs.current, ...lines]
+    }
+  }, [showLevels, sessionLevels, showVp, volumeProfile])
+
+  // ── Markers: BOS/CHoCH + Pattern annotations ───────────────────────────────
+  useEffect(() => {
+    const plugin = markersPluginRef.current
+    if (!plugin) return
+
+    const markers: SeriesMarker<number>[] = []
+
+    // Structure breaks (BOS / CHoCH)
+    if (structureBreaks && structureBreaks.length > 0) {
+      for (const b of structureBreaks) {
+        markers.push({
+          time: b.timestamp as number,
+          position: b.direction === 'long' ? 'belowBar' : 'aboveBar',
+          color: b.direction === 'long' ? '#008757' : '#EF4136',
+          shape: b.type === 'BOS' ? 'arrowUp' : 'circle',
+          text: b.type,
+        })
+      }
+    }
+
+    // Pattern annotations
+    if (patternAnnotations && patternAnnotations.length > 0) {
+      for (const p of patternAnnotations) {
+        if (p.price != null) {
+          markers.push({
+            time: p.timestamp as number,
+            position: p.direction === 'long' ? 'belowBar' : 'aboveBar',
+            color:
+              p.direction === 'long'
+                ? '#008757'
+                : p.direction === 'short'
+                ? '#EF4136'
+                : '#5CB8F0',
+            shape:
+              p.direction === 'long'
+                ? 'arrowUp'
+                : p.direction === 'short'
+                ? 'arrowDown'
+                : 'circle',
+            text: p.pattern,
+          })
+        }
+      }
+    }
+
+    // LWC requires markers sorted ascending by time
+    markers.sort((a, b) => (a.time as number) - (b.time as number))
+    plugin.setMarkers(markers)
+  }, [structureBreaks, patternAnnotations])
 
   return <div ref={containerRef} className={className} />
 }

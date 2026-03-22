@@ -1,3 +1,12 @@
+---
+active: true
+iteration: 1
+session_id: 
+max_iterations: 15
+completion_promise: "TASK COMPLETE"
+started_at: "2026-03-22T23:23:25Z"
+---
+
 # PRD: Arctis SaaS Platform — Epic 2 (Chart Enhancements)
 
 ## Objective
