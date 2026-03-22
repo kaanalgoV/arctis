@@ -13,15 +13,10 @@ from arctis.analysis.structure import classify_trend, detect_structure_breaks, d
 from arctis.analysis.volume import detect_volume_spikes, relative_volume
 from arctis.analysis.volume_profile import build_volume_profile, calculate_session_levels
 from arctis.analysis.vwap import calculate_vwap
+from arctis.db import fetch_bars_as_models
 from arctis.models import Market, Timeframe
-from arctis.storage import ParquetStore
 
 router = APIRouter(prefix="/api/analysis")
-
-
-def _get_store() -> ParquetStore:
-    from arctis.main import store
-    return store
 
 
 def _get_sim():
@@ -30,12 +25,11 @@ def _get_sim():
 
 
 def _load_bars(market: Market, timeframe: Timeframe):
-    """Load bars, respecting simulation mode."""
-    s = _get_store()
+    """Load bars from TimescaleDB, respecting simulation mode."""
     sim = _get_sim()
     if sim.active and sim.market == market and sim.timeframe == timeframe:
         return sim.get_bars()
-    return s.load(market, timeframe)
+    return fetch_bars_as_models(market=market.value, days=30, timeframe=timeframe.value)
 
 
 def _current_timestamp() -> int:

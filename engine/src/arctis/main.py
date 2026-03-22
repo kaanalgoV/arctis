@@ -1,10 +1,12 @@
 """FastAPI application entry point."""
 
+import asyncio
+import json
 import tempfile
 import time as _time
 from pathlib import Path
 
-from fastapi import FastAPI, File, Form, Query, UploadFile
+from fastapi import FastAPI, File, Form, Query, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
@@ -79,6 +81,9 @@ class Simulation:
 
 sim = Simulation()
 
+# WebSocket connections per symbol
+_ws_connections: dict[str, list[WebSocket]] = {}
+
 app = FastAPI(
     title="Arctis Engine",
     version="0.1.0",
@@ -87,7 +92,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:1420", "http://127.0.0.1:1420", "http://localhost:5173", "http://127.0.0.1:5173", "tauri://localhost"],
+    allow_origins=["http://localhost:1420", "http://127.0.0.1:1420", "http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:5174", "http://127.0.0.1:5174", "tauri://localhost"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -108,6 +113,32 @@ app.include_router(risk_router)
 @app.get("/health")
 async def health():
     return {"status": "ok", "version": "0.1.0"}
+
+
+@app.get("/api/markets")
+async def get_markets():
+    """Return available symbols from TimescaleDB, grouped by root."""
+    from arctis.db import fetch_available_symbols
+    symbols = fetch_available_symbols()
+    # Group by root
+    grouped: dict[str, list] = {}
+    for s in symbols:
+        root = s["root"]
+        if root not in grouped:
+            grouped[root] = []
+        grouped[root].append(s)
+    return {"markets": grouped, "symbols": symbols}
+
+
+@app.get("/api/db/bars")
+async def get_db_bars(
+    symbol: str = Query(default="NQH6"),
+    days: int = Query(default=30, ge=1, le=365),
+):
+    """Fetch OHLCV bars directly from TimescaleDB."""
+    from arctis.db import fetch_bars
+    bars = fetch_bars(symbol=symbol, days=days)
+    return {"symbol": symbol, "bars_count": len(bars), "bars": bars}
 
 
 @app.post("/api/import")
@@ -170,3 +201,32 @@ async def sim_stop():
 @app.get("/api/sim/status")
 async def sim_status():
     return sim.status()
+
+
+@app.websocket("/ws/bars/{symbol}")
+async def websocket_bars(websocket: WebSocket, symbol: str):
+    """Stream new bars for a symbol via WebSocket."""
+    await websocket.accept()
+    if symbol not in _ws_connections:
+        _ws_connections[symbol] = []
+    _ws_connections[symbol].append(websocket)
+    try:
+        # Send latest bar on connect
+        from arctis.db import fetch_bars
+        bars = fetch_bars(symbol=symbol, days=1)
+        if bars:
+            await websocket.send_json({"type": "bar", "data": bars[-1]})
+            await websocket.send_json({"type": "connected", "symbol": symbol, "bars_available": len(bars)})
+        # Keep alive — wait for client messages or disconnect
+        while True:
+            try:
+                await asyncio.wait_for(websocket.receive_text(), timeout=30.0)
+            except asyncio.TimeoutError:
+                # Send heartbeat
+                await websocket.send_json({"type": "heartbeat"})
+    except WebSocketDisconnect:
+        if symbol in _ws_connections:
+            _ws_connections[symbol] = [ws for ws in _ws_connections[symbol] if ws != websocket]
+    except Exception:
+        if symbol in _ws_connections:
+            _ws_connections[symbol] = [ws for ws in _ws_connections[symbol] if ws != websocket]

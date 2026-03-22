@@ -1,0 +1,184 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <radialGradient id="bgCrystal" cx="50%" cy="50%" r="70%">
+      <stop offset="0%" stop-color="#0d1f3c"/>
+      <stop offset="100%" stop-color="#0a1628"/>
+    </radialGradient>
+
+    <!-- Hex fill gradient -->
+    <linearGradient id="hexFill" x1="20%" y1="0%" x2="80%" y2="100%">
+      <stop offset="0%" stop-color="#8ac8ff" stop-opacity="0.18"/>
+      <stop offset="50%" stop-color="#64b5ff" stop-opacity="0.10"/>
+      <stop offset="100%" stop-color="#3a7abf" stop-opacity="0.05"/>
+    </linearGradient>
+
+    <!-- Crystal face gradients -->
+    <linearGradient id="faceA" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#e8f4ff" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#8ac8ff" stop-opacity="0.4"/>
+    </linearGradient>
+    <linearGradient id="faceB" x1="100%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#64b5ff" stop-opacity="0.6"/>
+      <stop offset="100%" stop-color="#1a4a7a" stop-opacity="0.3"/>
+    </linearGradient>
+    <linearGradient id="faceC" x1="50%" y1="0%" x2="50%" y2="100%">
+      <stop offset="0%" stop-color="#8ac8ff" stop-opacity="0.5"/>
+      <stop offset="100%" stop-color="#0a2040" stop-opacity="0.2"/>
+    </linearGradient>
+
+    <!-- Outer ring glow -->
+    <filter id="crystalGlow" x="-15%" y="-15%" width="130%" height="130%">
+      <feGaussianBlur stdDeviation="5" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- Spike glow -->
+    <filter id="spikeGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- Green accent gradient -->
+    <linearGradient id="greenRing" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00e088" stop-opacity="0"/>
+      <stop offset="50%" stop-color="#00e088"/>
+      <stop offset="100%" stop-color="#00e088" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="512" height="512" rx="32" fill="url(#bgCrystal)"/>
+
+  <!-- Outer subtle ring -->
+  <circle cx="256" cy="216" r="138" fill="none" stroke="#64b5ff" stroke-width="0.5" opacity="0.15"/>
+  <circle cx="256" cy="216" r="110" fill="none" stroke="#64b5ff" stroke-width="0.5" opacity="0.12"/>
+
+  <!-- ===================== CRYSTAL SNOWFLAKE ===================== -->
+  <!-- Built as 6-fold symmetric hexagonal ice crystal -->
+
+  <!-- Center hex fill -->
+  <polygon
+    points="256,140 312,176 312,248 256,284 200,248 200,176"
+    fill="url(#hexFill)"
+    stroke="#64b5ff"
+    stroke-width="1.5"
+    opacity="0.9"
+    filter="url(#crystalGlow)"
+  />
+
+  <!-- Inner hex glow faces — 6 triangular facets -->
+  <!-- Top-right face -->
+  <polygon points="256,212 312,176 256,140" fill="url(#faceA)" opacity="0.7"/>
+  <!-- Right face -->
+  <polygon points="256,212 312,248 312,176" fill="url(#faceB)" opacity="0.5"/>
+  <!-- Bottom-right face -->
+  <polygon points="256,212 256,284 312,248" fill="url(#faceC)" opacity="0.6"/>
+  <!-- Bottom-left face -->
+  <polygon points="256,212 200,248 256,284" fill="url(#faceA)" opacity="0.4"/>
+  <!-- Left face -->
+  <polygon points="256,212 200,176 200,248" fill="url(#faceB)" opacity="0.6"/>
+  <!-- Top-left face -->
+  <polygon points="256,212 256,140 200,176" fill="url(#faceC)" opacity="0.5"/>
+
+  <!-- Center bright dot -->
+  <circle cx="256" cy="212" r="6" fill="#e8f4ff" opacity="0.9" filter="url(#spikeGlow)"/>
+
+  <!-- ===================== 6 MAIN SPIKES ===================== -->
+  <!-- Top spike -->
+  <line x1="256" y1="140" x2="256" y2="80" stroke="#8ac8ff" stroke-width="2.5" filter="url(#spikeGlow)"/>
+  <polygon points="256,80 249,100 263,100" fill="#e8f4ff" opacity="0.9"/>
+  <!-- Top spike branches -->
+  <line x1="256" y1="124" x2="240" y2="108" stroke="#64b5ff" stroke-width="1.5" opacity="0.7"/>
+  <line x1="256" y1="124" x2="272" y2="108" stroke="#64b5ff" stroke-width="1.5" opacity="0.7"/>
+  <line x1="256" y1="112" x2="246" y2="104" stroke="#64b5ff" stroke-width="1" opacity="0.5"/>
+  <line x1="256" y1="112" x2="266" y2="104" stroke="#64b5ff" stroke-width="1" opacity="0.5"/>
+
+  <!-- Bottom spike -->
+  <line x1="256" y1="284" x2="256" y2="344" stroke="#8ac8ff" stroke-width="2.5" filter="url(#spikeGlow)"/>
+  <polygon points="256,344 249,324 263,324" fill="#e8f4ff" opacity="0.9"/>
+  <!-- Bottom spike branches -->
+  <line x1="256" y1="300" x2="240" y2="316" stroke="#64b5ff" stroke-width="1.5" opacity="0.7"/>
+  <line x1="256" y1="300" x2="272" y2="316" stroke="#64b5ff" stroke-width="1.5" opacity="0.7"/>
+  <line x1="256" y1="312" x2="246" y2="320" stroke="#64b5ff" stroke-width="1" opacity="0.5"/>
+  <line x1="256" y1="312" x2="266" y2="320" stroke="#64b5ff" stroke-width="1" opacity="0.5"/>
+
+  <!-- Top-right spike (60°) -->
+  <line x1="312" y1="176" x2="364" y2="146" stroke="#8ac8ff" stroke-width="2.5" filter="url(#spikeGlow)"/>
+  <polygon points="364,146 345,153 352,166" fill="#e8f4ff" opacity="0.9"/>
+  <!-- Branches -->
+  <line x1="322" y1="170" x2="333" y2="152" stroke="#64b5ff" stroke-width="1.5" opacity="0.7"/>
+  <line x1="328" y1="167" x2="346" y2="162" stroke="#64b5ff" stroke-width="1.5" opacity="0.7"/>
+
+  <!-- Bottom-right spike (120°) -->
+  <line x1="312" y1="248" x2="364" y2="278" stroke="#8ac8ff" stroke-width="2.5" filter="url(#spikeGlow)"/>
+  <polygon points="364,278 345,271 352,258" fill="#e8f4ff" opacity="0.9"/>
+  <!-- Branches -->
+  <line x1="322" y1="254" x2="333" y2="272" stroke="#64b5ff" stroke-width="1.5" opacity="0.7"/>
+  <line x1="328" y1="257" x2="346" y2="262" stroke="#64b5ff" stroke-width="1.5" opacity="0.7"/>
+
+  <!-- Top-left spike (300°) -->
+  <line x1="200" y1="176" x2="148" y2="146" stroke="#8ac8ff" stroke-width="2.5" filter="url(#spikeGlow)"/>
+  <polygon points="148,146 167,153 160,166" fill="#e8f4ff" opacity="0.9"/>
+  <!-- Branches -->
+  <line x1="190" y1="170" x2="179" y2="152" stroke="#64b5ff" stroke-width="1.5" opacity="0.7"/>
+  <line x1="184" y1="167" x2="166" y2="162" stroke="#64b5ff" stroke-width="1.5" opacity="0.7"/>
+
+  <!-- Bottom-left spike (240°) -->
+  <line x1="200" y1="248" x2="148" y2="278" stroke="#8ac8ff" stroke-width="2.5" filter="url(#spikeGlow)"/>
+  <polygon points="148,278 167,271 160,258" fill="#e8f4ff" opacity="0.9"/>
+  <!-- Branches -->
+  <line x1="190" y1="254" x2="179" y2="272" stroke="#64b5ff" stroke-width="1.5" opacity="0.7"/>
+  <line x1="184" y1="257" x2="166" y2="262" stroke="#64b5ff" stroke-width="1.5" opacity="0.7"/>
+
+  <!-- Inner hex outline bright -->
+  <polygon
+    points="256,140 312,176 312,248 256,284 200,248 200,176"
+    fill="none"
+    stroke="#8ac8ff"
+    stroke-width="1.5"
+    opacity="0.6"
+  />
+
+  <!-- 6 inner hex corner diamonds -->
+  <polygon points="256,140 250,152 256,148 262,152" fill="#e8f4ff" opacity="0.8"/>
+  <polygon points="312,176 300,182 303,188 313,184" fill="#e8f4ff" opacity="0.8"/>
+  <polygon points="312,248 300,242 303,236 313,240" fill="#e8f4ff" opacity="0.8"/>
+  <polygon points="256,284 250,272 256,276 262,272" fill="#e8f4ff" opacity="0.8"/>
+  <polygon points="200,248 212,242 209,236 199,240" fill="#e8f4ff" opacity="0.8"/>
+  <polygon points="200,176 212,182 209,188 199,184" fill="#e8f4ff" opacity="0.8"/>
+
+  <!-- Green accent ring (partial arc at bottom of crystal) -->
+  <path d="M 200,284 Q 256,310 312,284" fill="none" stroke="#00e088" stroke-width="1.5" opacity="0.5"/>
+
+  <!-- ============ WORDMARK ============ -->
+  <text
+    x="256"
+    y="415"
+    font-family="'SF Pro Display', 'Helvetica Neue', Arial, sans-serif"
+    font-size="52"
+    font-weight="700"
+    letter-spacing="14"
+    text-anchor="middle"
+    fill="#e8f4ff"
+  >ARCTIS</text>
+
+  <text
+    x="256"
+    y="447"
+    font-family="'SF Pro Display', 'Helvetica Neue', Arial, sans-serif"
+    font-size="13"
+    font-weight="400"
+    letter-spacing="5"
+    text-anchor="middle"
+    fill="#64b5ff"
+    opacity="0.8"
+  >TRADING INTELLIGENCE</text>
+
+  <line x1="196" y1="458" x2="316" y2="458" stroke="#00e088" stroke-width="1" opacity="0.6"/>
+</svg>

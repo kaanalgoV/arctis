@@ -1,4 +1,4 @@
-const ENGINE_URL = "http://127.0.0.1:8000";
+const ENGINE_URL = "http://127.0.0.1:8001";
 
 export async function checkHealth(): Promise<{ status: string; version: string }> {
   const res = await fetch(`${ENGINE_URL}/health`);

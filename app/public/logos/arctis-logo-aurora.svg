@@ -1,0 +1,231 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <!-- Night sky background -->
+    <radialGradient id="bgAurora" cx="50%" cy="30%" r="80%">
+      <stop offset="0%" stop-color="#0d1f3c"/>
+      <stop offset="70%" stop-color="#0a1628"/>
+      <stop offset="100%" stop-color="#060e1a"/>
+    </radialGradient>
+
+    <!-- Aurora band gradients -->
+    <linearGradient id="aurora1" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#00e088" stop-opacity="0"/>
+      <stop offset="20%" stop-color="#00e088" stop-opacity="0.6"/>
+      <stop offset="50%" stop-color="#00c8b0" stop-opacity="0.8"/>
+      <stop offset="75%" stop-color="#64b5ff" stop-opacity="0.7"/>
+      <stop offset="100%" stop-color="#64b5ff" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="aurora2" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#64b5ff" stop-opacity="0"/>
+      <stop offset="15%" stop-color="#8ac8ff" stop-opacity="0.5"/>
+      <stop offset="45%" stop-color="#00e088" stop-opacity="0.4"/>
+      <stop offset="70%" stop-color="#64b5ff" stop-opacity="0.6"/>
+      <stop offset="100%" stop-color="#3a60a8" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="aurora3" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#3a60a8" stop-opacity="0"/>
+      <stop offset="30%" stop-color="#64b5ff" stop-opacity="0.3"/>
+      <stop offset="60%" stop-color="#8ac8ff" stop-opacity="0.5"/>
+      <stop offset="85%" stop-color="#00e088" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#00e088" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="aurora4" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#00e088" stop-opacity="0"/>
+      <stop offset="25%" stop-color="#64b5ff" stop-opacity="0.4"/>
+      <stop offset="55%" stop-color="#00e088" stop-opacity="0.55"/>
+      <stop offset="80%" stop-color="#8ac8ff" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#8ac8ff" stop-opacity="0"/>
+    </linearGradient>
+
+    <!-- Mountain gradient -->
+    <linearGradient id="auroraMtn" x1="50%" y1="0%" x2="50%" y2="100%">
+      <stop offset="0%" stop-color="#c8e4ff"/>
+      <stop offset="45%" stop-color="#4a90c8"/>
+      <stop offset="100%" stop-color="#1a3050"/>
+    </linearGradient>
+
+    <!-- Stars scatter blur -->
+    <filter id="starGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="1.5" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- Aurora blur -->
+    <filter id="auroraBlur" x="-5%" y="-10%" width="110%" height="120%">
+      <feGaussianBlur stdDeviation="5" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- Mountain glow -->
+    <filter id="mtnGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <clipPath id="skyClip">
+      <rect x="0" y="0" width="512" height="320"/>
+    </clipPath>
+  </defs>
+
+  <!-- Background (night sky) -->
+  <rect width="512" height="512" rx="32" fill="url(#bgAurora)"/>
+
+  <!-- Stars -->
+  <g fill="#e8f4ff" filter="url(#starGlow)" clip-path="url(#skyClip)">
+    <circle cx="68" cy="55" r="1.2" opacity="0.9"/>
+    <circle cx="118" cy="38" r="0.9" opacity="0.7"/>
+    <circle cx="152" cy="72" r="1.0" opacity="0.8"/>
+    <circle cx="194" cy="42" r="1.3" opacity="0.9"/>
+    <circle cx="228" cy="65" r="0.8" opacity="0.6"/>
+    <circle cx="300" cy="48" r="1.1" opacity="0.8"/>
+    <circle cx="338" cy="75" r="0.9" opacity="0.7"/>
+    <circle cx="374" cy="36" r="1.2" opacity="0.9"/>
+    <circle cx="420" cy="60" r="1.0" opacity="0.8"/>
+    <circle cx="455" cy="88" r="0.8" opacity="0.6"/>
+    <circle cx="85" cy="98" r="0.9" opacity="0.7"/>
+    <circle cx="172" cy="110" r="0.8" opacity="0.6"/>
+    <circle cx="248" cy="94" r="1.1" opacity="0.7"/>
+    <circle cx="398" cy="105" r="0.9" opacity="0.7"/>
+    <circle cx="442" cy="46" r="1.3" opacity="0.9"/>
+    <circle cx="56" cy="132" r="0.7" opacity="0.5"/>
+    <circle cx="468" cy="128" r="0.8" opacity="0.6"/>
+    <!-- Bright stars -->
+    <circle cx="320" cy="62" r="1.8" opacity="0.95"/>
+    <circle cx="136" cy="48" r="1.6" opacity="0.9"/>
+    <circle cx="476" cy="72" r="1.5" opacity="0.85"/>
+  </g>
+
+  <!-- ===================== AURORA BANDS ===================== -->
+  <!-- Aurora is rendered as curved, layered translucent arcs -->
+  <!-- Band 1 (lowest, broadest) -->
+  <path
+    d="M -20,190 Q 120,130 256,145 Q 390,160 532,135"
+    fill="none"
+    stroke="url(#aurora1)"
+    stroke-width="28"
+    stroke-linecap="round"
+    opacity="0.65"
+    filter="url(#auroraBlur)"
+    clip-path="url(#skyClip)"
+  />
+  <!-- Band 1 thin edge top -->
+  <path
+    d="M -20,180 Q 120,118 256,133 Q 390,148 532,123"
+    fill="none"
+    stroke="url(#aurora1)"
+    stroke-width="8"
+    stroke-linecap="round"
+    opacity="0.4"
+    clip-path="url(#skyClip)"
+  />
+
+  <!-- Band 2 (mid) -->
+  <path
+    d="M -20,160 Q 100,108 256,118 Q 380,128 532,108"
+    fill="none"
+    stroke="url(#aurora2)"
+    stroke-width="22"
+    stroke-linecap="round"
+    opacity="0.55"
+    filter="url(#auroraBlur)"
+    clip-path="url(#skyClip)"
+  />
+
+  <!-- Band 3 (upper) -->
+  <path
+    d="M 30,138 Q 140,90 256,98 Q 370,106 490,90"
+    fill="none"
+    stroke="url(#aurora3)"
+    stroke-width="16"
+    stroke-linecap="round"
+    opacity="0.5"
+    filter="url(#auroraBlur)"
+    clip-path="url(#skyClip)"
+  />
+
+  <!-- Band 4 (highest, thinnest) -->
+  <path
+    d="M 60,118 Q 160,74 256,80 Q 355,86 460,70"
+    fill="none"
+    stroke="url(#aurora4)"
+    stroke-width="10"
+    stroke-linecap="round"
+    opacity="0.45"
+    filter="url(#auroraBlur)"
+    clip-path="url(#skyClip)"
+  />
+
+  <!-- Vertical aurora curtain rays (subtle) -->
+  <g opacity="0.12" clip-path="url(#skyClip)">
+    <line x1="160" y1="100" x2="148" y2="200" stroke="#00e088" stroke-width="1.5"/>
+    <line x1="200" y1="110" x2="192" y2="210" stroke="#64b5ff" stroke-width="1.5"/>
+    <line x1="256" y1="105" x2="256" y2="205" stroke="#8ac8ff" stroke-width="2"/>
+    <line x1="312" y1="110" x2="320" y2="210" stroke="#64b5ff" stroke-width="1.5"/>
+    <line x1="352" y1="100" x2="364" y2="200" stroke="#00e088" stroke-width="1.5"/>
+  </g>
+
+  <!-- ===================== MOUNTAIN SILHOUETTE ===================== -->
+  <!-- Distant left peak -->
+  <polygon points="40,310 130,198 180,280" fill="#0d2240" opacity="0.8"/>
+  <!-- Distant right peak -->
+  <polygon points="472,310 382,210 332,280" fill="#0d2240" opacity="0.8"/>
+
+  <!-- Main center mountain -->
+  <polygon
+    points="256,118 170,310 342,310"
+    fill="url(#auroraMtn)"
+    filter="url(#mtnGlow)"
+  />
+  <!-- Shadow face -->
+  <polygon points="256,118 342,310 256,252" fill="#0a1a30" opacity="0.6"/>
+
+  <!-- Snow cap -->
+  <polygon points="256,118 278,166 234,166" fill="#e8f4ff" opacity="0.95"/>
+  <polygon points="256,118 278,166 256,152" fill="#c0d8f0" opacity="0.5"/>
+
+  <!-- Peak point glow -->
+  <circle cx="256" cy="118" r="3.5" fill="#ffffff" filter="url(#mtnGlow)"/>
+
+  <!-- Horizon glow (aurora touching mountains) -->
+  <ellipse cx="256" cy="310" rx="200" ry="12" fill="#00e088" opacity="0.05"/>
+  <ellipse cx="256" cy="310" rx="150" ry="6" fill="#64b5ff" opacity="0.06"/>
+
+  <!-- Ground/snow line -->
+  <rect x="40" y="308" width="432" height="4" rx="2" fill="#1a3050" opacity="0.8"/>
+  <rect x="40" y="308" width="432" height="1" rx="0.5" fill="#64b5ff" opacity="0.2"/>
+
+  <!-- ============ WORDMARK ============ -->
+  <text
+    x="256"
+    y="415"
+    font-family="'SF Pro Display', 'Helvetica Neue', Arial, sans-serif"
+    font-size="52"
+    font-weight="700"
+    letter-spacing="14"
+    text-anchor="middle"
+    fill="#e8f4ff"
+  >ARCTIS</text>
+
+  <text
+    x="256"
+    y="447"
+    font-family="'SF Pro Display', 'Helvetica Neue', Arial, sans-serif"
+    font-size="13"
+    font-weight="400"
+    letter-spacing="5"
+    text-anchor="middle"
+    fill="#64b5ff"
+    opacity="0.8"
+  >TRADING INTELLIGENCE</text>
+
+  <line x1="196" y1="458" x2="316" y2="458" stroke="#00e088" stroke-width="1" opacity="0.6"/>
+</svg>
