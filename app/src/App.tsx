@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useMarketData } from '@/hooks/useMarketData'
+import { useReplay } from '@/hooks/useReplay'
+import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { Topbar } from '@/components/layout/Topbar'
 import { HudStrip } from '@/components/layout/HudStrip'
@@ -11,16 +13,21 @@ import {
   PatternsPanel,
   FeedPanel,
   RiskPanel,
+  BiasPanel,
 } from '@/components/panels'
 import type { ConfluenceAPIData } from '@/components/panels/ConfluencePanel'
 import type { PatternsAPIData } from '@/components/panels/PatternsPanel'
 import type { SessionAPIData } from '@/components/panels/SessionPanel'
 import type { FeedItem } from '@/components/panels/FeedPanel'
+import type { BiasData } from '@/components/panels/BiasPanel'
+import { SettingsPanel } from '@/components/settings/SettingsPanel'
 import { SimpleChart } from '@/components/charts/SimpleChart'
 import { ChartToolbar } from '@/components/charts/ChartToolbar'
 import type { OverlayKey } from '@/components/charts/ChartToolbar'
 import type { Market, Timeframe } from '@/types/market'
 import type { IndicatorData, VolumeData, TradingConfig } from '@/types/analysis'
+import { ReplayBar } from '@/components/replay/ReplayBar'
+import { cn } from '@/lib/utils'
 
 const ENGINE_URL = 'http://127.0.0.1:8001'
 const POLL_INTERVAL_MS = 5000
@@ -63,6 +70,8 @@ const SESSION_DISPLAY: Record<string, string> = {
 // Types
 // ---------------------------------------------------------------------------
 
+type AppMode = 'live' | 'replay'
+
 interface MarketInfo {
   symbol: string
   root: string
@@ -89,6 +98,17 @@ function formatHHMM(timestampSeconds: number): string {
   const hh = d.getUTCHours().toString().padStart(2, '0')
   const mm = d.getUTCMinutes().toString().padStart(2, '0')
   return `${hh}:${mm}`
+}
+
+// Format bar timestamp as ET time string for replay display
+function formatBarTimeET(timestampSeconds: number): string {
+  const d = new Date(timestampSeconds * 1000)
+  return d.toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'America/New_York',
+    hour12: false,
+  })
 }
 
 function resolveSymbol(root: string, markets: MarketInfo[]): string {
@@ -199,6 +219,9 @@ function buildFeedItems(
 }
 
 export default function App() {
+  // ── Mode ───────────────────────────────────────────────────────────────────
+  const [mode, setMode] = useState<AppMode>('live')
+
   // ── Core selectors ─────────────────────────────────────────────────────────
   const [market, setMarket] = useState<Market>('NQ')
   const [symbol, setSymbol] = useState<string>('NQH6')
@@ -216,6 +239,10 @@ export default function App() {
   const [volumeData, setVolumeData] = useState<VolumeData | null>(null)
   const [tradingConfig, setTradingConfig] = useState<TradingConfig | null>(null)
   const [structureData, setStructureData] = useState<StructureAPIData | null>(null)
+  const [biasData, setBiasData] = useState<BiasData | null>(null)
+
+  // ── UI state ───────────────────────────────────────────────────────────────
+  const [showSettings, setShowSettings] = useState(false)
 
   // ── Status ────────────────────────────────────────────────────────────────
   const [latencyMs, setLatencyMs] = useState<number>(0)
@@ -223,6 +250,9 @@ export default function App() {
 
   // ── Chart bars via hook (REST + WebSocket auto-reconnect) ──────────────────
   const { bars, isLoading, isConnected, error, barsCount } = useMarketData(symbol, days)
+
+  // ── Replay hook ────────────────────────────────────────────────────────────
+  const replay = useReplay(market, timeframe)
 
   // ── Last bar close ─────────────────────────────────────────────────────────
   const lastClose = bars.at(-1)?.close
@@ -271,7 +301,7 @@ export default function App() {
     const base = `${ENGINE_URL}/api/analysis`
     const qs = `market=${market}&timeframe=${timeframe}`
 
-    const [sessR, confR, patR, indR, volR, cfgR, strR] = await Promise.allSettled([
+    const [sessR, confR, patR, indR, volR, cfgR, strR, biasR] = await Promise.allSettled([
       fetch(`${base}/sessions?${qs}`).then((r) => (r.ok ? r.json() : null)),
       fetch(`${base}/confluence?${qs}`).then((r) => (r.ok ? r.json() : null)),
       fetch(`${base}/patterns?${qs}`).then((r) => (r.ok ? r.json() : null)),
@@ -279,6 +309,7 @@ export default function App() {
       fetch(`${base}/volume?${qs}`).then((r) => (r.ok ? r.json() : null)),
       fetch(`${ENGINE_URL}/api/config`).then((r) => (r.ok ? r.json() : null)),
       fetch(`${base}/structure?${qs}`).then((r) => (r.ok ? r.json() : null)),
+      fetch(`${ENGINE_URL}/api/analysis/bias?${qs}`).then((r) => (r.ok ? r.json() : null)),
     ])
 
     if (sessR.status === 'fulfilled' && sessR.value)
@@ -295,6 +326,8 @@ export default function App() {
       setTradingConfig(cfgR.value as TradingConfig)
     if (strR.status === 'fulfilled' && strR.value)
       setStructureData(strR.value as StructureAPIData)
+    if (biasR.status === 'fulfilled' && biasR.value)
+      setBiasData(biasR.value as BiasData)
 
     setLatencyMs(Math.round(performance.now() - t0))
     const n = new Date()
@@ -327,6 +360,7 @@ export default function App() {
       setIndicatorData(null)
       setVolumeData(null)
       setStructureData(null)
+      setBiasData(null)
     },
     [markets],
   )
@@ -354,6 +388,32 @@ export default function App() {
       ? (markets.map((m) => m.root).filter(Boolean) as Market[])
       : (['ES', 'NQ', 'CL', 'GC', '6E'] as Market[])
 
+  // ── Mode toggle handler ────────────────────────────────────────────────────
+  const handleModeChange = useCallback(
+    async (next: AppMode) => {
+      setMode(next)
+      if (next === 'live') {
+        // Stop any running replay when switching back to live
+        await replay.stop()
+      }
+    },
+    [replay],
+  )
+
+  // ── Replay time display ────────────────────────────────────────────────────
+  // Current bar ET time from sim status
+  const replayCurrentBar = replay.simStatus?.visible_bars ?? 0
+  const replayTotalBars = replay.simStatus?.total_bars ?? 0
+  const replayBars = bars // bars are already filtered by sim on backend when active
+  const replayCurrentTime =
+    replayCurrentBar > 0 && replayBars.length > 0
+      ? formatBarTimeET(replayBars[Math.min(replayCurrentBar - 1, replayBars.length - 1)]?.timestamp ?? 0)
+      : '--:--'
+  const replayTotalTime =
+    replayTotalBars > 0 && replayBars.length > 0
+      ? formatBarTimeET(replayBars[replayBars.length - 1]?.timestamp ?? 0)
+      : '--:--'
+
   // ── Price ─────────────────────────────────────────────────────────────────
   const price = lastClose ?? null
 
@@ -372,16 +432,26 @@ export default function App() {
         }
       : null
 
+  // Grid rows: topbar | hud | chart | [replaybar?] | statusbar
+  const gridRows = mode === 'replay'
+    ? '48px 28px 1fr 32px 24px'
+    : '48px 28px 1fr 24px'
+
+  // Row index for right panel (spans hud + chart + optional replay row)
+  const rightPanelRowEnd = mode === 'replay' ? 5 : 4
+  // Row index for statusbar
+  const statusBarRow = mode === 'replay' ? 5 : 4
+
   return (
     <div
       className="h-screen overflow-hidden"
       style={{
         display: 'grid',
         gridTemplateColumns: '52px 1fr 280px',
-        gridTemplateRows: '48px 28px 1fr 24px',
+        gridTemplateRows: gridRows,
       }}
     >
-      {/* Sidebar — col 1, rows 1-4 */}
+      {/* Sidebar — col 1, all rows */}
       <div style={{ gridColumn: '1', gridRow: '1 / -1' }}>
         <Sidebar />
       </div>
@@ -396,6 +466,7 @@ export default function App() {
           onTimeframeChange={handleTimeframeChange}
           currentPrice={price}
           isConnected={isConnected}
+          onSettingsClick={() => setShowSettings(true)}
         />
       </div>
 
@@ -410,6 +481,32 @@ export default function App() {
           sessionName={hudSessionName}
           barCount={barsCount > 0 ? barsCount : null}
         />
+      </div>
+
+      {/* Mode toggle — col 3, row 2 (replaces right panel header area) */}
+      <div
+        className="flex items-center justify-end px-3 gap-0.5 border-b border-[var(--color-border-subtle)] bg-[var(--color-surface-secondary)]/95"
+        style={{ gridColumn: '3', gridRow: '2' }}
+      >
+        {(['live', 'replay'] as AppMode[]).map((m) => (
+          <button
+            key={m}
+            onClick={() => void handleModeChange(m)}
+            className={cn(
+              'px-2 py-0.5 rounded',
+              'font-mono text-[10px] leading-none uppercase tracking-wide',
+              'transition-colors duration-100',
+              'outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent)]',
+              mode === m
+                ? m === 'replay'
+                  ? 'bg-[#5CB8F0]/15 text-[#5CB8F0]'
+                  : 'bg-[var(--color-accent-muted)] text-[var(--color-accent)]'
+                : 'text-[var(--color-text-muted)] hover:bg-white/[0.04] hover:text-[var(--color-text-secondary)]',
+            )}
+          >
+            {m}
+          </button>
+        ))}
       </div>
 
       {/* Chart — col 2, row 3 */}
@@ -459,10 +556,33 @@ export default function App() {
         </div>
       </div>
 
-      {/* Right panel — col 3, rows 2-3 */}
+      {/* Replay bar — col 2, row 4 — only in replay mode */}
+      {mode === 'replay' && (
+        <div style={{ gridColumn: '2', gridRow: '4' }}>
+          <ReplayBar
+            isPlaying={replay.isPlaying}
+            speed={replay.speed}
+            progress={replay.progress}
+            currentTime={replayCurrentTime}
+            totalTime={replayTotalTime}
+            date={replay.replayDate ?? ''}
+            onPlay={() => void replay.start()}
+            onPause={() => void replay.stop()}
+            onSpeedChange={(s) => {
+              replay.setSpeed(s)
+              // Restart with new speed if already playing
+              if (replay.isPlaying) void replay.start()
+            }}
+            onSeek={replay.seek}
+            onDateChange={replay.changeDate}
+          />
+        </div>
+      )}
+
+      {/* Right panel — col 3, rows 2-4 (or 2-3 in live mode) */}
       <div
         className="border-l border-[var(--color-border-subtle)] bg-[var(--color-surface-secondary)]/95 overflow-y-auto"
-        style={{ gridColumn: '3', gridRow: '2 / 4' }}
+        style={{ gridColumn: '3', gridRow: `3 / ${rightPanelRowEnd}` }}
       >
         <RightPanelSection title="Session" count={sessionData?.bar_count}>
           <div className="px-3 pb-3">
@@ -475,6 +595,14 @@ export default function App() {
         <RightPanelSection title="Confluence">
           <div className="px-3 pb-3">
             <ConfluencePanel data={confluenceData ?? undefined} />
+          </div>
+        </RightPanelSection>
+
+        <RightPanelDivider />
+
+        <RightPanelSection title="Bias" count={biasData ? 1 : undefined}>
+          <div className="px-3 pb-3">
+            <BiasPanel data={biasData ?? undefined} />
           </div>
         </RightPanelSection>
 
@@ -509,8 +637,8 @@ export default function App() {
         </RightPanelSection>
       </div>
 
-      {/* StatusBar — col 1-3, row 4 */}
-      <div style={{ gridColumn: '1 / -1', gridRow: '4' }}>
+      {/* StatusBar — col 1-3, last row */}
+      <div style={{ gridColumn: '1 / -1', gridRow: statusBarRow }}>
         <StatusBar
           connected={isConnected}
           latencyMs={latencyMs}
@@ -518,6 +646,24 @@ export default function App() {
           lastUpdate={lastUpdate}
         />
       </div>
+
+      {/* Settings slide-over panel — rendered outside grid, fixed position */}
+      <SettingsPanel
+        open={showSettings}
+        onClose={() => setShowSettings(false)}
+        activeOverlays={activeOverlays}
+        onToggleOverlay={handleToggleOverlay}
+        connectionStatus={{
+          connected: isConnected,
+          latencyMs,
+          barsLoaded: barsCount,
+        }}
+        tradingConfig={tradingConfig}
+        onConfigSaved={(saved) => {
+          setTradingConfig(saved as TradingConfig)
+          setShowSettings(false)
+        }}
+      />
     </div>
   )
 }

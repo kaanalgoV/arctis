@@ -80,6 +80,10 @@ export interface SimpleChartProps {
   showEma?: boolean
   showVp?: boolean
   showLevels?: boolean
+  /** Called once when the chart instance is created, providing the API reference. */
+  onChartReady?: (chart: IChartApi) => void
+  /** If set, the chart will scroll to this unix timestamp (seconds). */
+  scrollToTimestamp?: number | null
 }
 
 // ─── Refs state for overlay series ───────────────────────────────────────────
@@ -110,6 +114,8 @@ export function SimpleChart({
   showEma = false,
   showVp = false,
   showLevels = false,
+  onChartReady,
+  scrollToTimestamp,
 }: SimpleChartProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const chartRef = useRef<IChartApi | null>(null)
@@ -274,6 +280,9 @@ export function SimpleChart({
     markersPluginRef.current = markersPlugin
 
     chart.timeScale().fitContent()
+
+    // Notify parent that chart is ready
+    onChartReady?.(chart)
 
     // ── ResizeObserver ────────────────────────────────────────────────────────
     const ro = new ResizeObserver(() => {
@@ -508,6 +517,25 @@ export function SimpleChart({
     markers.sort((a, b) => (a.time as number) - (b.time as number))
     plugin.setMarkers(markers)
   }, [structureBreaks, patternAnnotations])
+
+  // ── Scroll to timestamp when feed item is clicked ─────────────────────────
+  useEffect(() => {
+    if (scrollToTimestamp == null) return
+    const chart = chartRef.current
+    if (!chart) return
+    // Find the bar index whose timestamp is closest to the target
+    const targetIdx = bars.reduce(
+      (closest, bar, idx) =>
+        Math.abs(bar.timestamp - scrollToTimestamp) <
+        Math.abs(bars[closest].timestamp - scrollToTimestamp)
+          ? idx
+          : closest,
+      0,
+    )
+    // Compute offset from the last bar (positive = scroll left into the past)
+    const offsetFromEnd = bars.length - 1 - targetIdx
+    chart.timeScale().scrollToPosition(-offsetFromEnd, true)
+  }, [scrollToTimestamp, bars])
 
   return <div ref={containerRef} className={className} />
 }

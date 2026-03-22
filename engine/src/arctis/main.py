@@ -19,7 +19,7 @@ store = ParquetStore(data_dir=DATA_DIR)
 
 
 class Simulation:
-    """Replays historical data at accelerated speed."""
+    """Replays historical data from TimescaleDB at accelerated speed."""
 
     def __init__(self):
         self.active = False
@@ -28,11 +28,22 @@ class Simulation:
         self.start_bar_index = 0
         self.total_bars = 0
         self.all_bars: list = []
-        self.market: Market | None = None
-        self.timeframe: Timeframe | None = None
+        self.market: str | None = None
+        self.timeframe: str | None = None
 
-    def start(self, market: Market, timeframe: Timeframe, speed: int = 10):
-        self.all_bars = store.load(market, timeframe)
+    def start(self, market: str, timeframe: str, date: str | None = None, speed: int = 10):
+        """Start replay. If date given, replay that specific day. Otherwise use last available day."""
+        from arctis.db import fetch_bars_as_models
+        self.all_bars = fetch_bars_as_models(market=market, days=30, timeframe=timeframe)
+
+        # If a specific date is given, filter to that day
+        if date and self.all_bars:
+            from datetime import datetime
+            target = datetime.strptime(date, "%Y-%m-%d")
+            target_start = int(target.timestamp())
+            target_end = target_start + 86400
+            self.all_bars = [b for b in self.all_bars if target_start <= b.timestamp < target_end]
+
         self.total_bars = len(self.all_bars)
         if self.total_bars == 0:
             return False
@@ -106,10 +117,12 @@ from arctis.routes.analysis import router as analysis_router
 from arctis.routes.probability import router as probability_router
 from arctis.routes.risk import router as risk_router
 from arctis.routes.bias import router as bias_router
+from arctis.routes.feed import router as feed_router
 app.include_router(analysis_router)
 app.include_router(probability_router)
 app.include_router(risk_router)
 app.include_router(bias_router)
+app.include_router(feed_router)
 
 
 @app.get("/health")
@@ -169,28 +182,43 @@ async def import_csv(
 
 @app.get("/api/bars")
 async def get_bars(
-    market: Market = Query(...),
-    timeframe: Timeframe = Query(...),
+    market: str = Query(...),
+    timeframe: str = Query(...),
 ):
     """Return raw OHLCV bars as JSON."""
     if sim.active and sim.market == market and sim.timeframe == timeframe:
-        bars = sim.get_bars()
+        bars_list = sim.get_bars()
     else:
-        bars = store.load(market, timeframe)
-    return [b.model_dump() for b in bars]
+        from arctis.db import fetch_bars_as_models
+        bars_list = fetch_bars_as_models(market=market, days=30, timeframe=timeframe)
+    return [b.model_dump() for b in bars_list]
 
 
 @app.post("/api/sim/start")
 async def sim_start(
-    market: Market = Query(default=Market.ES),
-    timeframe: Timeframe = Query(default=Timeframe.M1),
+    market: str = Query(default="NQ"),
+    timeframe: str = Query(default="1min"),
     speed: int = Query(default=10, ge=1, le=100),
+    date: str | None = Query(default=None),
 ):
-    """Start simulation. Speed = bars per real second."""
-    ok = sim.start(market, timeframe, speed)
+    """Start simulation. Speed = bars per real second. Optional date (YYYY-MM-DD) filters to that day."""
+    ok = sim.start(market=market, timeframe=timeframe, date=date, speed=speed)
     if not ok:
         return JSONResponse(status_code=400, content={"error": "Keine Daten vorhanden"})
     return {"message": "Simulation gestartet", **sim.status()}
+
+
+@app.get("/api/replay/dates")
+async def get_replay_dates(market: str = Query(default="NQ")):
+    """Return available trading dates for replay (last 60 days)."""
+    from arctis.db import fetch_bars_as_models
+    bars = fetch_bars_as_models(market=market, days=60)
+    dates: set[str] = set()
+    for b in bars:
+        from datetime import datetime, timezone
+        dt = datetime.fromtimestamp(b.timestamp, tz=timezone.utc)
+        dates.add(dt.strftime("%Y-%m-%d"))
+    return {"dates": sorted(dates)}
 
 
 @app.post("/api/sim/stop")
