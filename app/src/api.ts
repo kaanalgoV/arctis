@@ -72,6 +72,42 @@ export async function saveConfig(config: Record<string, unknown>) {
   return res.json();
 }
 
+export async function fetchIndicators(market: string, timeframe: string) {
+  const res = await fetch(`${ENGINE_URL}/api/analysis/indicators?market=${market}&timeframe=${timeframe}`);
+  if (!res.ok) throw new Error(`Failed to fetch indicators: ${res.status}`);
+  return res.json();
+}
+
+export async function fetchConfluence(market: string, timeframe: string) {
+  const res = await fetch(`${ENGINE_URL}/api/analysis/confluence?market=${market}&timeframe=${timeframe}`);
+  if (!res.ok) throw new Error(`Failed to fetch confluence: ${res.status}`);
+  return res.json();
+}
+
+export async function fetchPatterns(market: string, timeframe: string) {
+  const res = await fetch(`${ENGINE_URL}/api/analysis/patterns?market=${market}&timeframe=${timeframe}`);
+  if (!res.ok) throw new Error(`Failed to fetch patterns: ${res.status}`);
+  return res.json();
+}
+
+export async function simStart(market: string, timeframe: string, speed: number = 10) {
+  const res = await fetch(`${ENGINE_URL}/api/sim/start?market=${market}&timeframe=${timeframe}&speed=${speed}`, { method: "POST" });
+  if (!res.ok) throw new Error(`Failed to start sim: ${res.status}`);
+  return res.json();
+}
+
+export async function simStop() {
+  const res = await fetch(`${ENGINE_URL}/api/sim/stop`, { method: "POST" });
+  if (!res.ok) throw new Error(`Failed to stop sim: ${res.status}`);
+  return res.json();
+}
+
+export async function simStatus() {
+  const res = await fetch(`${ENGINE_URL}/api/sim/status`);
+  if (!res.ok) throw new Error(`Failed to get sim status: ${res.status}`);
+  return res.json();
+}
+
 export async function calculatePositionSize(stopDistance: number, market: string) {
   const res = await fetch(`${ENGINE_URL}/api/risk/position-size`, {
     method: "POST",

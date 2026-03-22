@@ -21,10 +21,10 @@ function App() {
 
   if (!connected) {
     return (
-      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh", background: "#1a1a2e", color: "#e0e0e0" }}>
-        <div style={{ textAlign: "center" }}>
-          <h1>Arctis</h1>
-          <p>Verbinde mit Engine...</p>
+      <div className="connect-screen">
+        <div className="connect-screen__inner">
+          <h1 className="connect-screen__title">Arctis</h1>
+          <p className="connect-screen__text">Verbinde mit Engine...</p>
         </div>
       </div>
     );
