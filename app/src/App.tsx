@@ -23,6 +23,7 @@ import type { FeedItem } from '@/components/panels/FeedPanel'
 import type { BiasData } from '@/components/panels/BiasPanel'
 import { SettingsPanel } from '@/components/settings/SettingsPanel'
 import { SimpleChart } from '@/components/charts/SimpleChart'
+import type { ChartZone } from '@/components/charts/SimpleChart'
 import { ChartToolbar } from '@/components/charts/ChartToolbar'
 import type { OverlayKey } from '@/components/charts/ChartToolbar'
 import { DrawingToolbar } from '@/components/charts/DrawingToolbar'
@@ -253,6 +254,7 @@ export default function App() {
   const [tradingConfig, setTradingConfig] = useState<TradingConfig | null>(null)
   const [structureData, setStructureData] = useState<StructureAPIData | null>(null)
   const [biasData, setBiasData] = useState<BiasData | null>(null)
+  const [zonesData, setZonesData] = useState<{ zones: ChartZone[] } | null>(null)
 
   // ── UI state ───────────────────────────────────────────────────────────────
   const [showSettings, setShowSettings] = useState(false)
@@ -345,7 +347,7 @@ export default function App() {
     const base = `${ENGINE_URL}/api/analysis`
     const qs = `market=${market}&timeframe=${timeframe}`
 
-    const [sessR, confR, patR, indR, volR, cfgR, strR, biasR] = await Promise.allSettled([
+    const [sessR, confR, patR, indR, volR, cfgR, strR, biasR, zonesR] = await Promise.allSettled([
       fetch(`${base}/sessions?${qs}`).then((r) => (r.ok ? r.json() : null)),
       fetch(`${base}/confluence?${qs}`).then((r) => (r.ok ? r.json() : null)),
       fetch(`${base}/patterns?${qs}`).then((r) => (r.ok ? r.json() : null)),
@@ -354,6 +356,7 @@ export default function App() {
       fetch(`${ENGINE_URL}/api/config`).then((r) => (r.ok ? r.json() : null)),
       fetch(`${base}/structure?${qs}`).then((r) => (r.ok ? r.json() : null)),
       fetch(`${ENGINE_URL}/api/analysis/bias?${qs}`).then((r) => (r.ok ? r.json() : null)),
+      fetch(`${base}/zones?${qs}`).then((r) => (r.ok ? r.json() : null)),
     ])
 
     if (sessR.status === 'fulfilled' && sessR.value)
@@ -372,6 +375,8 @@ export default function App() {
       setStructureData(strR.value as StructureAPIData)
     if (biasR.status === 'fulfilled' && biasR.value)
       setBiasData(biasR.value as BiasData)
+    if (zonesR.status === 'fulfilled' && zonesR.value)
+      setZonesData(zonesR.value as { zones: ChartZone[] })
 
     setLatencyMs(Math.round(performance.now() - t0))
     const n = new Date()
@@ -405,6 +410,7 @@ export default function App() {
       setVolumeData(null)
       setStructureData(null)
       setBiasData(null)
+      setZonesData(null)
     },
     [markets],
   )
@@ -633,6 +639,8 @@ export default function App() {
                 showEma={activeOverlays.has('ema')}
                 showVp={activeOverlays.has('vp')}
                 showLevels={activeOverlays.has('levels')}
+                zones={zonesData?.zones}
+                showZones={activeOverlays.has('zones')}
                 onChartReady={handleChartReady}
                 scrollToTimestamp={scrollToTimestamp}
                 drawings={drawings}

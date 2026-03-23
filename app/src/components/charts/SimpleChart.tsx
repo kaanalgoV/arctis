@@ -19,6 +19,19 @@ import type { Drawing } from '@/hooks/useDrawings'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
+export interface ChartZone {
+  name: string
+  type: 'area' | 'line' | 'range'
+  high: number
+  low: number
+  color: string
+  opacity: number
+  start_time: number
+  end_time: number | null
+  label: string
+  priority: number
+}
+
 interface VwapPoint {
   timestamp: number
   vwap: number
@@ -89,6 +102,10 @@ export interface SimpleChartProps {
   drawings?: Drawing[]
   /** Called when user clicks the chart while a drawing tool is active. */
   onChartClick?: (price: number, timestamp: number) => void
+  /** Zone overlays to render as price lines. Only rendered when showZones is true. */
+  zones?: ChartZone[]
+  /** Whether to render zone overlays. */
+  showZones?: boolean
 }
 
 // ─── Refs state for overlay series ───────────────────────────────────────────
@@ -123,6 +140,8 @@ export function SimpleChart({
   scrollToTimestamp,
   drawings,
   onChartClick,
+  zones,
+  showZones = false,
 }: SimpleChartProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const chartRef = useRef<IChartApi | null>(null)
@@ -145,6 +164,8 @@ export function SimpleChart({
   const markersPluginRef = useRef<ISeriesMarkersPluginApi<number> | null>(null)
   // Drawing price line refs keyed by drawing id
   const drawingLineRefs = useRef<Map<string, IPriceLine>>(new Map())
+  // Zone price line refs (cleared and rebuilt whenever zones or showZones changes)
+  const zoneLinesRef = useRef<IPriceLine[]>([])
 
   // ── Build chart on first mount (bars change re-creates chart) ──────────────
   useEffect(() => {
@@ -310,6 +331,7 @@ export function SimpleChart({
       chartRef.current = null
       candleRef.current = null
       priceLineRefs.current = []
+      zoneLinesRef.current = []
       markersPluginRef.current = null
       drawingLineRefs.current.clear()
       overlayRef.current = {
@@ -527,6 +549,57 @@ export function SimpleChart({
     markers.sort((a, b) => (a.time as number) - (b.time as number))
     plugin.setMarkers(markers)
   }, [structureBreaks, patternAnnotations])
+
+  // ── Zone price lines ──────────────────────────────────────────────────────
+  useEffect(() => {
+    const candle = candleRef.current
+    if (!candle) return
+
+    // Remove all previous zone lines
+    zoneLinesRef.current.forEach((pl) => {
+      try { candle.removePriceLine(pl) } catch { /* already removed */ }
+    })
+    zoneLinesRef.current = []
+
+    if (!showZones || !zones || zones.length === 0) return
+
+    for (const zone of zones) {
+      if (zone.type === 'line') {
+        const pl = candle.createPriceLine({
+          price: zone.high,
+          color: zone.color,
+          lineWidth: 1,
+          lineStyle:
+            zone.label === 'POC' || zone.label === 'NPOC'
+              ? LineStyle.Solid
+              : LineStyle.Dashed,
+          axisLabelVisible: true,
+          title: zone.label,
+        })
+        zoneLinesRef.current.push(pl)
+      } else if (zone.type === 'area') {
+        // LWC v5 does not have native area fills between two price lines.
+        // Draw the high and low boundaries as dotted lines instead.
+        const plHigh = candle.createPriceLine({
+          price: zone.high,
+          color: zone.color,
+          lineWidth: 1,
+          lineStyle: LineStyle.Dotted,
+          axisLabelVisible: false,
+          title: zone.label,
+        })
+        const plLow = candle.createPriceLine({
+          price: zone.low,
+          color: zone.color,
+          lineWidth: 1,
+          lineStyle: LineStyle.Dotted,
+          axisLabelVisible: false,
+          title: '',
+        })
+        zoneLinesRef.current.push(plHigh, plLow)
+      }
+    }
+  }, [showZones, zones])
 
   // ── Scroll to timestamp when feed item is clicked ─────────────────────────
   useEffect(() => {
