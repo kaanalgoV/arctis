@@ -2,23 +2,24 @@ import { useState, useCallback } from 'react'
 import { Search, BookOpen, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useMarketStore } from '@/store/market'
+import { config } from '@/lib/config'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export interface TravisPanelProps {
+export interface ArctisPanelProps {
   currentPattern?: string
   currentBias?: string
   className?: string
 }
 
-interface TravisResult {
+interface ArctisResult {
   title: string
   content: string
 }
 
-interface TravisResponse {
+interface ArctisResponse {
   question: string
-  results: TravisResult[]
+  results: ArctisResult[]
 }
 
 // ─── Static context suggestions ──────────────────────────────────────────────
@@ -118,28 +119,28 @@ function buildSuggestions(
 
 // ─── API call ────────────────────────────────────────────────────────────────
 
-const ENGINE_URL = 'http://127.0.0.1:8001'
+const ENGINE_URL = config.apiBase
 
-async function askTravis(question: string, market = 'NQ', timeframe = '1min'): Promise<TravisResponse> {
-  const res = await fetch(`${ENGINE_URL}/api/travis/ask`, {
+async function askArctis(question: string, market = 'NQ', timeframe = '1min'): Promise<ArctisResponse> {
+  const res = await fetch(`${ENGINE_URL}/api/arctis/ask`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ question, market, timeframe }),
   })
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
-  return res.json() as Promise<TravisResponse>
+  return res.json() as Promise<ArctisResponse>
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export function TravisPanel({
+export function ArctisPanel({
   currentPattern,
   currentBias,
   className,
-}: TravisPanelProps) {
+}: ArctisPanelProps) {
   const { market, timeframe } = useMarketStore()
   const [query, setQuery] = useState('')
-  const [results, setResults] = useState<TravisResult[] | null>(null)
+  const [results, setResults] = useState<ArctisResult[] | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -151,10 +152,10 @@ export function TravisPanel({
     setError(null)
     setResults(null)
     try {
-      const resp = await askTravis(question.trim(), market, timeframe)
+      const resp = await askArctis(question.trim(), market, timeframe)
       setResults(resp.results)
     } catch {
-      setError('Travis is unavailable right now.')
+      setError('Arctis is unavailable right now.')
     } finally {
       setIsLoading(false)
     }
@@ -191,7 +192,7 @@ export function TravisPanel({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Ask Travis..."
+          placeholder="Frag Arctis..."
           style={{
             flex: 1,
             background: 'transparent',

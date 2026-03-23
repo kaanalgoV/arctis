@@ -16,7 +16,7 @@ import {
   FeedPanel,
   RiskPanel,
   BiasPanel,
-  TravisPanel,
+  ArctisPanel,
   SignalsPanel,
 } from '@/components/panels'
 import type { ConfluenceAPIData } from '@/components/panels/ConfluencePanel'
@@ -39,8 +39,9 @@ import type { IChartApi } from 'lightweight-charts'
 import { DashboardPage } from '@/pages/DashboardPage'
 import { ChartPage } from '@/pages/ChartPage'
 import { PatternsPage } from '@/pages/PatternsPage'
+import { config } from '@/lib/config'
 
-const ENGINE_URL = 'http://127.0.0.1:8001'
+const ENGINE_URL = config.apiBase
 
 const SESSION_DISPLAY: Record<string, string> = {
   pre_market: 'Pre-Mkt',
@@ -230,6 +231,7 @@ export default function App() {
 
   // ── Replay bars state (sim-filtered bars during active replay) ─────────────
   const [replayBarsData, setReplayBarsData] = useState<OHLCVBar[]>([])
+  const replayBarCountRef = useRef(0)
 
   // ── UI state ───────────────────────────────────────────────────────────────
   const [showSettings, setShowSettings] = useState(false)
@@ -268,7 +270,7 @@ export default function App() {
   const [lastUpdate, setLastUpdate] = useState<string>('--:--:--')
 
   // ── Chart bars via hook (REST + WebSocket auto-reconnect) ──────────────────
-  const { bars, isLoading, error } = useMarketData()
+  const { bars, isLoading, error } = useMarketData({ pauseWs: mode === 'replay' })
   const { wsStatus } = useMarketStore()
   const isConnected = wsStatus === 'connected'
   const barsCount = bars.length
@@ -309,6 +311,7 @@ export default function App() {
   // ── Replay bars polling — fetches sim-visible bars during active replay ────
   useEffect(() => {
     if (mode !== 'replay' || !replay.isPlaying) {
+      replayBarCountRef.current = 0
       setReplayBarsData([])
       return
     }
@@ -318,7 +321,14 @@ export default function App() {
         const r = await fetch(`${ENGINE_URL}/api/bars?market=${market}&timeframe=${timeframe}`)
         if (r.ok) {
           const data = await r.json() as OHLCVBar[]
-          setReplayBarsData(data)
+          // Only update if bar count actually changed (new bar arrived)
+          if (data.length !== replayBarCountRef.current) {
+            replayBarCountRef.current = data.length
+            setReplayBarsData(data)
+            if (data.length > 0) {
+              useMarketStore.getState().setLastBarTs(data[data.length - 1].timestamp)
+            }
+          }
         }
       } catch {
         // Silently ignore — chart falls back to useMarketData bars
@@ -425,9 +435,9 @@ export default function App() {
     sessionData as SessionAPIData | null,
   )
 
-  // ── Travis context ────────────────────────────────────────────────────────
-  const travisPattern = (patternsData as PatternsAPIData | null)?.annotations.at(-1)?.pattern ?? undefined
-  const travisBias = (biasData as BiasData | null)?.bias_state?.state ?? undefined
+  // ── Arctis AI context ─────────────────────────────────────────────────────
+  const arctisPattern = (patternsData as PatternsAPIData | null)?.annotations.at(-1)?.pattern ?? undefined
+  const arctisBias = (biasData as BiasData | null)?.bias_state?.state ?? undefined
 
   // ── Price ─────────────────────────────────────────────────────────────────
   const price = lastClose ?? null
@@ -544,7 +554,15 @@ export default function App() {
         <HudStrip
           rvol={latestRvol}
           rsi={latestRsi?.rsi ?? null}
-          rsiDivergence={latestRsi?.divergence ? 'bullish' : null}
+          rsiDivergence={
+            latestRsi?.divergence
+              ? latestRsi.rsi < 30
+                ? 'bullish'
+                : latestRsi.rsi > 70
+                  ? 'bearish'
+                  : 'bullish'
+              : null
+          }
           emaAlignment={latestEmaAlignment}
           vwapPosition={vwapPosition}
           sessionName={hudSessionName}
@@ -694,17 +712,19 @@ export default function App() {
 
           <RightPanelSection title="Risk">
             <div className="px-3 pb-3">
+              {/* trades/contracts are not provided by the analysis API — panel
+                  shows "—" for those fields instead of a misleading 0. */}
               <RiskPanel config={tradingConfig ?? undefined} />
             </div>
           </RightPanelSection>
 
           <RightPanelDivider />
 
-          <RightPanelSection title="Travis">
+          <RightPanelSection title="Arctis AI">
             <div className="px-3 pb-3">
-              <TravisPanel
-                currentPattern={travisPattern}
-                currentBias={travisBias}
+              <ArctisPanel
+                currentPattern={arctisPattern}
+                currentBias={arctisBias}
               />
             </div>
           </RightPanelSection>

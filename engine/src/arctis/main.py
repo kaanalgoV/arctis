@@ -129,7 +129,7 @@ from arctis.routes.probability import router as probability_router
 from arctis.routes.risk import router as risk_router
 from arctis.routes.bias import router as bias_router
 from arctis.routes.feed import router as feed_router
-from arctis.routes.travis import router as travis_router
+from arctis.routes.arctis_ai import router as arctis_ai_router
 from arctis.routes.zones import router as zones_router
 from arctis.routes.signals import router as signals_router
 app.include_router(analysis_router)
@@ -137,7 +137,7 @@ app.include_router(probability_router)
 app.include_router(risk_router)
 app.include_router(bias_router)
 app.include_router(feed_router)
-app.include_router(travis_router)
+app.include_router(arctis_ai_router)
 app.include_router(zones_router)
 app.include_router(signals_router)
 
