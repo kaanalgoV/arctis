@@ -117,36 +117,58 @@ def fetch_bars_as_models(
         for r in raw
     ]
 
-    # Aggregate to 5min if requested
-    if timeframe == "5min" and bars:
-        bars = _aggregate_5min(bars)
+    if timeframe != "1min" and bars:
+        bars = aggregate_bars(bars, timeframe)
 
     return bars
 
 
-def _aggregate_5min(bars: list[OHLCVBar]) -> list[OHLCVBar]:
-    """Aggregate 1-min bars to 5-min bars."""
-    if not bars:
-        return []
+def aggregate_bars(bars: list[OHLCVBar], timeframe: str) -> list[OHLCVBar]:
+    """Aggregate 1min bars to larger timeframes using time-based bucketing.
 
-    result = []
-    chunk: list[OHLCVBar] = []
+    Supports: 5min, 15min, 30min, 1h
+    Handles gaps, session boundaries, and remainder bars correctly.
+    """
+    if not bars or timeframe == "1min":
+        return bars
 
-    for bar in bars:
-        chunk.append(bar)
-        if len(chunk) == 5:
-            agg = OHLCVBar(
-                timestamp=chunk[0].timestamp,
-                open=chunk[0].open,
-                high=max(b.high for b in chunk),
-                low=min(b.low for b in chunk),
-                close=chunk[-1].close,
-                volume=sum(b.volume for b in chunk),
-            )
-            result.append(agg)
-            chunk = []
+    freq_map = {"5min": "5min", "15min": "15min", "30min": "30min", "1h": "1h"}
+    freq = freq_map.get(timeframe)
+    if not freq:
+        return bars
 
-    return result
+    df = pd.DataFrame([{
+        "timestamp": b.timestamp,
+        "open": b.open,
+        "high": b.high,
+        "low": b.low,
+        "close": b.close,
+        "volume": b.volume,
+    } for b in bars])
+
+    df["dt"] = pd.to_datetime(df["timestamp"], unit="s")
+    df = df.set_index("dt")
+
+    agg = df.resample(freq).agg({
+        "timestamp": "first",
+        "open": "first",
+        "high": "max",
+        "low": "min",
+        "close": "last",
+        "volume": "sum",
+    }).dropna()
+
+    return [
+        OHLCVBar(
+            timestamp=int(row["timestamp"]),
+            open=row["open"],
+            high=row["high"],
+            low=row["low"],
+            close=row["close"],
+            volume=int(row["volume"]),
+        )
+        for _, row in agg.iterrows()
+    ]
 
 
 def fetch_available_symbols() -> list[dict]:
