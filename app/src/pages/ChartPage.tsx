@@ -1,4 +1,4 @@
-import { useRef, useCallback } from 'react'
+import { useRef, useCallback, useState, useEffect } from 'react'
 import { SimpleChart } from '@/components/charts/SimpleChart'
 import type { ChartZone } from '@/components/charts/SimpleChart'
 import { ChartToolbar } from '@/components/charts/ChartToolbar'
@@ -10,6 +10,7 @@ import type { IndicatorData } from '@/types/analysis'
 import type { PatternsAPIData } from '@/components/panels/PatternsPanel'
 import type { IChartApi } from 'lightweight-charts'
 import type { Drawing, DrawingTool } from '@/hooks/useDrawings'
+import type { TradeSignal } from '@/hooks/useSignals'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -26,11 +27,15 @@ interface ReplayState {
   progress: number
   replayDate: string | null
   simStatus: { visible_bars: number; total_bars: number } | null
-  start: () => Promise<void>
+  availableDates: string[]
+  start: (date?: string) => Promise<void>
   stop: () => Promise<void>
+  pause: () => void
+  resume: () => void
   setSpeed: (s: number) => void
   seek: (pct: number) => void
   changeDate: (direction: 'prev' | 'next') => void
+  setReplayDate: (date: string) => void
 }
 
 export interface ChartPageProps {
@@ -56,6 +61,8 @@ export interface ChartPageProps {
   onChartClick?: (price: number, timestamp: number) => void
   scrollToTimestamp: number | null
   onChartReady: (chart: IChartApi) => void
+  // Signals
+  signals?: TradeSignal[]
   // Mode
   mode: 'live' | 'replay'
   replay: ReplayState
@@ -104,13 +111,37 @@ export function ChartPage({
   onChartClick,
   scrollToTimestamp,
   onChartReady,
+  signals,
   mode,
   replay,
   replayCurrentTime,
   replayTotalTime,
 }: ChartPageProps) {
-  // Unused but ref-captured for resize handling — mirrors App.tsx pattern
   const _containerRef = useRef<HTMLDivElement>(null)
+  const chartBodyRef = useRef<HTMLDivElement>(null)
+
+  // ── Fullscreen state and handler ────────────────────────────────────────────
+  const [isFullscreen, setIsFullscreen] = useState(false)
+
+  useEffect(() => {
+    const onFsChange = () => {
+      setIsFullscreen(!!document.fullscreenElement)
+    }
+    document.addEventListener('fullscreenchange', onFsChange)
+    return () => document.removeEventListener('fullscreenchange', onFsChange)
+  }, [])
+
+  const handleFullscreen = useCallback(() => {
+    if (!document.fullscreenElement) {
+      // Prefer the chart body container; fall back to documentElement
+      const target = chartBodyRef.current ?? document.documentElement
+      target.requestFullscreen().catch(() => {
+        // requestFullscreen can fail (e.g. sandboxed iframe) — silently ignore
+      })
+    } else {
+      document.exitFullscreen().catch(() => {})
+    }
+  }, [])
 
   const sessionLevels = deriveSessionLevels(indicatorData)
 
@@ -131,10 +162,11 @@ export function ChartPage({
         symbol={symbol}
         activeOverlays={activeOverlays}
         onToggleOverlay={onToggleOverlay}
+        onFullscreen={handleFullscreen}
       />
 
       {/* Chart body */}
-      <div className="flex-1 relative overflow-hidden">
+      <div className="flex-1 relative overflow-hidden" ref={chartBodyRef}>
         {error ? (
           <div className="w-full h-full flex items-center justify-center">
             <span className="font-mono text-sm text-[var(--color-loss)]">{error}</span>
@@ -149,7 +181,7 @@ export function ChartPage({
           <>
             <SimpleChart
               bars={chartBars}
-              className="w-full h-full"
+              className={isFullscreen ? 'w-full h-screen' : 'w-full h-full'}
               vwapData={indicatorData?.vwap}
               emaData={indicatorData?.ema}
               volumeProfile={indicatorData?.volume_profile}
@@ -159,6 +191,7 @@ export function ChartPage({
               patternAnnotations={patternAnnotations}
               showVwap={activeOverlays.has('vwap')}
               showEma={activeOverlays.has('ema')}
+              showVolume={activeOverlays.has('volume')}
               showVp={activeOverlays.has('vp')}
               showLevels={activeOverlays.has('levels')}
               zones={zones}
@@ -167,6 +200,7 @@ export function ChartPage({
               scrollToTimestamp={scrollToTimestamp}
               drawings={drawings}
               onChartClick={activeTool ? onChartClick : undefined}
+              signals={signals}
             />
             <DrawingToolbar
               activeTool={activeTool}
@@ -192,14 +226,25 @@ export function ChartPage({
             currentTime={replayCurrentTime}
             totalTime={replayTotalTime}
             date={replay.replayDate ?? ''}
-            onPlay={() => void replay.start()}
-            onPause={() => void replay.stop()}
+            availableDates={replay.availableDates}
+            onPlay={() => {
+              if (replay.isPlaying && typeof replay.resume === 'function') {
+                replay.resume()
+              } else {
+                void replay.start()
+              }
+            }}
+            onPause={() => typeof replay.pause === 'function' ? replay.pause() : void replay.stop()}
             onSpeedChange={(s) => {
               replay.setSpeed(s)
               if (replay.isPlaying) void replay.start()
             }}
             onSeek={replay.seek}
             onDateChange={replay.changeDate}
+            onSelectDate={(date) => {
+              replay.setReplayDate(date)
+              void replay.stop().then(() => replay.start(date))
+            }}
           />
         </div>
       )}

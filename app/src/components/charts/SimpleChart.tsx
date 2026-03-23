@@ -106,6 +106,8 @@ export interface SimpleChartProps {
   // Overlay visibility
   showVwap?: boolean
   showEma?: boolean
+  /** Whether to show the volume histogram bars. Defaults to true. */
+  showVolume?: boolean
   showVp?: boolean
   showLevels?: boolean
   /** Whether to render the Opening Range Box overlay. */
@@ -152,6 +154,8 @@ export function SimpleChart({
   openingRange,
   showVwap = false,
   showEma = false,
+  /** Whether the volume histogram is visible. Defaults to true. */
+  showVolume = true,
   showVp = false,
   showLevels = false,
   showOpeningRange = true,
@@ -170,6 +174,8 @@ export function SimpleChart({
   const chartRef = useRef<IChartApi | null>(null)
   // Candle series ref for price lines and markers
   const candleRef = useRef<ISeriesApi<'Candlestick'> | null>(null)
+  // Volume series ref (hoisted so data update effect can call setData)
+  const volumeSeriesRef = useRef<ISeriesApi<'Histogram'> | null>(null)
   // Overlay series refs
   const overlayRef = useRef<OverlaySeries>({
     vwap: null,
@@ -191,6 +197,12 @@ export function SimpleChart({
   const orLinesRef = useRef<IPriceLine[]>([])
   // Signal level price line refs (entry/stop/target per signal, rebuilt on signals change)
   const signalLinesRef = useRef<IPriceLine[]>([])
+  // Marker refs for merge: BOS/pattern markers and signal markers are stored separately
+  // and combined before calling plugin.setMarkers() to avoid overwrite conflicts.
+  const bosMarkersRef = useRef<SeriesMarker<import('lightweight-charts').Time>[]>([])
+  const signalMarkersRef = useRef<SeriesMarker<import('lightweight-charts').Time>[]>([])
+  // Track whether this is the first data load (to call fitContent only once)
+  const isFirstLoadRef = useRef(true)
 
   // ── Volume Profile: compute from bars (sidebar histogram) ─────────────────
   // binSize=2.0 is suitable for NQ (0.25-tick * 8 = 2 point bins)
@@ -203,14 +215,14 @@ export function SimpleChart({
   const visiblePriceRange = useMemo(() => {
     if (bars.length === 0) return { high: 0, low: 0 }
     return {
-      high: Math.max(...bars.map((b) => b.high)),
-      low: Math.min(...bars.map((b) => b.low)),
+      high: bars.reduce((max, b) => Math.max(max, b.high), -Infinity),
+      low: bars.reduce((min, b) => Math.min(min, b.low), Infinity),
     }
   }, [bars])
 
-  // ── Build chart on first mount (bars change re-creates chart) ──────────────
+  // ── Chart creation: runs ONCE on mount ────────────────────────────────────
   useEffect(() => {
-    if (!containerRef.current || bars.length === 0) return
+    if (!containerRef.current) return
 
     const chart = createChart(containerRef.current, {
       width: containerRef.current.clientWidth,
@@ -244,15 +256,6 @@ export function SimpleChart({
       wickUpColor: '#008757',
       wickDownColor: '#EF4136',
     })
-    candleSeries.setData(
-      bars.map((b) => ({
-        time: b.timestamp as any,
-        open: b.open,
-        high: b.high,
-        low: b.low,
-        close: b.close,
-      }))
-    )
     candleRef.current = candleSeries
 
     // ── Volume bars ───────────────────────────────────────────────────────────
@@ -263,13 +266,7 @@ export function SimpleChart({
     chart.priceScale('volume').applyOptions({
       scaleMargins: { top: 0.8, bottom: 0 },
     })
-    volumeSeries.setData(
-      bars.map((b) => ({
-        time: b.timestamp as any,
-        value: b.volume,
-        color: b.close >= b.open ? 'rgba(0,135,87,0.3)' : 'rgba(239,65,54,0.3)',
-      }))
-    )
+    volumeSeriesRef.current = volumeSeries
 
     // ── VWAP overlay series — single white line, no SD bands ─────────────────
     const vwapSeries = chart.addSeries(LineSeries, {
@@ -314,8 +311,6 @@ export function SimpleChart({
     const markersPlugin = createSeriesMarkers(candleSeries)
     markersPluginRef.current = markersPlugin
 
-    chart.timeScale().fitContent()
-
     // Notify parent that chart is ready
     onChartReady?.(chart)
 
@@ -340,6 +335,7 @@ export function SimpleChart({
       chart.remove()
       chartRef.current = null
       candleRef.current = null
+      volumeSeriesRef.current = null
       vpLinesRef.current = []
       levelLinesRef.current = []
       zoneLinesRef.current = []
@@ -351,6 +347,40 @@ export function SimpleChart({
         vwap: null,
         ema9: null, ema21: null, ema50: null,
       }
+      isFirstLoadRef.current = true
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // ── Data update: runs when bars change, does NOT recreate chart ────────────
+  useEffect(() => {
+    const candleSeries = candleRef.current
+    const volumeSeries = volumeSeriesRef.current
+    if (!candleSeries || !volumeSeries || bars.length === 0) return
+
+    candleSeries.setData(
+      bars.map((b) => ({
+        time: b.timestamp as any,
+        open: b.open,
+        high: b.high,
+        low: b.low,
+        close: b.close,
+      }))
+    )
+
+    volumeSeries.setData(
+      bars.map((b) => ({
+        time: b.timestamp as any,
+        value: b.volume,
+        color: b.close >= b.open ? 'rgba(0,135,87,0.3)' : 'rgba(239,65,54,0.3)',
+      }))
+    )
+
+    // fitContent on first load OR when bar count jumps significantly (mode switch)
+    const prevCountRef = bars.length
+    if (isFirstLoadRef.current || prevCountRef < 5) {
+      chartRef.current?.timeScale().fitContent()
+      isFirstLoadRef.current = false
     }
   }, [bars])
 
@@ -387,6 +417,13 @@ export function SimpleChart({
     ov.ema21!.applyOptions({ visible })
     ov.ema50!.applyOptions({ visible })
   }, [showEma, emaData])
+
+  // ── Volume histogram visibility ────────────────────────────────────────────
+  useEffect(() => {
+    const volSeries = volumeSeriesRef.current
+    if (!volSeries) return
+    volSeries.applyOptions({ visible: showVolume })
+  }, [showVolume])
 
   // ── Volume Profile — sidebar histogram renders VP, cleanup old price lines ──
   useEffect(() => {
@@ -469,11 +506,17 @@ export function SimpleChart({
     }
   }, [showLevels, sessionLevels])
 
-  // ── Markers: BOS/CHoCH + Pattern annotations ───────────────────────────────
-  useEffect(() => {
+  // ── Helper: merge bosMarkersRef + signalMarkersRef and call setMarkers once ─
+  const flushMarkers = () => {
     const plugin = markersPluginRef.current
     if (!plugin) return
+    const combined = [...bosMarkersRef.current, ...signalMarkersRef.current]
+    combined.sort((a, b) => (a.time as number) - (b.time as number))
+    plugin.setMarkers(combined)
+  }
 
+  // ── Markers: BOS/CHoCH + Pattern annotations ───────────────────────────────
+  useEffect(() => {
     const allMarkers: SeriesMarker<import('lightweight-charts').Time>[] = []
 
     // BOS/CHoCH structure break markers (limited to last 5 to reduce clutter)
@@ -540,7 +583,9 @@ export function SimpleChart({
       }
     }
 
-    plugin.setMarkers(Array.from(deduped.values()))
+    bosMarkersRef.current = Array.from(deduped.values())
+    flushMarkers()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showBosChoch, structureBreaks, patternAnnotations])
 
   // ── Zone price lines ──────────────────────────────────────────────────────
@@ -757,11 +802,6 @@ export function SimpleChart({
     signalLinesRef.current = newLines
 
     // Signal direction markers (arrow up/down at signal timestamp)
-    const plugin = markersPluginRef.current
-    if (!plugin) return
-
-    // Merge with existing markers is not straightforward since setMarkers replaces all.
-    // Retrieve current markers then append signal markers.
     const sigMarkers: SeriesMarker<import('lightweight-charts').Time>[] = recent.map((sig) => ({
       time: sig.timestamp as import('lightweight-charts').Time,
       position: sig.direction === 'long' ? 'belowBar' : 'aboveBar',
@@ -773,7 +813,11 @@ export function SimpleChart({
 
     // Sort ascending as required by LWC
     sigMarkers.sort((a, b) => (a.time as number) - (b.time as number))
-    plugin.setMarkers(sigMarkers)
+
+    // Store in ref and flush combined markers to avoid overwriting BOS markers
+    signalMarkersRef.current = sigMarkers
+    flushMarkers()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [signals])
 
   return (
