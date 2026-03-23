@@ -194,10 +194,10 @@ export function Topbar({
         'border-b border-[var(--color-border-subtle)]',
       )}
     >
-      {/* Left: Breadcrumb — uses store market name */}
-      <div className="shrink-0">
-        <Breadcrumb segments={['AlgoView', 'Arctis', activeMarket]} />
-      </div>
+      {/* Left: Symbol display */}
+      <span className="font-mono text-[13px] font-semibold text-[#E6EDF3] shrink-0 tracking-wide">
+        {activeSymbol || activeMarket}
+      </span>
 
       {/* Divider */}
       <div className="w-px h-4 bg-[var(--color-border-subtle)] shrink-0" />
