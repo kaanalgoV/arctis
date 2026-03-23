@@ -25,10 +25,20 @@ def _get_sim():
 
 
 def _load_bars(market: Market, timeframe: Timeframe, days: int = 30):
-    """Load bars from TimescaleDB, respecting simulation mode."""
+    """Load bars from simulation engine, ParquetStore, or TimescaleDB (in priority order)."""
     sim = _get_sim()
     if sim.active and sim.market == market and sim.timeframe == timeframe:
         return sim.get_bars()
+
+    # Try ParquetStore first (populated via /api/import, used in tests)
+    try:
+        from arctis.main import store
+        bars = store.load(market, timeframe)
+        if bars:
+            return bars
+    except Exception:
+        pass
+
     bars = fetch_bars_as_models(market=market.value, days=days, timeframe=timeframe.value)
     if not bars:
         raise HTTPException(
