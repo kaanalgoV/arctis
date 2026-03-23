@@ -102,46 +102,38 @@ function componentLabel(key: string): string {
 }
 
 function componentValueColor(val: number): string {
-  if (val > 0) return 'var(--color-profit)'
-  if (val < 0) return 'var(--color-loss)'
-  return 'var(--color-text-muted)'
+  if (val > 0) return '#22C55E'
+  if (val < 0) return '#EF4444'
+  return '#8B949E'
 }
 
 function auctionQualityColor(type: string): string {
-  if (type === 'clean') return 'var(--color-profit)'
-  if (type === 'moderate') return 'var(--color-warning)'
-  return 'var(--color-loss)'
+  if (type === 'clean') return '#22C55E'
+  if (type === 'moderate') return '#F59E0B'
+  return '#EF4444'
 }
 
 function levelTypeColor(type: string): string {
-  if (type === 'resistance') return 'var(--color-loss)'
-  if (type === 'support') return 'var(--color-profit)'
-  return 'var(--color-accent)'
+  if (type === 'resistance') return '#EF4444'
+  if (type === 'support') return '#22C55E'
+  return '#5CB8F0'
 }
 
 function velocityBarGradient(scale: number): string {
-  // 1-10 scale: low = blue/info, high = red/loss
+  // 1-10 scale: low = muted gray, high = loss red (only extreme velocity signals danger)
   const pct = Math.max(0, Math.min(1, (scale - 1) / 9))
   if (pct < 0.5) {
-    // blue -> warning
-    return `linear-gradient(90deg, var(--color-info), var(--color-warning))`
+    return `linear-gradient(90deg, var(--color-border), var(--color-text-muted))`
   }
-  // warning -> loss
-  return `linear-gradient(90deg, var(--color-warning), var(--color-loss))`
+  // high velocity -> loss color
+  return `linear-gradient(90deg, var(--color-text-muted), var(--color-loss))`
 }
 
 // ── Section Header ─────────────────────────────────────────────────────────────
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <span
-      className="uppercase tracking-widest"
-      style={{
-        fontSize: 9,
-        color: 'var(--color-text-muted)',
-        fontFamily: 'var(--font-mono)',
-      }}
-    >
+    <span className="text-[10px] font-semibold tracking-[0.15em] uppercase text-[#8B949E]">
       {children}
     </span>
   )
@@ -152,33 +144,12 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 function ScoreBadge({ score }: { score: number }) {
   const positive = score >= 0
   return (
-    <div
-      className="flex flex-col items-end gap-0.5"
+    <span
+      className="font-mono text-[20px] font-bold tabular-nums leading-none"
+      style={{ color: positive ? '#22C55E' : '#EF4444' }}
     >
-      <span
-        style={{
-          fontSize: 9,
-          color: 'var(--color-text-muted)',
-          fontFamily: 'var(--font-mono)',
-          textTransform: 'uppercase',
-          letterSpacing: '0.1em',
-        }}
-      >
-        Score
-      </span>
-      <span
-        className="tabular-nums"
-        style={{
-          fontSize: 22,
-          fontFamily: 'var(--font-mono)',
-          fontWeight: 700,
-          lineHeight: 1,
-          color: positive ? 'var(--color-profit)' : 'var(--color-loss)',
-        }}
-      >
-        {positive ? '+' : ''}{score}
-      </span>
-    </div>
+      {positive ? '+' : ''}{score}
+    </span>
   )
 }
 
@@ -189,36 +160,18 @@ function ComponentsGrid({ components }: { components: Record<string, number> }) 
   if (entries.length === 0) return null
 
   return (
-    <div className="flex flex-col gap-1.5">
+    <div className="flex flex-col gap-1">
       <SectionLabel>Components</SectionLabel>
       <div className="grid grid-cols-2 gap-1">
         {entries.map(([key, val]) => (
           <div
             key={key}
-            className={cn(
-              'flex items-center justify-between px-2 py-1.5',
-              'rounded-[var(--radius-sm)]',
-              'border border-[var(--color-border-subtle)]',
-              'bg-[var(--color-surface-raised)]/40',
-            )}
+            className="flex items-center justify-between px-2 py-1 rounded bg-[#0D1117] border border-[#21262D] text-[10px]"
           >
+            <span className="text-[#8B949E]">{componentLabel(key)}</span>
             <span
-              style={{
-                fontSize: 10,
-                color: 'var(--color-text-muted)',
-                fontFamily: 'var(--font-mono)',
-              }}
-            >
-              {componentLabel(key)}
-            </span>
-            <span
-              className="tabular-nums"
-              style={{
-                fontSize: 12,
-                fontFamily: 'var(--font-mono)',
-                fontWeight: 700,
-                color: componentValueColor(val),
-              }}
+              className="font-mono font-bold tabular-nums"
+              style={{ color: componentValueColor(val) }}
             >
               {val > 0 ? '+' : ''}{val}
             </span>
@@ -240,59 +193,19 @@ function SwitchLevel({
   type: string
   confidence: string
 }) {
+  const confColor = confidence === 'high' ? '#22C55E' : confidence === 'low' ? '#EF4444' : '#F59E0B'
   return (
-    <div className="flex flex-col gap-1.5">
+    <div className="flex flex-col gap-1">
       <SectionLabel>Switch Level</SectionLabel>
-      <div
-        className={cn(
-          'relative flex items-center justify-between px-3 py-2.5',
-          'rounded-[var(--radius-sm)]',
-          'border border-[var(--color-border-subtle)]',
-          'bg-[var(--color-surface-raised)]/40',
-          'overflow-hidden',
-        )}
-      >
-        {/* Horizontal accent line */}
-        <div
-          className="absolute left-0 right-0"
-          style={{
-            top: '50%',
-            height: 1,
-            background: 'var(--color-accent)',
-            opacity: 0.25,
-          }}
-        />
-        <div className="relative z-10 flex items-center gap-2">
-          <span
-            className="tabular-nums"
-            style={{
-              fontSize: 16,
-              fontFamily: 'var(--font-mono)',
-              fontWeight: 700,
-              color: 'var(--color-accent)',
-            }}
-          >
+      {/* Single-line compact row */}
+      <div className="flex items-center justify-between px-2 py-1.5 rounded bg-[#161B22] border border-[#21262D]">
+        <div className="flex items-center gap-1.5">
+          <span className="font-mono text-[13px] font-bold tabular-nums text-[#5CB8F0]">
             {level.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </span>
-          <span
-            style={{
-              fontSize: 10,
-              color: 'var(--color-text-muted)',
-              fontFamily: 'var(--font-mono)',
-            }}
-          >
-            {type}
-          </span>
+          <span className="text-[10px] text-[#8B949E]">{type}</span>
         </div>
-        <span
-          className="relative z-10"
-          style={{
-            fontSize: 10,
-            color: confidence === 'high' ? 'var(--color-profit)' : confidence === 'low' ? 'var(--color-loss)' : 'var(--color-warning)',
-            fontFamily: 'var(--font-mono)',
-            textTransform: 'uppercase',
-          }}
-        >
+        <span className="text-[9px] font-semibold uppercase tracking-wider" style={{ color: confColor }}>
           {confidence}
         </span>
       </div>
@@ -307,69 +220,33 @@ function VelocityBar({ scale, ratio }: { scale: number; ratio: number }) {
   const widthPct = ((clampedScale - 1) / 9) * 100
 
   return (
-    <div className="flex flex-col gap-1.5">
+    <div className="flex flex-col gap-1">
       <div className="flex items-center justify-between">
         <SectionLabel>Velocity</SectionLabel>
-        <span
-          className="tabular-nums"
-          style={{
-            fontSize: 11,
-            fontFamily: 'var(--font-mono)',
-            fontWeight: 600,
-            color: 'var(--color-text-secondary)',
-          }}
-        >
-          {clampedScale.toFixed(1)}
-          <span style={{ fontSize: 9, color: 'var(--color-text-muted)', fontWeight: 400 }}>/10</span>
+        <span className="font-mono text-[11px] font-semibold tabular-nums text-[#E6EDF3]">
+          {clampedScale.toFixed(1)}<span className="text-[9px] text-[#8B949E] font-normal">/10</span>
         </span>
       </div>
-      {/* Scale bar */}
-      <div
-        className="relative overflow-hidden"
-        style={{
-          height: 6,
-          borderRadius: 3,
-          background: 'var(--color-surface-elevated)',
-          border: '1px solid var(--color-border-subtle)',
-        }}
-      >
+      {/* Scale bar — 2px thin */}
+      <div className="relative h-[2px] rounded-full overflow-hidden bg-[#21262D]">
         <div
+          className="absolute left-0 top-0 bottom-0 rounded-full transition-all duration-300"
           style={{
-            position: 'absolute',
-            left: 0,
-            top: 0,
-            bottom: 0,
             width: `${widthPct}%`,
             background: velocityBarGradient(clampedScale),
-            borderRadius: 3,
-            transition: 'width 0.3s ease',
           }}
         />
       </div>
-      {/* Tick marks */}
-      <div className="flex justify-between">
-        {[1, 3, 5, 7, 10].map((tick) => (
-          <span
-            key={tick}
-            style={{
-              fontSize: 8,
-              color: 'var(--color-text-muted)',
-              fontFamily: 'var(--font-mono)',
-            }}
-          >
-            {tick}
-          </span>
-        ))}
+      <div className="flex items-center justify-between">
+        <div className="flex gap-1.5">
+          {[1, 3, 5, 7, 10].map((tick) => (
+            <span key={tick} className="font-mono text-[8px] text-[#484F58]">{tick}</span>
+          ))}
+        </div>
+        <span className="font-mono text-[9px] text-[#8B949E]">
+          r:<span className="tabular-nums text-[#8B949E]">{ratio.toFixed(2)}</span>
+        </span>
       </div>
-      <span
-        style={{
-          fontSize: 9,
-          color: 'var(--color-text-muted)',
-          fontFamily: 'var(--font-mono)',
-        }}
-      >
-        Ratio: <span className="tabular-nums" style={{ color: 'var(--color-text-secondary)' }}>{ratio.toFixed(2)}</span>
-      </span>
     </div>
   )
 }
@@ -389,40 +266,16 @@ function AuctionQuality({
 
   return (
     <div className="flex items-center justify-between">
-      <div className="flex flex-col gap-0.5">
-        <SectionLabel>Auction Quality</SectionLabel>
-        <span
-          style={{
-            fontSize: 13,
-            fontFamily: 'var(--font-mono)',
-            fontWeight: 600,
-            color,
-          }}
-        >
-          {label}
-        </span>
+      <div className="flex items-center gap-2">
+        <SectionLabel>Auction</SectionLabel>
+        <span className="font-mono text-[11px] font-semibold" style={{ color }}>{label}</span>
       </div>
-      <div
-        className="flex items-center justify-center rounded-[var(--radius-sm)]"
-        style={{
-          width: 36,
-          height: 36,
-          background: 'var(--color-surface-raised)',
-          border: `1px solid ${color}40`,
-        }}
+      <span
+        className="font-mono text-[13px] font-bold tabular-nums px-1.5 py-0.5 rounded bg-[#0D1117] border border-[#21262D]"
+        style={{ color }}
       >
-        <span
-          className="tabular-nums"
-          style={{
-            fontSize: 14,
-            fontFamily: 'var(--font-mono)',
-            fontWeight: 700,
-            color,
-          }}
-        >
-          {score}
-        </span>
-      </div>
+        {score}
+      </span>
     </div>
   )
 }
@@ -441,68 +294,28 @@ function CorrectionBar({
   direction: string
 }) {
   const clampedPct = Math.max(0, Math.min(100, correction_pct))
-  const barColor = is_threat ? 'var(--color-loss)' : 'var(--color-warning)'
+  const barColor = is_threat ? '#EF4444' : '#F59E0B'
 
   return (
-    <div className="flex flex-col gap-1.5">
+    <div className="flex flex-col gap-1">
       <div className="flex items-center justify-between">
         <SectionLabel>Correction</SectionLabel>
         {is_threat && (
-          <span
-            style={{
-              fontSize: 9,
-              color: 'var(--color-loss)',
-              fontFamily: 'var(--font-mono)',
-              textTransform: 'uppercase',
-              fontWeight: 700,
-              letterSpacing: '0.08em',
-            }}
-          >
-            Threat
-          </span>
+          <span className="text-[9px] font-bold uppercase tracking-wider text-[#EF4444]">Threat</span>
         )}
       </div>
-      <div
-        className="relative overflow-hidden"
-        style={{
-          height: 6,
-          borderRadius: 3,
-          background: 'var(--color-surface-elevated)',
-          border: '1px solid var(--color-border-subtle)',
-        }}
-      >
+      {/* 2px thin bar */}
+      <div className="relative h-[2px] rounded-full overflow-hidden bg-[#21262D]">
         <div
-          style={{
-            position: 'absolute',
-            left: 0,
-            top: 0,
-            bottom: 0,
-            width: `${clampedPct}%`,
-            background: barColor,
-            borderRadius: 3,
-            transition: 'width 0.3s ease',
-          }}
+          className="absolute left-0 top-0 bottom-0 rounded-full transition-all duration-300"
+          style={{ width: `${clampedPct}%`, background: barColor }}
         />
       </div>
       <div className="flex items-center justify-between">
-        <span
-          style={{
-            fontSize: 9,
-            color: 'var(--color-text-muted)',
-            fontFamily: 'var(--font-mono)',
-          }}
-        >
-          {direction.toUpperCase()} / Impulse: <span className="tabular-nums">{impulse_size.toLocaleString('en-US', { maximumFractionDigits: 1 })}</span>
+        <span className="font-mono text-[9px] text-[#8B949E]">
+          {direction.toUpperCase()} · <span className="tabular-nums">{impulse_size.toLocaleString('en-US', { maximumFractionDigits: 1 })}</span>
         </span>
-        <span
-          className="tabular-nums"
-          style={{
-            fontSize: 11,
-            fontFamily: 'var(--font-mono)',
-            fontWeight: 600,
-            color: barColor,
-          }}
-        >
+        <span className="font-mono text-[11px] font-semibold tabular-nums" style={{ color: barColor }}>
           {clampedPct.toFixed(1)}%
         </span>
       </div>
@@ -521,67 +334,32 @@ function KeyLevelsList({
   const top5 = levels.slice(0, 5)
 
   return (
-    <div className="flex flex-col gap-1.5">
+    <div className="flex flex-col gap-1">
       <SectionLabel>Key Levels</SectionLabel>
-      <div className="flex flex-col gap-1">
+      <div className="flex flex-col gap-px bg-[#161B22] rounded-md border border-[#21262D] overflow-hidden">
         {top5.map((lvl, i) => (
           <div
             key={i}
-            className="flex items-center justify-between px-2 py-1"
-            style={{
-              borderRadius: 4,
-              background: 'var(--color-surface-raised)/40',
-              borderLeft: `2px solid ${levelTypeColor(lvl.type)}`,
-            }}
+            className="flex items-center justify-between px-2 py-1 hover:bg-[#21262D]/40 transition-colors"
+            style={{ borderLeft: `2px solid ${levelTypeColor(lvl.type)}` }}
           >
             <div className="flex items-center gap-2">
               <span
-                style={{
-                  fontSize: 9,
-                  color: levelTypeColor(lvl.type),
-                  fontFamily: 'var(--font-mono)',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.06em',
-                  minWidth: 52,
-                }}
+                className="font-mono text-[9px] uppercase tracking-wider min-w-[46px]"
+                style={{ color: levelTypeColor(lvl.type) }}
               >
                 {lvl.type}
               </span>
-              <span
-                className="tabular-nums"
-                style={{
-                  fontSize: 12,
-                  fontFamily: 'var(--font-mono)',
-                  fontWeight: 600,
-                  color: 'var(--color-text-primary)',
-                }}
-              >
+              <span className="font-mono text-[11px] font-semibold tabular-nums text-[#E6EDF3]">
                 {lvl.level.toLocaleString('en-US', {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 2,
                 })}
               </span>
             </div>
-            <div
-              className="flex items-center justify-center rounded"
-              style={{
-                minWidth: 24,
-                height: 18,
-                background: 'var(--color-surface-elevated)',
-                border: '1px solid var(--color-border-subtle)',
-              }}
-            >
-              <span
-                className="tabular-nums"
-                style={{
-                  fontSize: 9,
-                  fontFamily: 'var(--font-mono)',
-                  color: 'var(--color-text-muted)',
-                }}
-              >
-                {lvl.tests}x
-              </span>
-            </div>
+            <span className="font-mono text-[9px] tabular-nums text-[#484F58] px-1 py-px rounded bg-[#21262D]">
+              {lvl.tests}x
+            </span>
           </div>
         ))}
       </div>
@@ -599,15 +377,7 @@ export function BiasPanel({ data }: BiasPanelProps) {
   if (!data) {
     return (
       <div className="flex items-center justify-center py-6">
-        <span
-          style={{
-            fontSize: 11,
-            color: 'var(--color-text-muted)',
-            fontFamily: 'var(--font-mono)',
-          }}
-        >
-          No bias data
-        </span>
+        <span className="text-[11px] text-[#8B949E] font-mono">No bias data</span>
       </div>
     )
   }
@@ -616,37 +386,25 @@ export function BiasPanel({ data }: BiasPanelProps) {
   const style = BIAS_STYLES[variant]
 
   return (
-    <div className="flex flex-col gap-3">
-      {/* Bias State + Score */}
+    <div className="flex flex-col gap-2">
+      {/* Bias State + Score — compact single card */}
       <div
-        className="flex items-center justify-between px-3 py-2.5 rounded-[var(--radius-md)]"
+        className="flex items-center justify-between px-2.5 py-2 rounded-md border"
         style={{
           background: style.bg,
-          border: `1px solid ${style.borderColor}`,
+          borderColor: style.borderColor,
         }}
       >
-        <div className="flex flex-col gap-0.5">
+        <div className="flex flex-col gap-0">
           <span
-            style={{
-              fontSize: 9,
-              color: style.color,
-              fontFamily: 'var(--font-mono)',
-              textTransform: 'uppercase',
-              letterSpacing: '0.1em',
-              opacity: 0.75,
-            }}
+            className="text-[9px] uppercase tracking-[0.1em] font-mono opacity-70"
+            style={{ color: style.color }}
           >
             Daily Bias
           </span>
           <span
-            style={{
-              fontSize: 18,
-              fontFamily: 'var(--font-mono)',
-              fontWeight: 800,
-              color: style.color,
-              letterSpacing: '0.03em',
-              lineHeight: 1.1,
-            }}
+            className="font-mono text-[16px] font-extrabold leading-tight tracking-wide"
+            style={{ color: style.color }}
           >
             {style.label}
           </span>
@@ -654,12 +412,12 @@ export function BiasPanel({ data }: BiasPanelProps) {
         <ScoreBadge score={data.bias_state.score} />
       </div>
 
-      {/* Components */}
+      {/* Components 2-col grid */}
       {Object.keys(data.bias_state.components).length > 0 && (
         <ComponentsGrid components={data.bias_state.components} />
       )}
 
-      {/* Switch Level */}
+      {/* Switch Level — single line */}
       {data.bias_switch_level && (
         <SwitchLevel
           level={data.bias_switch_level.level}
@@ -668,7 +426,7 @@ export function BiasPanel({ data }: BiasPanelProps) {
         />
       )}
 
-      {/* Velocity */}
+      {/* Velocity — thin bar */}
       {data.velocity && (
         <VelocityBar
           scale={data.velocity.scale}
@@ -676,15 +434,9 @@ export function BiasPanel({ data }: BiasPanelProps) {
         />
       )}
 
-      {/* Auction Quality */}
+      {/* Auction Quality — inline */}
       {data.auction_quality && (
-        <div
-          className={cn(
-            'px-3 py-2.5 rounded-[var(--radius-sm)]',
-            'border border-[var(--color-border-subtle)]',
-            'bg-[var(--color-surface-raised)]/40',
-          )}
-        >
+        <div className="px-2 py-1.5 rounded-md border border-[#21262D] bg-[#161B22]">
           <AuctionQuality
             score={data.auction_quality.score}
             label={data.auction_quality.label}
@@ -693,15 +445,9 @@ export function BiasPanel({ data }: BiasPanelProps) {
         </div>
       )}
 
-      {/* Correction */}
+      {/* Correction — thin bar */}
       {data.correction && (
-        <div
-          className={cn(
-            'px-3 py-2.5 rounded-[var(--radius-sm)]',
-            'border border-[var(--color-border-subtle)]',
-            'bg-[var(--color-surface-raised)]/40',
-          )}
-        >
+        <div className="px-2 py-1.5 rounded-md border border-[#21262D] bg-[#161B22]">
           <CorrectionBar
             impulse_size={data.correction.impulse_size}
             correction_pct={data.correction.correction_pct}
@@ -711,7 +457,7 @@ export function BiasPanel({ data }: BiasPanelProps) {
         </div>
       )}
 
-      {/* Key Levels */}
+      {/* Key Levels — compact table */}
       {data.key_levels.length > 0 && (
         <KeyLevelsList levels={data.key_levels} />
       )}

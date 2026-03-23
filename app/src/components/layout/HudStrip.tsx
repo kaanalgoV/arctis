@@ -55,14 +55,14 @@ function Divider() {
 
 function getRvolColor(rvol: number): string {
   if (rvol > 2.0) return 'var(--color-loss)'
-  if (rvol > 1.5) return 'var(--color-warning)'
-  return 'var(--color-text-secondary)'
+  if (rvol > 1.5) return 'var(--color-profit)'
+  return 'var(--color-text-muted)'
 }
 
 function getRsiColor(rsi: number): string {
   if (rsi > 70) return 'var(--color-loss)'
   if (rsi < 30) return 'var(--color-profit)'
-  return 'var(--color-text-secondary)'
+  return 'var(--color-text-muted)'
 }
 
 function getRsiDivergenceColor(divergence: string): string {
@@ -80,7 +80,7 @@ function getEmaLabel(alignment: string): string {
 function getEmaColor(alignment: string): string {
   if (alignment === 'bullish') return 'var(--color-profit)'
   if (alignment === 'bearish') return 'var(--color-loss)'
-  return 'var(--color-text-muted)'
+  return 'var(--color-text-muted)'  // mixed = dimmed
 }
 
 function getVwapLabel(position: string): string {
@@ -92,7 +92,7 @@ function getVwapLabel(position: string): string {
 function getVwapColor(position: string): string {
   if (position === 'above') return 'var(--color-profit)'
   if (position === 'below') return 'var(--color-loss)'
-  return 'var(--color-text-secondary)'
+  return 'var(--color-text-muted)'
 }
 
 // Placeholder shown while loading
@@ -232,7 +232,7 @@ export function HudStrip({
         key="session"
         label="SESSION"
         value={
-          <span style={{ color: 'var(--color-accent)' }}>
+          <span style={{ color: 'var(--color-text-secondary)' }}>
             {sessionName}
           </span>
         }

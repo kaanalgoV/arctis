@@ -191,7 +191,6 @@ function MarketCard({
         'flex flex-col gap-3 p-4',
         'rounded-2xl border border-white/[0.06]',
         'bg-[var(--color-surface-secondary)]',
-        'hover:border-[var(--color-accent)]/20',
         'transition-colors duration-200',
         'shadow-[0_4px_16px_rgba(0,0,0,0.4)]',
       )}
@@ -268,7 +267,7 @@ function MarketCard({
             </span>
             <span
               className="font-mono tabular-nums"
-              style={{ fontSize: 10, color: 'var(--color-accent)', fontWeight: 600 }}
+              style={{ fontSize: 10, color: 'var(--color-text-secondary)', fontWeight: 600 }}
             >
               {confluencePct}%
             </span>
@@ -281,8 +280,7 @@ function MarketCard({
               className="absolute left-0 top-0 bottom-0 rounded-full transition-all duration-500"
               style={{
                 width: `${confluencePct}%`,
-                background: 'linear-gradient(90deg, var(--color-accent-dark), var(--color-accent))',
-                boxShadow: '0 0 6px rgba(92, 184, 240, 0.3)',
+                background: 'var(--color-border)',
               }}
             />
           </div>
@@ -335,7 +333,7 @@ function DailySummaryCard({ sessionData, biasData, patternsData, confluenceData 
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Activity size={12} color="var(--color-accent)" strokeWidth={1.75} />
+            <Activity size={12} color="var(--color-text-muted)" strokeWidth={1.75} />
             <span
               className="font-mono"
               style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}
@@ -345,7 +343,7 @@ function DailySummaryCard({ sessionData, biasData, patternsData, confluenceData 
           </div>
           <span
             className="font-mono tabular-nums"
-            style={{ fontSize: 10, color: 'var(--color-accent)' }}
+            style={{ fontSize: 10, color: 'var(--color-text-muted)' }}
           >
             {sessionProgress}%
           </span>
@@ -358,7 +356,7 @@ function DailySummaryCard({ sessionData, biasData, patternsData, confluenceData 
             className="absolute left-0 top-0 bottom-0 rounded-full transition-all duration-500"
             style={{
               width: `${sessionProgress}%`,
-              background: 'linear-gradient(90deg, var(--color-accent-dark), var(--color-accent))',
+              background: 'var(--color-border)',
             }}
           />
         </div>
@@ -400,7 +398,7 @@ function DailySummaryCard({ sessionData, biasData, patternsData, confluenceData 
             Signals
           </span>
           <div className="flex items-center gap-1">
-            <TrendingUp size={10} color="var(--color-info)" strokeWidth={2} />
+            <TrendingUp size={10} color="var(--color-text-muted)" strokeWidth={2} />
             <span
               className="font-mono font-bold tabular-nums"
               style={{ fontSize: 14, color: 'var(--color-text-primary)', lineHeight: 1 }}
@@ -422,7 +420,7 @@ function DailySummaryCard({ sessionData, biasData, patternsData, confluenceData 
             Levels
           </span>
           <div className="flex items-center gap-1">
-            <Layers size={10} color="var(--color-accent)" strokeWidth={2} />
+            <Layers size={10} color="var(--color-text-muted)" strokeWidth={2} />
             <span
               className="font-mono font-bold tabular-nums"
               style={{ fontSize: 14, color: 'var(--color-text-primary)', lineHeight: 1 }}
@@ -447,7 +445,7 @@ function DailySummaryCard({ sessionData, biasData, patternsData, confluenceData 
           </span>
           <span
             className="font-mono font-bold tabular-nums"
-            style={{ fontSize: 11, color: 'var(--color-accent)' }}
+            style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}
           >
             {patternsData.annotations.length}
           </span>
@@ -465,7 +463,7 @@ function DailySummaryCard({ sessionData, biasData, patternsData, confluenceData 
               </span>
               <span
                 className="font-mono uppercase"
-                style={{ fontSize: 10, color: 'var(--color-accent)', fontWeight: 600 }}
+                style={{ fontSize: 10, color: 'var(--color-text-secondary)', fontWeight: 600 }}
               >
                 {patternsData.day_bias}
               </span>
@@ -597,7 +595,7 @@ export function DashboardPage({
           className="flex items-center gap-2.5 px-6 py-3 rounded-[var(--radius-lg)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]"
           style={{
             background: 'linear-gradient(135deg, var(--color-accent-dark) 0%, var(--color-accent) 100%)',
-            boxShadow: '0 4px 16px rgba(92, 184, 240, 0.25)',
+            boxShadow: '0 2px 8px rgba(92, 184, 240, 0.10)',
           }}
         >
           <span

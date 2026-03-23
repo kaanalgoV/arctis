@@ -37,7 +37,7 @@ function confidenceColor(confidence: string): string {
   const c = confidence.toLowerCase()
   if (c === 'high') return 'var(--color-profit)'
   if (c === 'low') return 'var(--color-loss)'
-  return 'var(--color-warning)'
+  return 'var(--color-text-muted)'
 }
 
 // ── Empty state ───────────────────────────────────────────────────────────────
@@ -253,7 +253,7 @@ function SummaryBar({ data }: SummaryBarProps) {
           </span>
           <span
             className="font-mono uppercase font-semibold"
-            style={{ fontSize: 10, color: 'var(--color-accent)' }}
+            style={{ fontSize: 10, color: 'var(--color-text-secondary)' }}
           >
             {data.day_bias}
           </span>
@@ -295,7 +295,7 @@ export function PatternsPage({ data }: PatternsPageProps) {
         className="flex items-center gap-3 px-4 py-3 border-b shrink-0"
         style={{ background: 'var(--color-surface-secondary)', borderColor: 'var(--color-border-subtle)' }}
       >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-accent)" strokeWidth="1.75">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-muted)" strokeWidth="1.75">
           <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
         </svg>
         <span

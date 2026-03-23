@@ -568,9 +568,7 @@ export default function App() {
                 'transition-colors duration-100',
                 'outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent)]',
                 mode === m
-                  ? m === 'replay'
-                    ? 'bg-[#5CB8F0]/15 text-[#5CB8F0]'
-                    : 'bg-[var(--color-accent-muted)] text-[var(--color-accent)]'
+                  ? 'bg-[var(--color-accent-muted)] text-[var(--color-accent)]'
                   : 'text-[var(--color-text-muted)] hover:bg-white/[0.04] hover:text-[var(--color-text-secondary)]',
               )}
             >

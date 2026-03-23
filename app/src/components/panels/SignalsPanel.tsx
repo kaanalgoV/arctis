@@ -44,26 +44,26 @@ function formatPrice(price: number): string {
 
 function confidenceColor(confidence: string): string {
   if (confidence === 'high') return 'var(--color-profit)'
-  if (confidence === 'medium') return 'var(--color-warning)'
+  if (confidence === 'medium') return 'var(--color-text-secondary)'
   return 'var(--color-text-muted)'
 }
 
 function confidenceBg(confidence: string): string {
-  if (confidence === 'high') return 'rgba(0,135,87,0.15)'
-  if (confidence === 'medium') return 'rgba(251,191,36,0.12)'
-  return 'rgba(255,255,255,0.05)'
+  if (confidence === 'high') return 'rgba(0,135,87,0.12)'
+  if (confidence === 'medium') return 'rgba(255,255,255,0.03)'
+  return 'rgba(255,255,255,0.02)'
 }
 
 function confidenceBorder(confidence: string): string {
-  if (confidence === 'high') return 'rgba(0,135,87,0.35)'
-  if (confidence === 'medium') return 'rgba(251,191,36,0.28)'
+  if (confidence === 'high') return 'rgba(0,135,87,0.28)'
+  if (confidence === 'medium') return 'var(--color-border-subtle)'
   return 'var(--color-border-subtle)'
 }
 
 function rrColor(rr: number): string {
   if (rr >= 2.5) return 'var(--color-profit)'
-  if (rr >= 1.5) return 'var(--color-warning)'
-  return 'var(--color-text-secondary)'
+  if (rr >= 1.5) return 'var(--color-text-secondary)'
+  return 'var(--color-text-muted)'
 }
 
 // ── Direction Badge ───────────────────────────────────────────────────────────

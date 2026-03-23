@@ -35,30 +35,26 @@ const FILTERS: FilterConfig[] = [
   { key: 'risk', label: 'Risk', matches: ['risk', 'warning'] },
 ]
 
-// Severity-based dot colors:
-// info/bias   = muted (accent)
-// signal/structure = green (profit)
-// volume/warning  = yellow (warning)
-// risk        = red (loss)
+// Severity-based dot colors — only actual signals and risk use color
 const dotColor: Record<FeedItem['type'], string> = {
-  signal: 'var(--color-profit)',
-  info: 'var(--color-accent)',
-  warning: 'var(--color-warning)',
-  structure: 'var(--color-accent)',
-  volume: 'var(--color-warning)',
-  risk: 'var(--color-loss)',
-  bias: 'var(--color-text-muted)',
+  signal: '#22C55E',
+  info: '#484F58',
+  warning: '#6E7681',
+  structure: '#484F58',
+  volume: '#6E7681',
+  risk: '#EF4444',
+  bias: '#484F58',
 }
 
-// Severity-based text color for the message
+// Severity-based text color for the message — muted by default
 const messageColor: Record<FeedItem['type'], string> = {
-  signal: 'var(--color-text-secondary)',
-  info: 'var(--color-text-muted)',
-  warning: 'var(--color-warning)',
-  structure: 'var(--color-text-secondary)',
-  volume: 'var(--color-warning)',
-  risk: 'var(--color-loss)',
-  bias: 'var(--color-text-muted)',
+  signal: '#8B949E',
+  info: '#8B949E',
+  warning: '#8B949E',
+  structure: '#8B949E',
+  volume: '#6E7681',
+  risk: '#EF4444',
+  bias: '#484F58',
 }
 
 // ---------------------------------------------------------------------------
@@ -69,10 +65,10 @@ function FeedSkeleton() {
   return (
     <div className="flex flex-col gap-px">
       {Array.from({ length: 5 }).map((_, i) => (
-        <div key={i} className="flex items-start gap-1.5 py-1 px-1">
+        <div key={i} className="flex items-start gap-1.5 py-0.5 px-0.5">
           <Skeleton className="h-2 w-8 mt-1 flex-shrink-0" />
-          <Skeleton className="w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1.5" />
-          <Skeleton className="flex-1 h-2.5 mt-0.5" />
+          <Skeleton className="w-1 h-1 rounded-full flex-shrink-0 mt-1.5" />
+          <Skeleton className="flex-1 h-2 mt-0.5" />
         </div>
       ))}
     </div>

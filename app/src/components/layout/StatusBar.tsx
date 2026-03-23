@@ -35,11 +35,8 @@ export function StatusBar({
     ? 'Reconnecting'
     : 'Disconnected'
 
-  const statusTextColor = isConnected
-    ? 'text-[var(--color-profit)]'
-    : isReconnecting
-    ? 'text-[var(--color-warning)]'
-    : 'text-[var(--color-loss)]'
+  // Status label always muted — only the dot carries the color signal
+  const statusTextColor = 'text-[var(--color-text-muted)]'
 
   // Format last bar timestamp for display
   const lastBarDisplay = lastBarTs != null
@@ -70,7 +67,7 @@ export function StatusBar({
         <span className="text-[var(--color-border)] mx-0.5 leading-none">|</span>
         <span className="leading-none text-[var(--color-text-muted)]">
           Latency:{' '}
-          <span className={isConnected ? 'text-[var(--color-profit)]' : 'text-[var(--color-text-muted)]'}>
+          <span className="text-[var(--color-text-muted)]">
             {latencyMs}ms
           </span>
         </span>
@@ -78,7 +75,7 @@ export function StatusBar({
 
       {/* Center: Symbol + bar count + last bar timestamp */}
       <div className="flex-1 flex items-center justify-center min-w-0 gap-2">
-        <span className="leading-none text-[var(--color-text-secondary)]">
+        <span className="leading-none text-[var(--color-text-muted)]">
           {symbol}
         </span>
         <span className="text-[var(--color-border)]">|</span>
