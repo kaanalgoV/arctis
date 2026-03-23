@@ -1,10 +1,35 @@
 """BIAS analysis API endpoint — combines all BIAS modules."""
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, HTTPException, Query
 from arctis.models import Market, Timeframe
 from arctis.db import fetch_bars_as_models
 
 router = APIRouter(prefix="/api/analysis")
+
+
+def _get_sim():
+    from arctis.main import sim
+    return sim
+
+
+def _load_bars(market: Market, timeframe: Timeframe, days: int = 30):
+    """Load bars from simulation engine or TimescaleDB.
+
+    In replay/simulation mode the sim engine is the authoritative source so
+    that all analysis endpoints — including bias and probability — reflect the
+    replayed context rather than live DB data.
+    """
+    sim = _get_sim()
+    if sim.active and sim.market == market and sim.timeframe == timeframe:
+        return sim.get_bars()
+
+    bars = fetch_bars_as_models(market=market.value, days=days, timeframe=timeframe.value)
+    if not bars:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Keine Bars fuer {market.value} ({timeframe.value}) in der DB gefunden.",
+        )
+    return bars
 
 
 @router.get("/bias")
@@ -13,7 +38,12 @@ async def get_daily_bias(
     timeframe: Timeframe = Query(...),
 ):
     """Return combined BIAS analysis."""
-    bars = fetch_bars_as_models(market=market.value, days=30, timeframe=timeframe.value)
+    try:
+        bars = _load_bars(market, timeframe)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Fehler beim Laden der BIAS-Daten: {e}")
 
     if not bars:
         return {"error": "No data available"}
@@ -64,10 +94,12 @@ async def get_daily_bias(
     ema_alignment = latest_ema.alignment if latest_ema else "mixed"
 
     # Bias State (5-state)
+    # Use signed_scale so that bearish velocity (close < open) reduces the
+    # BIAS score instead of incorrectly increasing it.
     bias = calculate_bias_state(
         bars=bars,
         trend=trend.value,
-        velocity_scale=latest_velocity.scale if latest_velocity else 5,
+        velocity_scale=latest_velocity.signed_scale if latest_velocity else 0,
         auction_quality=auction.quality_label if auction else "moderat",
         vwap_position=vwap_position,
         ema_alignment=ema_alignment,
@@ -96,6 +128,11 @@ async def get_daily_bias(
     key_levels = find_key_levels(bars)
 
     return {
+        "market": market.value,
+        "timeframe": timeframe.value,
+        "bar_count": len(bars),
+        # Normalize raw score (-10..+10) to a 0..1 confidence value
+        "confidence": round((bias.score + 10) / 20.0, 4),
         "bias_state": {
             "state": bias.state.value,
             "score": bias.score,
@@ -112,6 +149,7 @@ async def get_daily_bias(
             "average": latest_velocity.avg_velocity,
             "ratio": latest_velocity.ratio,
             "scale": latest_velocity.scale,
+            "signed_scale": latest_velocity.signed_scale,
         } if latest_velocity else None,
         "auction_quality": {
             "score": auction.quality_score,
