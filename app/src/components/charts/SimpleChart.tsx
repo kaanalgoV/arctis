@@ -507,20 +507,9 @@ export function SimpleChart({
 
     const markers: SeriesMarker<number>[] = []
 
-    // Structure breaks (BOS / CHoCH)
-    if (structureBreaks && structureBreaks.length > 0) {
-      for (const b of structureBreaks) {
-        markers.push({
-          time: b.timestamp as number,
-          position: b.direction === 'long' ? 'belowBar' : 'aboveBar',
-          color: b.direction === 'long' ? '#008757' : '#EF4136',
-          shape: b.type === 'BOS' ? 'arrowUp' : 'circle',
-          text: b.type,
-        })
-      }
-    }
+    // BOS/CHoCH markers disabled — only setup signals shown on chart
 
-    // Pattern annotations
+    // Pattern annotations (only clear setups with entry/target)
     if (patternAnnotations && patternAnnotations.length > 0) {
       for (const p of patternAnnotations) {
         if (p.price != null) {
