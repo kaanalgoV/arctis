@@ -44,22 +44,26 @@ def _current_timestamp() -> int:
 async def analyze_structure(
     market: Market = Query(...),
     timeframe: Timeframe = Query(...),
-    lookback: int = Query(default=5, ge=2, le=20),
+    lookback: int = Query(default=15, ge=2, le=50),
 ):
     bars = _load_bars(market, timeframe)
     swings = detect_swings(bars, lookback=lookback)
     trend = classify_trend(swings)
     breaks = detect_structure_breaks(swings)
 
+    # Only return the most recent 30 breaks (markante Strukturpunkte)
+    recent_breaks = sorted(breaks, key=lambda b: b.index, reverse=True)[:30]
+    recent_breaks.reverse()
+
     return {
         "trend": trend.value,
         "swings": [
             {"type": sw.type.value, "price": sw.price, "index": sw.index, "timestamp": sw.timestamp}
-            for sw in swings
+            for sw in swings[-50:]  # last 50 swings only
         ],
         "structure_breaks": [
             {"type": b.break_type, "direction": b.direction, "price": b.price, "index": b.index, "timestamp": b.timestamp}
-            for b in breaks
+            for b in recent_breaks
         ],
         "bar_count": len(bars),
     }

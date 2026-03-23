@@ -531,7 +531,14 @@ export default function App() {
     >
       {/* Sidebar — col 1, all rows */}
       <div style={{ gridColumn: '1', gridRow: '1 / -1' }}>
-        <Sidebar />
+        <Sidebar
+          defaultActive={mode === 'replay' ? 'replay' : 'chart'}
+          onNavigate={(id) => {
+            if (id === 'replay') setMode('replay')
+            else if (id === 'chart' || id === 'dashboard') setMode('live')
+            else if (id === 'settings') setShowSettings(true)
+          }}
+        />
       </div>
 
       {/* Topbar — col 2-3, row 1 */}
