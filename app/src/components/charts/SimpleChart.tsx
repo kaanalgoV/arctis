@@ -118,10 +118,6 @@ export interface SimpleChartProps {
 
 interface OverlaySeries {
   vwap: ISeriesApi<'Line'> | null
-  vwapUp1: ISeriesApi<'Line'> | null
-  vwapDn1: ISeriesApi<'Line'> | null
-  vwapUp2: ISeriesApi<'Line'> | null
-  vwapDn2: ISeriesApi<'Line'> | null
   ema9: ISeriesApi<'Line'> | null
   ema21: ISeriesApi<'Line'> | null
   ema50: ISeriesApi<'Line'> | null
@@ -159,10 +155,6 @@ export function SimpleChart({
   // Overlay series refs
   const overlayRef = useRef<OverlaySeries>({
     vwap: null,
-    vwapUp1: null,
-    vwapDn1: null,
-    vwapUp2: null,
-    vwapDn2: null,
     ema9: null,
     ema21: null,
     ema50: null,
@@ -241,51 +233,15 @@ export function SimpleChart({
       }))
     )
 
-    // ── VWAP overlay series (always added, visibility controlled) ─────────────
+    // ── VWAP overlay series — single white line, no SD bands ─────────────────
     const vwapSeries = chart.addSeries(LineSeries, {
-      color: 'rgba(251,191,36,0.9)',
+      color: 'rgba(255,255,255,0.7)',
       lineWidth: 1,
-      priceLineVisible: false,
-      lastValueVisible: false,
-      visible: false,
-    })
-    const vwapUp1Series = chart.addSeries(LineSeries, {
-      color: 'rgba(251,191,36,0.35)',
-      lineWidth: 1,
-      lineStyle: LineStyle.Dashed,
-      priceLineVisible: false,
-      lastValueVisible: false,
-      visible: false,
-    })
-    const vwapDn1Series = chart.addSeries(LineSeries, {
-      color: 'rgba(251,191,36,0.35)',
-      lineWidth: 1,
-      lineStyle: LineStyle.Dashed,
-      priceLineVisible: false,
-      lastValueVisible: false,
-      visible: false,
-    })
-    const vwapUp2Series = chart.addSeries(LineSeries, {
-      color: 'rgba(251,191,36,0.15)',
-      lineWidth: 1,
-      lineStyle: LineStyle.Dotted,
-      priceLineVisible: false,
-      lastValueVisible: false,
-      visible: false,
-    })
-    const vwapDn2Series = chart.addSeries(LineSeries, {
-      color: 'rgba(251,191,36,0.15)',
-      lineWidth: 1,
-      lineStyle: LineStyle.Dotted,
       priceLineVisible: false,
       lastValueVisible: false,
       visible: false,
     })
     overlayRef.current.vwap = vwapSeries
-    overlayRef.current.vwapUp1 = vwapUp1Series
-    overlayRef.current.vwapDn1 = vwapDn1Series
-    overlayRef.current.vwapUp2 = vwapUp2Series
-    overlayRef.current.vwapDn2 = vwapDn2Series
 
     // ── EMA ribbon series ─────────────────────────────────────────────────────
     const ema9Series = chart.addSeries(LineSeries, {
@@ -347,8 +303,7 @@ export function SimpleChart({
       markersPluginRef.current = null
       drawingLineRefs.current.clear()
       overlayRef.current = {
-        vwap: null, vwapUp1: null, vwapDn1: null,
-        vwapUp2: null, vwapDn2: null,
+        vwap: null,
         ema9: null, ema21: null, ema50: null,
       }
     }
@@ -364,17 +319,9 @@ export function SimpleChart({
     if (visible && vwapData) {
       const sorted = [...vwapData].sort((a, b) => a.timestamp - b.timestamp)
       ov.vwap.setData(sorted.map((v) => ({ time: v.timestamp as any, value: v.vwap })))
-      ov.vwapUp1!.setData(sorted.map((v) => ({ time: v.timestamp as any, value: v.upper_1 })))
-      ov.vwapDn1!.setData(sorted.map((v) => ({ time: v.timestamp as any, value: v.lower_1 })))
-      ov.vwapUp2!.setData(sorted.map((v) => ({ time: v.timestamp as any, value: v.upper_2 })))
-      ov.vwapDn2!.setData(sorted.map((v) => ({ time: v.timestamp as any, value: v.lower_2 })))
     }
 
     ov.vwap.applyOptions({ visible })
-    ov.vwapUp1!.applyOptions({ visible })
-    ov.vwapDn1!.applyOptions({ visible })
-    ov.vwapUp2!.applyOptions({ visible })
-    ov.vwapDn2!.applyOptions({ visible })
   }, [showVwap, vwapData])
 
   // ── EMA data + visibility ─────────────────────────────────────────────────
