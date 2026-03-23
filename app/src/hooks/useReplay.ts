@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-
-const ENGINE_URL = 'http://127.0.0.1:8001'
+import { useSettingsStore } from '../store/settings'
 
 interface SimStatus {
   active: boolean
@@ -11,8 +10,9 @@ interface SimStatus {
 }
 
 export function useReplay(market: string, timeframe: string) {
+  const engineUrl = useSettingsStore((s) => s.engineUrl)
   const [isPlaying, setIsPlaying] = useState(false)
-  const [speed, setSpeed] = useState(5)
+  const [speed, setSpeed] = useState(1)
   const [replayDate, setReplayDate] = useState<string | null>(null)
   const [progress, setProgress] = useState(0)
   const [simStatus, setSimStatus] = useState<SimStatus | null>(null)
@@ -20,7 +20,7 @@ export function useReplay(market: string, timeframe: string) {
 
   // Fetch available dates when market changes
   useEffect(() => {
-    fetch(`${ENGINE_URL}/api/replay/dates?market=${market}`)
+    fetch(`${engineUrl}/api/replay/dates?market=${market}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (d?.dates && Array.isArray(d.dates)) {
@@ -46,7 +46,7 @@ export function useReplay(market: string, timeframe: string) {
     })
     if (targetDate) params.set('date', targetDate)
     try {
-      await fetch(`${ENGINE_URL}/api/sim/start?${params.toString()}`, { method: 'POST' })
+      await fetch(`${engineUrl}/api/sim/start?${params.toString()}`, { method: 'POST' })
       setIsPlaying(true)
     } catch {
       // Silently fail
@@ -55,13 +55,24 @@ export function useReplay(market: string, timeframe: string) {
 
   const stop = async () => {
     try {
-      await fetch(`${ENGINE_URL}/api/sim/stop`, { method: 'POST' })
+      await fetch(`${engineUrl}/api/sim/stop`, { method: 'POST' })
     } catch {
       // Silently fail
     }
     setIsPlaying(false)
     setProgress(0)
     setSimStatus(null)
+  }
+
+  // Pause: stop polling without resetting state or calling backend stop.
+  // The sim keeps running server-side; resume() re-enables polling.
+  const pause = () => {
+    setIsPlaying(false)
+    // simStatus and progress are intentionally preserved for resume
+  }
+
+  const resume = () => {
+    setIsPlaying(true)
   }
 
   const seek = async (progressPct: number) => {
@@ -97,9 +108,10 @@ export function useReplay(market: string, timeframe: string) {
 
     pollRef.current = setInterval(async () => {
       try {
-        const r = await fetch(`${ENGINE_URL}/api/sim/status`)
+        const r = await fetch(`${engineUrl}/api/sim/status`)
         if (!r.ok) return
-        const data = (await r.json()) as SimStatus
+        const data = (await r.json()) as SimStatus | null | undefined
+        if (!data) return
         setSimStatus(data)
         setProgress(data.progress_pct ?? 0)
         if (!data.active) {
@@ -128,6 +140,8 @@ export function useReplay(market: string, timeframe: string) {
     availableDates,
     start,
     stop,
+    pause,
+    resume,
     seek,
     changeDate,
     setSpeed,

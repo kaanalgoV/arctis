@@ -1,15 +1,19 @@
 import { useEffect, useRef, useCallback, useState } from 'react'
 import { useMarketStore } from '../store/market'
+import { useSettingsStore } from '../store/settings'
 import type { Bar } from '../types/contracts'
 
-const ENGINE_URL = 'http://127.0.0.1:8001'
-const WS_URL = 'ws://127.0.0.1:8001'
+type WsMessageType = 'subscribed' | 'snapshot' | 'bar' | 'heartbeat' | 'error' | 'replay_state'
 
-export function useMarketData() {
+export function useMarketData(options?: { pauseWs?: boolean }) {
   const { symbol, timeframe, days, setWsStatus, setLastBarTs } = useMarketStore()
+  // Read engineUrl at render time so changes in settings propagate
+  const engineUrl = useSettingsStore((s) => s.engineUrl)
+  const wsUrl = engineUrl.replace(/^http/, 'ws')
   const [bars, setBars] = useState<Bar[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [lastHeartbeat, setLastHeartbeat] = useState<number | null>(null)
   const wsRef = useRef<WebSocket | null>(null)
   const reconnectTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const reconnectAttempt = useRef(0)
@@ -19,7 +23,7 @@ export function useMarketData() {
     setIsLoading(true)
     setError(null)
     try {
-      const url = `${ENGINE_URL}/api/db/bars?symbol=${symbol}&days=${days}&timeframe=${timeframe}`
+      const url = `${engineUrl}/api/db/bars?symbol=${symbol}&days=${days}&timeframe=${timeframe}`
       const res = await fetch(url)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()
@@ -33,14 +37,14 @@ export function useMarketData() {
     } finally {
       setIsLoading(false)
     }
-  }, [symbol, timeframe, days, setLastBarTs])
+  }, [symbol, timeframe, days, setLastBarTs, engineUrl])
 
   // WebSocket connection
   const connectWs = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN) return
 
     setWsStatus('connecting')
-    const ws = new WebSocket(`${WS_URL}/ws/bars/${symbol}`)
+    const ws = new WebSocket(`${wsUrl}/ws/bars/${symbol}`)
     wsRef.current = ws
 
     ws.onopen = () => {
@@ -50,20 +54,51 @@ export function useMarketData() {
 
     ws.onmessage = (event) => {
       try {
-        const msg = JSON.parse(event.data)
-        if (msg.type === 'bar' && msg.bar) {
-          setBars(prev => {
-            const last = prev[prev.length - 1]
-            if (last && msg.bar.timestamp === last.timestamp) {
-              // Update existing bar
-              return [...prev.slice(0, -1), msg.bar]
+        const msg = JSON.parse(event.data) as { type: WsMessageType; [key: string]: unknown }
+        switch (msg.type) {
+          case 'subscribed':
+            // Subscription confirmed by server — mark as connected
+            setWsStatus('connected')
+            break
+          case 'snapshot':
+            // Replace bars array with initial snapshot from server
+            if (Array.isArray(msg.bars)) {
+              const snapshotBars = msg.bars as Bar[]
+              setBars(snapshotBars)
+              if (snapshotBars.length > 0) {
+                setLastBarTs(snapshotBars[snapshotBars.length - 1].timestamp)
+              }
             }
-            // Append new bar
-            return [...prev, msg.bar]
-          })
-          setLastBarTs(msg.bar.timestamp)
+            break
+          case 'bar':
+            if (msg.bar) {
+              const newBar = msg.bar as Bar
+              setBars(prev => {
+                const last = prev[prev.length - 1]
+                if (last && newBar.timestamp === last.timestamp) {
+                  // Update existing bar (same minute candle)
+                  return [...prev.slice(0, -1), newBar]
+                }
+                // Append new bar
+                return [...prev, newBar]
+              })
+              setLastBarTs(newBar.timestamp)
+            }
+            break
+          case 'heartbeat':
+            // Update last heartbeat timestamp
+            setLastHeartbeat(typeof msg.ts === 'number' ? msg.ts : Math.floor(Date.now() / 1000))
+            break
+          case 'error':
+            setError(typeof msg.message === 'string' ? msg.message : 'WebSocket error from server')
+            break
+          case 'replay_state':
+            // Replay status — handled by useReplay hook; ignore here
+            break
+          default:
+            // Unknown type — ignore silently
+            break
         }
-        // Ignore heartbeat and snapshot messages for now
       } catch { /* ignore parse errors */ }
     }
 
@@ -80,7 +115,7 @@ export function useMarketData() {
     ws.onerror = () => {
       ws.close()
     }
-  }, [symbol, setWsStatus, setLastBarTs])
+  }, [symbol, setWsStatus, setLastBarTs, wsUrl])
 
   // Load bars on symbol/timeframe change
   useEffect(() => {
@@ -89,6 +124,13 @@ export function useMarketData() {
 
   // Connect WS after initial load
   useEffect(() => {
+    if (options?.pauseWs) {
+      // Close any existing connection when entering replay
+      clearTimeout(reconnectTimer.current)
+      wsRef.current?.close()
+      wsRef.current = null
+      return
+    }
     if (!isLoading && bars.length > 0) {
       connectWs()
     }
@@ -97,7 +139,7 @@ export function useMarketData() {
       wsRef.current?.close()
       wsRef.current = null
     }
-  }, [symbol]) // Only reconnect on symbol change
+  }, [symbol, options?.pauseWs]) // Reconnect on symbol change or pause toggle
 
-  return { bars, isLoading, error, reload: loadBars }
+  return { bars, isLoading, error, lastHeartbeat, reload: loadBars }
 }

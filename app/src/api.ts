@@ -1,8 +1,24 @@
 import type { Bar, MarketsResponse, HealthResponse } from './types/contracts'
+import { config } from './lib/config'
 
-const BASE_URL = 'http://127.0.0.1:8001'
+/**
+ * Returns the current API base URL.
+ * Reads from settings store at call-time so runtime changes to engineUrl take effect.
+ * Lazy import avoids circular dependencies.
+ */
+function getBaseUrl(): string {
+  try {
+    // Dynamic import from settings store — only available in browser context
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { useSettingsStore } = require('./store/settings') as { useSettingsStore: { getState: () => { engineUrl: string } } }
+    return useSettingsStore.getState().engineUrl
+  } catch {
+    return config.apiBase
+  }
+}
 
 async function fetchJSON<T>(path: string, params?: Record<string, string>): Promise<T> {
+  const BASE_URL = getBaseUrl()
   const url = new URL(path, BASE_URL)
   if (params) {
     Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v))
@@ -77,12 +93,12 @@ export async function fetchSignals(market: string, timeframe: string) {
 }
 
 // Config management
-export async function saveConfig(config: Record<string, unknown>) {
-  const url = new URL('/api/config', BASE_URL)
+export async function saveConfig(cfg: Record<string, unknown>) {
+  const url = new URL('/api/config', getBaseUrl())
   const res = await fetch(url.toString(), {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(config),
+    body: JSON.stringify(cfg),
   })
   if (!res.ok) {
     throw new Error(`API error: ${res.status} ${res.statusText}`)
@@ -100,7 +116,7 @@ export async function importCSV(
   form.append('file', file)
   form.append('market', market)
   form.append('timeframe', timeframe)
-  const url = new URL('/api/import', BASE_URL)
+  const url = new URL('/api/import', getBaseUrl())
   const res = await fetch(url.toString(), { method: 'POST', body: form })
   if (!res.ok) {
     throw new Error(`API error: ${res.status} ${res.statusText}`)
@@ -110,7 +126,7 @@ export async function importCSV(
 
 // Sim controls
 export async function simStart(market: string, timeframe: string, speed = 10) {
-  const url = new URL('/api/sim/start', BASE_URL)
+  const url = new URL('/api/sim/start', getBaseUrl())
   url.searchParams.set('market', market)
   url.searchParams.set('timeframe', timeframe)
   url.searchParams.set('speed', String(speed))
@@ -120,7 +136,7 @@ export async function simStart(market: string, timeframe: string, speed = 10) {
 }
 
 export async function simStop() {
-  const url = new URL('/api/sim/stop', BASE_URL)
+  const url = new URL('/api/sim/stop', getBaseUrl())
   const res = await fetch(url.toString(), { method: 'POST' })
   if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`)
   return res.json()
@@ -132,7 +148,7 @@ export async function simStatus() {
 
 // Risk
 export async function calculatePositionSize(stopDistance: number, market: string) {
-  const url = new URL('/api/risk/position-size', BASE_URL)
+  const url = new URL('/api/risk/position-size', getBaseUrl())
   const res = await fetch(url.toString(), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

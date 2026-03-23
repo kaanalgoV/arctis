@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useMarketStore } from '../store/market'
+import { useSettingsStore } from '../store/settings'
 
 export interface TradeSignal {
   signal_type: string
@@ -13,10 +14,9 @@ export interface TradeSignal {
   timestamp: number
 }
 
-const ENGINE = 'http://127.0.0.1:8001'
-
 export function useSignals(maxBars?: number, enabled = true) {
   const { market, timeframe } = useMarketStore()
+  const ENGINE = useSettingsStore((s) => s.engineUrl)
   const [signals, setSignals] = useState<TradeSignal[]>([])
   const [isLoading, setIsLoading] = useState(false)
 
