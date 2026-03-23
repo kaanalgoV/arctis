@@ -74,7 +74,7 @@ export function FinalCTA() {
         >
           <BarChart2 size={13} className="text-ice" strokeWidth={2.2} />
           <span className="font-sans text-xs font-medium tracking-wide text-frost-secondary uppercase">
-            Built for serious traders
+            Fuer Trader die Ergebnisse wollen
           </span>
         </motion.div>
 
@@ -86,8 +86,8 @@ export function FinalCTA() {
           viewport={viewportOnce}
           className="font-display mx-auto max-w-3xl text-4xl font-bold leading-tight sm:text-5xl lg:text-6xl"
         >
-          <span className="text-frost-white block">Stop guessing.</span>
-          <span className="text-gradient-frost block">Start with data.</span>
+          <span className="text-frost-white block">Hoer auf zu raten.</span>
+          <span className="text-gradient-frost block">Fang an zu wissen.</span>
         </motion.h2>
 
         {/* Subheading */}
@@ -99,8 +99,8 @@ export function FinalCTA() {
           transition={{ delay: 0.1 }}
           className="font-sans mx-auto mt-6 max-w-xl text-lg leading-relaxed text-frost-secondary sm:text-xl"
         >
-          Professional futures traders are moving to analysis-first workflows.
-          Evaluate the platform on your own terms.
+          In 14 Minuten weisst du: Welche Seite. Welcher Entry. Welches Target.
+          Jeden Morgen.
         </motion.p>
 
         {/* CTA Buttons */}
@@ -136,7 +136,7 @@ export function FinalCTA() {
               className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/10 to-transparent transition-transform duration-700 group-hover:translate-x-full"
             />
             <Download size={18} strokeWidth={2.2} />
-            Download Arctis
+            Jetzt starten
             <ArrowRight
               size={16}
               strokeWidth={2.2}
@@ -156,7 +156,7 @@ export function FinalCTA() {
               'hover:border-[rgba(92,184,240,0.3)] hover:bg-[rgba(92,184,240,0.08)]',
             )}
           >
-            View Plans
+            Live Demo
           </motion.button>
         </motion.div>
 
@@ -169,7 +169,7 @@ export function FinalCTA() {
           transition={{ delay: 0.3 }}
           className="font-sans mt-6 text-sm text-frost-muted"
         >
-          Free tier available&nbsp;&middot;&nbsp;No credit card required&nbsp;&middot;&nbsp;macOS and Windows
+          Kein Abo zum Testen&nbsp;&middot;&nbsp;Deine Daten bleiben lokal&nbsp;&middot;&nbsp;macOS Desktop App
         </motion.p>
       </div>
     </section>
