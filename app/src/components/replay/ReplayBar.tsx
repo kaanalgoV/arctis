@@ -23,6 +23,8 @@ export interface ReplayBarProps {
   onSpeedChange: (speed: number) => void
   onSeek: (progress: number) => void
   onDateChange: (direction: 'prev' | 'next') => void
+  proberunMode?: boolean
+  onProberunToggle?: () => void
 }
 
 // ── Speed options ─────────────────────────────────────────────────────────────
@@ -137,6 +139,8 @@ export function ReplayBar({
   onSpeedChange,
   onSeek,
   onDateChange,
+  proberunMode,
+  onProberunToggle,
 }: ReplayBarProps) {
   return (
     <div
@@ -182,6 +186,22 @@ export function ReplayBar({
           {currentTime} / {totalTime}
         </span>
       </div>
+
+      {/* Divider */}
+      <div className="w-px h-4 bg-[var(--color-border-subtle)] shrink-0" />
+
+      {/* Proberun toggle */}
+      <button
+        onClick={onProberunToggle}
+        className={cn(
+          'px-2 py-0.5 text-[10px] font-mono rounded transition-colors cursor-pointer shrink-0',
+          proberunMode
+            ? 'bg-[#5CB8F0] text-[#0A0D12] font-semibold'
+            : 'bg-[#21262D] text-[#8B949E] hover:text-[#E6EDF3]',
+        )}
+      >
+        Proberun
+      </button>
 
       {/* Divider */}
       <div className="w-px h-4 bg-[var(--color-border-subtle)] shrink-0" />
