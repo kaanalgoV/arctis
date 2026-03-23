@@ -273,6 +273,21 @@ export default function App() {
     setScrollToTimestamp(timestamp)
   }, [])
 
+  // ── Chart click → create drawing ───────────────────────────────────────────
+  const handleChartClick = useCallback(
+    (price: number, timestamp: number) => {
+      if (!activeTool) return
+      if (activeTool === 'hline') {
+        addDrawing('hline', { price })
+        // Deselect tool after placing
+        setActiveTool(null)
+      }
+      // rectangle / trendline / text are P2 — require two-click interaction
+      void timestamp // used in future two-click tools
+    },
+    [activeTool, addDrawing, setActiveTool],
+  )
+
   // ── Status ────────────────────────────────────────────────────────────────
   const [latencyMs, setLatencyMs] = useState<number>(0)
   const [lastUpdate, setLastUpdate] = useState<string>('--:--:--')
@@ -410,6 +425,10 @@ export default function App() {
 
   // ── Feed ──────────────────────────────────────────────────────────────────
   const feedItems = buildFeedItems(confluenceData, volumeData, patternsData, sessionData)
+
+  // ── Travis context ────────────────────────────────────────────────────────
+  const travisPattern = patternsData?.annotations.at(-1)?.pattern ?? undefined
+  const travisBias = biasData?.bias_state?.state ?? undefined
 
   // ── Dynamic document title ─────────────────────────────────────────────────
   useEffect(() => {
@@ -593,22 +612,32 @@ export default function App() {
               </span>
             </div>
           ) : bars.length > 0 ? (
-            <SimpleChart
-              bars={bars}
-              className="w-full h-full"
-              vwapData={indicatorData?.vwap}
-              emaData={indicatorData?.ema}
-              volumeProfile={indicatorData?.volume_profile}
-              sessionLevels={sessionLevelsForChart}
-              structureBreaks={structureData?.structure_breaks}
-              patternAnnotations={patternsData?.annotations}
-              showVwap={activeOverlays.has('vwap')}
-              showEma={activeOverlays.has('ema')}
-              showVp={activeOverlays.has('vp')}
-              showLevels={activeOverlays.has('levels')}
-              onChartReady={handleChartReady}
-              scrollToTimestamp={scrollToTimestamp}
-            />
+            <>
+              <SimpleChart
+                bars={bars}
+                className="w-full h-full"
+                vwapData={indicatorData?.vwap}
+                emaData={indicatorData?.ema}
+                volumeProfile={indicatorData?.volume_profile}
+                sessionLevels={sessionLevelsForChart}
+                structureBreaks={structureData?.structure_breaks}
+                patternAnnotations={patternsData?.annotations}
+                showVwap={activeOverlays.has('vwap')}
+                showEma={activeOverlays.has('ema')}
+                showVp={activeOverlays.has('vp')}
+                showLevels={activeOverlays.has('levels')}
+                onChartReady={handleChartReady}
+                scrollToTimestamp={scrollToTimestamp}
+                drawings={drawings}
+                onChartClick={activeTool ? handleChartClick : undefined}
+              />
+              <DrawingToolbar
+                activeTool={activeTool}
+                onSelectTool={setActiveTool}
+                onClear={clearDrawings}
+                drawingCount={drawings.length}
+              />
+            </>
           ) : (
             <div className="w-full h-full flex items-center justify-center">
               <span className="font-mono text-sm text-[var(--color-text-muted)]">No data</span>
@@ -697,6 +726,17 @@ export default function App() {
         <RightPanelSection title="Risk">
           <div className="px-3 pb-3">
             <RiskPanel config={tradingConfig ?? undefined} />
+          </div>
+        </RightPanelSection>
+
+        <RightPanelDivider />
+
+        <RightPanelSection title="Travis">
+          <div className="px-3 pb-3">
+            <TravisPanel
+              currentPattern={travisPattern}
+              currentBias={travisBias}
+            />
           </div>
         </RightPanelSection>
       </div>
