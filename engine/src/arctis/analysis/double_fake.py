@@ -41,15 +41,11 @@ class DoubleFakeResult:
 
 
 def _bar_velocity(bars: list[OHLCVBar], idx: int, lookback: int = _VELOCITY_LOOKBACK) -> float:
-    """Average absolute close-to-open move over up to `lookback` bars ending at idx (inclusive).
-
-    When fewer than `lookback` bars precede idx, the available bars (including
-    idx itself) are used so that the first bar in the series is never forced to
-    return 0.0 purely due to lacking history.
-    """
-    # Include the current bar itself when there is no prior history
+    """Average absolute close-to-open move over the `lookback` bars ending at idx (exclusive)."""
     start = max(0, idx - lookback)
-    window = bars[start : idx + 1]
+    if start >= idx:
+        return 0.0
+    window = bars[start:idx]
     if not window:
         return 0.0
     return sum(abs(b.close - b.open) for b in window) / len(window)
