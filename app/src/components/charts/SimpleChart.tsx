@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useMemo, useState } from 'react'
 import {
   createChart,
   createSeriesMarkers,
@@ -17,6 +17,8 @@ import {
 import type { OHLCVBar } from '@/types/market'
 import type { Drawing } from '@/hooks/useDrawings'
 import type { TradeSignal } from '../../hooks/useSignals'
+import { VolumeProfileOverlay } from './VolumeProfileOverlay'
+import { calculateVolumeProfile } from '@/lib/volume-profile'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -163,6 +165,8 @@ export function SimpleChart({
   signals,
 }: SimpleChartProps) {
   const containerRef = useRef<HTMLDivElement>(null)
+  // Track pixel dimensions for VP overlay positioning
+  const [chartSize, setChartSize] = useState({ width: 0, height: 0 })
   const chartRef = useRef<IChartApi | null>(null)
   // Candle series ref for price lines and markers
   const candleRef = useRef<ISeriesApi<'Candlestick'> | null>(null)
@@ -187,6 +191,22 @@ export function SimpleChart({
   const orLinesRef = useRef<IPriceLine[]>([])
   // Signal level price line refs (entry/stop/target per signal, rebuilt on signals change)
   const signalLinesRef = useRef<IPriceLine[]>([])
+
+  // ── Volume Profile: compute from bars (sidebar histogram) ─────────────────
+  // binSize=2.0 is suitable for NQ (0.25-tick * 8 = 2 point bins)
+  const computedVP = useMemo(() => {
+    if (!showVp || bars.length === 0) return null
+    return calculateVolumeProfile(bars, 2.0)
+  }, [showVp, bars])
+
+  // Visible price range for overlay coordinate mapping
+  const visiblePriceRange = useMemo(() => {
+    if (bars.length === 0) return { high: 0, low: 0 }
+    return {
+      high: Math.max(...bars.map((b) => b.high)),
+      low: Math.min(...bars.map((b) => b.low)),
+    }
+  }, [bars])
 
   // ── Build chart on first mount (bars change re-creates chart) ──────────────
   useEffect(() => {
@@ -302,13 +322,18 @@ export function SimpleChart({
     // ── ResizeObserver ────────────────────────────────────────────────────────
     const ro = new ResizeObserver(() => {
       if (containerRef.current) {
-        chart.applyOptions({
-          width: containerRef.current.clientWidth,
-          height: containerRef.current.clientHeight,
-        })
+        const w = containerRef.current.clientWidth
+        const h = containerRef.current.clientHeight
+        chart.applyOptions({ width: w, height: h })
+        setChartSize({ width: w, height: h })
       }
     })
     ro.observe(containerRef.current)
+    // Set initial size
+    setChartSize({
+      width: containerRef.current.clientWidth,
+      height: containerRef.current.clientHeight,
+    })
 
     return () => {
       ro.disconnect()
@@ -851,5 +876,20 @@ export function SimpleChart({
     plugin.setMarkers(sigMarkers)
   }, [signals])
 
-  return <div ref={containerRef} className={className} />
+  return (
+    <div ref={containerRef} className={className} style={{ position: 'relative' }}>
+      {computedVP && chartSize.height > 0 && (
+        <VolumeProfileOverlay
+          bins={computedVP.bins}
+          poc={computedVP.poc}
+          vah={computedVP.vah}
+          val={computedVP.val}
+          chartHeight={chartSize.height}
+          priceHigh={visiblePriceRange.high}
+          priceLow={visiblePriceRange.low}
+          visible={showVp}
+        />
+      )}
+    </div>
+  )
 }

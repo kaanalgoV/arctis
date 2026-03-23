@@ -30,7 +30,7 @@ export interface MarketState {
 export const useMarketStore = create<MarketState>((set) => ({
   market: 'NQ',
   symbol: 'NQH6',
-  timeframe: '1min',
+  timeframe: '15min',
   days: 30,
   wsStatus: 'disconnected',
   lastBarTs: null,
