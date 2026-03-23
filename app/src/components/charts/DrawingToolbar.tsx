@@ -19,12 +19,16 @@ interface ToolConfig {
   label: string
 }
 
+// Only tools that are fully implemented in SimpleChart rendering.
+// rectangle / trendline / text require a dedicated SVG canvas layer — not yet built.
 const TOOLS: ToolConfig[] = [
   { key: 'hline', icon: Minus, label: 'Horizontal line' },
-  { key: 'rectangle', icon: Square, label: 'Rectangle' },
-  { key: 'trendline', icon: TrendingUp, label: 'Trend line' },
-  { key: 'text', icon: Type, label: 'Text note' },
 ]
+
+// Keep imports referenced to avoid lint errors when they are re-enabled later.
+void Square
+void TrendingUp
+void Type
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
