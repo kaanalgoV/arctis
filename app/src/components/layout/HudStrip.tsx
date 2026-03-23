@@ -10,6 +10,8 @@ export interface HudStripProps {
   vwapPosition?: string | null
   sessionName?: string | null
   barCount?: number | null
+  /** When true, all values render as "—" (loading state). */
+  loading?: boolean
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────────
@@ -93,6 +95,11 @@ function getVwapColor(position: string): string {
   return 'var(--color-text-secondary)'
 }
 
+// Placeholder shown while loading
+const DASH = (
+  <span style={{ color: 'var(--color-text-muted)' }}>—</span>
+)
+
 // ── Main Component ────────────────────────────────────────────────────────────
 
 export function HudStrip({
@@ -103,7 +110,36 @@ export function HudStrip({
   vwapPosition,
   sessionName,
   barCount,
+  loading = false,
 }: HudStripProps) {
+  // When loading with no data yet, show placeholder strip
+  if (loading && rvol == null && rsi == null && emaAlignment == null && sessionName == null) {
+    return (
+      <div
+        className={cn(
+          'flex items-center w-full shrink-0',
+          'border-b border-[var(--color-border-subtle)]',
+        )}
+        style={{
+          height: '28px',
+          backgroundColor: 'var(--color-surface-secondary)',
+          paddingLeft: '16px',
+          paddingRight: '16px',
+          gap: '8px',
+        }}
+        role="region"
+        aria-label="HUD metrics strip"
+      >
+        {(['RVOL', 'RSI', 'EMA', 'VWAP', 'SESSION'] as const).map((label, index) => (
+          <div key={label} className="flex items-center" style={{ gap: '8px' }}>
+            {index > 0 && <Divider />}
+            <MetricPill label={label} value={DASH} />
+          </div>
+        ))}
+      </div>
+    )
+  }
+
   const hasAnyMetric =
     rvol != null ||
     rsi != null ||
