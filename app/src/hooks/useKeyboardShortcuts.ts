@@ -25,12 +25,15 @@ const ZOOM_FACTOR = 0.2
  * Registers global keyboard shortcuts for chart navigation and UI control.
  *
  * Shortcuts:
+ *   1-5         - switch timeframe by index (wired to useMarketStore via onSelectTimeframe)
  *   Space       - toggle replay play/pause (only when isReplayActive is true)
+ *   Esc         - close settings panel
  *   + / =       - zoom chart in
  *   -           - zoom chart out
- *   1-5         - switch timeframe by index
  *   Ctrl+K / Cmd+K - focus search (placeholder, fires onCloseSettings as fallback)
- *   Esc         - close settings panel
+ *
+ * Shortcuts are suppressed when focus is inside an INPUT, TEXTAREA, or
+ * contentEditable element to avoid conflicts with user text entry.
  */
 export function useKeyboardShortcuts(options: KeyboardShortcutsOptions = {}) {
   const {
