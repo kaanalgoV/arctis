@@ -877,7 +877,8 @@ export function SimpleChart({
   }, [signals])
 
   return (
-    <div ref={containerRef} className={className} style={{ position: 'relative' }}>
+    <div className={className} style={{ position: 'relative' }}>
+      <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
       {computedVP && chartSize.height > 0 && (
         <VolumeProfileOverlay
           bins={computedVP.bins}
