@@ -15,6 +15,7 @@ import {
   LineStyle,
 } from 'lightweight-charts'
 import type { OHLCVBar } from '@/types/market'
+import type { Drawing } from '@/hooks/useDrawings'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -84,6 +85,10 @@ export interface SimpleChartProps {
   onChartReady?: (chart: IChartApi) => void
   /** If set, the chart will scroll to this unix timestamp (seconds). */
   scrollToTimestamp?: number | null
+  /** Drawing objects to render on the chart. */
+  drawings?: Drawing[]
+  /** Called when user clicks the chart while a drawing tool is active. */
+  onChartClick?: (price: number, timestamp: number) => void
 }
 
 // ─── Refs state for overlay series ───────────────────────────────────────────
@@ -116,6 +121,8 @@ export function SimpleChart({
   showLevels = false,
   onChartReady,
   scrollToTimestamp,
+  drawings,
+  onChartClick,
 }: SimpleChartProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const chartRef = useRef<IChartApi | null>(null)
@@ -136,6 +143,8 @@ export function SimpleChart({
   const priceLineRefs = useRef<IPriceLine[]>([])
   // Markers plugin ref (LWC v5 uses createSeriesMarkers plugin)
   const markersPluginRef = useRef<ISeriesMarkersPluginApi<number> | null>(null)
+  // Drawing price line refs keyed by drawing id
+  const drawingLineRefs = useRef<Map<string, IPriceLine>>(new Map())
 
   // ── Build chart on first mount (bars change re-creates chart) ──────────────
   useEffect(() => {
@@ -302,6 +311,7 @@ export function SimpleChart({
       candleRef.current = null
       priceLineRefs.current = []
       markersPluginRef.current = null
+      drawingLineRefs.current.clear()
       overlayRef.current = {
         vwap: null, vwapUp1: null, vwapDn1: null,
         vwapUp2: null, vwapDn2: null,
@@ -536,6 +546,69 @@ export function SimpleChart({
     const offsetFromEnd = bars.length - 1 - targetIdx
     chart.timeScale().scrollToPosition(-offsetFromEnd, true)
   }, [scrollToTimestamp, bars])
+
+  // ── Drawing click handler ─────────────────────────────────────────────────
+  useEffect(() => {
+    const chart = chartRef.current
+    const candle = candleRef.current
+    if (!chart || !candle || !onChartClick) return
+
+    const handler = (param: { point?: { x: number; y: number }; time?: number }) => {
+      if (!param.point || !param.time) return
+      // Convert y pixel to price
+      const price = candle.coordinateToPrice(param.point.y)
+      if (price == null) return
+      onChartClick(price, param.time as number)
+    }
+
+    chart.subscribeClick(handler)
+    return () => {
+      chart.unsubscribeClick(handler)
+    }
+  }, [onChartClick])
+
+  // ── Drawings: render hlines as price lines ────────────────────────────────
+  useEffect(() => {
+    const candle = candleRef.current
+    if (!candle) return
+
+    const incoming = drawings ?? []
+    const existingIds = new Set(drawingLineRefs.current.keys())
+    const incomingIds = new Set(incoming.map((d) => d.id))
+
+    // Remove stale lines
+    for (const id of existingIds) {
+      if (!incomingIds.has(id)) {
+        const line = drawingLineRefs.current.get(id)
+        if (line) {
+          try {
+            candle.removePriceLine(line)
+          } catch {
+            // Already removed
+          }
+        }
+        drawingLineRefs.current.delete(id)
+      }
+    }
+
+    // Add new lines
+    for (const drawing of incoming) {
+      if (drawingLineRefs.current.has(drawing.id)) continue
+      if (drawing.type === 'hline') {
+        const hdata = drawing.data as { price: number }
+        const line = candle.createPriceLine({
+          price: hdata.price,
+          color: drawing.color,
+          lineWidth: 1,
+          lineStyle: LineStyle.Solid,
+          axisLabelVisible: true,
+          title: '',
+        })
+        drawingLineRefs.current.set(drawing.id, line)
+      }
+      // rectangle / trendline / text are P2 — skipped for now
+    }
+  }, [drawings])
 
   return <div ref={containerRef} className={className} />
 }

@@ -14,6 +14,7 @@ import {
   FeedPanel,
   RiskPanel,
   BiasPanel,
+  TravisPanel,
 } from '@/components/panels'
 import type { ConfluenceAPIData } from '@/components/panels/ConfluencePanel'
 import type { PatternsAPIData } from '@/components/panels/PatternsPanel'
@@ -24,10 +25,14 @@ import { SettingsPanel } from '@/components/settings/SettingsPanel'
 import { SimpleChart } from '@/components/charts/SimpleChart'
 import { ChartToolbar } from '@/components/charts/ChartToolbar'
 import type { OverlayKey } from '@/components/charts/ChartToolbar'
+import { DrawingToolbar } from '@/components/charts/DrawingToolbar'
+import { useDrawings } from '@/hooks/useDrawings'
 import type { Market, Timeframe } from '@/types/market'
 import type { IndicatorData, VolumeData, TradingConfig } from '@/types/analysis'
 import { ReplayBar } from '@/components/replay/ReplayBar'
+import { PanelSkeleton } from '@/components/ui/Skeleton'
 import { cn } from '@/lib/utils'
+import type { IChartApi } from 'lightweight-charts'
 
 const ENGINE_URL = 'http://127.0.0.1:8001'
 const POLL_INTERVAL_MS = 5000
@@ -147,10 +152,12 @@ function buildFeedItems(
   // Confluence signals — synthetic recent offset per index
   if (confluenceData?.signals) {
     confluenceData.signals.forEach((sig, idx) => {
+      const ts = now - idx * 15
       bucket.push({
-        ts: now - idx * 15,
+        ts,
         item: {
-          time: formatHHMM(now - idx * 15),
+          time: formatHHMM(ts),
+          timestamp: ts,
           message: `${sig.name}: ${sig.direction} (${sig.strength > 0 ? '+' : ''}${sig.strength})`,
           type: sig.strength > 0 ? 'signal' : 'warning',
         },
@@ -165,6 +172,7 @@ function buildFeedItems(
         ts: spike.timestamp,
         item: {
           time: formatHHMM(spike.timestamp),
+          timestamp: spike.timestamp,
           message: `RVOL Spike ${spike.ratio.toFixed(1)}x`,
           type: 'volume',
         },
@@ -179,6 +187,7 @@ function buildFeedItems(
         ts: ann.timestamp,
         item: {
           time: formatHHMM(ann.timestamp),
+          timestamp: ann.timestamp,
           message: `${ann.pattern}: ${ann.direction}${ann.win_rate != null ? ` (${Math.round(ann.win_rate * 100)}%)` : ''}`,
           type: ann.direction === 'long' ? 'signal' : ann.direction === 'short' ? 'warning' : 'info',
         },
@@ -188,10 +197,12 @@ function buildFeedItems(
 
   // Day bias
   if (patternsData?.day_bias && patternsData.day_bias !== 'unknown') {
+    const ts = now - 600
     bucket.push({
-      ts: now - 600,
+      ts,
       item: {
-        time: formatHHMM(now - 600),
+        time: formatHHMM(ts),
+        timestamp: ts,
         message: `Day Bias: ${patternsData.day_bias} (${patternsData.day_type})`,
         type: 'info',
       },
@@ -202,10 +213,12 @@ function buildFeedItems(
   if (sessionData?.current_session) {
     const label =
       SESSION_DISPLAY[sessionData.current_session] ?? sessionData.current_session
+    const ts = now - 300
     bucket.push({
-      ts: now - 300,
+      ts,
       item: {
-        time: formatHHMM(now - 300),
+        time: formatHHMM(ts),
+        timestamp: ts,
         message: `Session: ${label}`,
         type: 'info',
       },
@@ -243,6 +256,22 @@ export default function App() {
 
   // ── UI state ───────────────────────────────────────────────────────────────
   const [showSettings, setShowSettings] = useState(false)
+
+  // ── Drawing state ─────────────────────────────────────────────────────────
+  const { drawings, activeTool, setActiveTool, addDrawing, clearDrawings } =
+    useDrawings(symbol, timeframe)
+
+  // ── Chart API ref (for feed-to-chart scroll and keyboard shortcuts) ─────────
+  const chartApiRef = useRef<IChartApi | null>(null)
+  const handleChartReady = useCallback((chart: IChartApi) => {
+    chartApiRef.current = chart
+  }, [])
+
+  // ── Feed → chart scroll ────────────────────────────────────────────────────
+  const [scrollToTimestamp, setScrollToTimestamp] = useState<number | null>(null)
+  const handleFeedItemClick = useCallback((timestamp: number) => {
+    setScrollToTimestamp(timestamp)
+  }, [])
 
   // ── Status ────────────────────────────────────────────────────────────────
   const [latencyMs, setLatencyMs] = useState<number>(0)
@@ -381,6 +410,36 @@ export default function App() {
 
   // ── Feed ──────────────────────────────────────────────────────────────────
   const feedItems = buildFeedItems(confluenceData, volumeData, patternsData, sessionData)
+
+  // ── Dynamic document title ─────────────────────────────────────────────────
+  useEffect(() => {
+    const priceStr = price != null ? ` ${price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : ''
+    document.title = `Arctis | ${symbol}${priceStr}`
+  }, [symbol, price])
+
+  // ── Keyboard shortcuts ─────────────────────────────────────────────────────
+  // Timeframe labels in order for keys 1-5
+  const timeframeKeys = ['1min', '5min', '15min', '30min', '1h'] as const
+  useKeyboardShortcuts({
+    onToggleReplay: () => {
+      if (mode === 'replay') {
+        if (replay.isPlaying) {
+          void replay.stop()
+        } else {
+          void replay.start()
+        }
+      }
+    },
+    isReplayActive: mode === 'replay',
+    onSelectTimeframe: (idx) => {
+      const tf = timeframeKeys[idx - 1]
+      if (tf) {
+        handleTimeframeChange(TF_TO_DISPLAY[tf] ?? tf)
+      }
+    },
+    onCloseSettings: () => setShowSettings(false),
+    chartRef: chartApiRef,
+  })
 
   // ── Market pill list (from API or static fallback) ────────────────────────
   const marketRoots: Market[] =
@@ -547,6 +606,8 @@ export default function App() {
               showEma={activeOverlays.has('ema')}
               showVp={activeOverlays.has('vp')}
               showLevels={activeOverlays.has('levels')}
+              onChartReady={handleChartReady}
+              scrollToTimestamp={scrollToTimestamp}
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
@@ -586,7 +647,7 @@ export default function App() {
       >
         <RightPanelSection title="Session" count={sessionData?.bar_count}>
           <div className="px-3 pb-3">
-            <SessionPanel data={sessionData ?? undefined} />
+            {sessionData == null ? <PanelSkeleton /> : <SessionPanel data={sessionData} />}
           </div>
         </RightPanelSection>
 
@@ -594,7 +655,7 @@ export default function App() {
 
         <RightPanelSection title="Confluence">
           <div className="px-3 pb-3">
-            <ConfluencePanel data={confluenceData ?? undefined} />
+            {confluenceData == null ? <PanelSkeleton /> : <ConfluencePanel data={confluenceData} />}
           </div>
         </RightPanelSection>
 
@@ -602,7 +663,7 @@ export default function App() {
 
         <RightPanelSection title="Bias" count={biasData ? 1 : undefined}>
           <div className="px-3 pb-3">
-            <BiasPanel data={biasData ?? undefined} />
+            {biasData == null ? <PanelSkeleton /> : <BiasPanel data={biasData} />}
           </div>
         </RightPanelSection>
 
@@ -613,7 +674,7 @@ export default function App() {
           count={patternsData?.annotations.length ?? undefined}
         >
           <div className="px-3 pb-3">
-            <PatternsPanel data={patternsData ?? undefined} />
+            {patternsData == null ? <PanelSkeleton /> : <PatternsPanel data={patternsData} />}
           </div>
         </RightPanelSection>
 
@@ -624,7 +685,10 @@ export default function App() {
           count={feedItems.length > 0 ? feedItems.length : undefined}
         >
           <div className="px-3 pb-3">
-            <FeedPanel items={feedItems.length > 0 ? feedItems : undefined} />
+            <FeedPanel
+              items={feedItems.length > 0 ? feedItems : undefined}
+              onItemClick={handleFeedItemClick}
+            />
           </div>
         </RightPanelSection>
 

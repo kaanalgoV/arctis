@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import type { RefObject } from 'react'
 import type { IChartApi } from 'lightweight-charts'
 
 export interface KeyboardShortcutsOptions {
@@ -15,7 +16,7 @@ export interface KeyboardShortcutsOptions {
   /** Called when Esc is pressed. */
   onCloseSettings?: () => void
   /** LightweightCharts API reference for zoom operations. */
-  chartRef?: React.RefObject<IChartApi | null>
+  chartRef?: RefObject<IChartApi | null>
 }
 
 const ZOOM_FACTOR = 0.2
@@ -63,21 +64,33 @@ export function useKeyboardShortcuts(options: KeyboardShortcutsOptions = {}) {
         return
       }
 
-      // + or = — zoom in
+      // + or = — zoom in (narrow the visible range)
       if (key === '+' || key === '=') {
         e.preventDefault()
         if (chartRef?.current) {
-          chartRef.current.timeScale().zoomIn?.(ZOOM_FACTOR)
+          const ts = chartRef.current.timeScale()
+          const range = ts.getVisibleLogicalRange()
+          if (range) {
+            const size = range.to - range.from
+            const shrink = size * ZOOM_FACTOR
+            ts.setVisibleLogicalRange({ from: range.from + shrink, to: range.to - shrink })
+          }
         }
         onZoomIn?.()
         return
       }
 
-      // - — zoom out
+      // - — zoom out (widen the visible range)
       if (key === '-') {
         e.preventDefault()
         if (chartRef?.current) {
-          chartRef.current.timeScale().zoomOut?.(ZOOM_FACTOR)
+          const ts = chartRef.current.timeScale()
+          const range = ts.getVisibleLogicalRange()
+          if (range) {
+            const size = range.to - range.from
+            const expand = size * ZOOM_FACTOR
+            ts.setVisibleLogicalRange({ from: range.from - expand, to: range.to + expand })
+          }
         }
         onZoomOut?.()
         return
