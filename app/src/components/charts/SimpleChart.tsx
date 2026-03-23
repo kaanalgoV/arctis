@@ -192,13 +192,13 @@ export function SimpleChart({
         fontSize: 10,
       },
       grid: {
-        vertLines: { color: 'rgba(53,61,72,0.3)' },
-        horzLines: { color: 'rgba(53,61,72,0.3)' },
+        vertLines: { visible: false },
+        horzLines: { visible: false },
       },
       crosshair: {
         mode: CrosshairMode.Normal,
-        vertLine: { color: 'rgba(92,184,240,0.3)', width: 1, labelBackgroundColor: '#222830' },
-        horzLine: { color: 'rgba(92,184,240,0.3)', width: 1, labelBackgroundColor: '#222830' },
+        vertLine: { color: '#21262D', style: 3, width: 1, labelBackgroundColor: '#222830' },
+        horzLine: { color: '#21262D', style: 3, width: 1, labelBackgroundColor: '#222830' },
       },
       rightPriceScale: { borderColor: '#272F3A' },
       timeScale: { borderColor: '#272F3A', timeVisible: true, secondsVisible: false },

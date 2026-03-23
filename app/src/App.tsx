@@ -335,7 +335,7 @@ export default function App() {
 
   // ── Overlay toggle state ───────────────────────────────────────────────────
   const [activeOverlays, setActiveOverlays] = useState<Set<OverlayKey>>(
-    () => new Set<OverlayKey>(['vwap', 'ema', 'volume'])
+    () => new Set<OverlayKey>(['vwap', 'ema', 'volume', 'vp'])
   )
 
   const handleToggleOverlay = useCallback((key: OverlayKey) => {
