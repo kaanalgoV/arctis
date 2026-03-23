@@ -71,9 +71,9 @@ const CANDLES: Candle[] = [
 // ─── Tab Navigation ───────────────────────────────────────────────────────────
 
 const TABS: TabDef[] = [
-  { id: 'chart', label: 'Chart Engine', icon: <BarChart2 size={14} /> },
-  { id: 'bias', label: 'Bias Analysis', icon: <Gauge size={14} /> },
-  { id: 'session', label: 'Session Monitor', icon: <Clock size={14} /> },
+  { id: 'chart', label: 'Dein Trading-Screen', icon: <BarChart2 size={14} /> },
+  { id: 'bias', label: 'Long oder Short?', icon: <Gauge size={14} /> },
+  { id: 'session', label: 'Wo stehst du?', icon: <Clock size={14} /> },
 ]
 
 // ─── Candlestick Chart ────────────────────────────────────────────────────────
@@ -728,12 +728,12 @@ function ProductShowcase() {
             Platform Overview
           </span>
           <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold text-frost-white leading-tight">
-            Analysis modules
+            So sieht dein Morgen
             <br />
-            <span className="text-gradient-frost">in production.</span>
+            <span className="text-gradient-frost">um 9:29 aus</span>
           </h2>
           <p className="text-frost-secondary text-lg max-w-2xl mx-auto mt-4 leading-relaxed">
-            Three views into the same data pipeline. Each module processes market data independently and renders results in real time.
+            Drei Ansichten. Eine Wahrheit. Du weisst genau was zu tun ist.
           </p>
         </motion.div>
 
@@ -782,29 +782,29 @@ function ProductShowcase() {
         <div className="relative">
           {/* Floating annotation badges — positioned around the mockup */}
           <FloatingBadge
-            label="Sub-50ms streaming"
+            label="3 aktive Setups"
             icon={<Zap size={12} />}
             parallaxY={badge1Y}
             delay={0.3}
             className="hidden lg:flex -left-4 top-16"
           />
           <FloatingBadge
-            label="ES & NQ futures"
-            icon={<Globe size={12} />}
+            label="BIAS: LONG +7"
+            icon={<TrendingUp size={12} />}
             parallaxY={badge2Y}
             delay={0.4}
             className="hidden lg:flex -left-8 bottom-24"
           />
           <FloatingBadge
-            label="Algorithmic alerts"
-            icon={<Bell size={12} />}
+            label="R:R 3.2"
+            icon={<Activity size={12} />}
             parallaxY={badge3Y}
             delay={0.35}
             className="hidden lg:flex -right-4 top-24"
           />
           <FloatingBadge
-            label="Sub-50ms latency"
-            icon={<Activity size={12} />}
+            label="Confluence: 78"
+            icon={<Bell size={12} />}
             parallaxY={badge4Y}
             delay={0.45}
             className="hidden lg:flex -right-8 bottom-16"
@@ -884,18 +884,18 @@ function ProductShowcase() {
           {[
             {
               icon: <BarChart2 size={16} className="text-ice" />,
-              title: 'CSS-rendered charts',
-              desc: 'No canvas flicker. Crisp at any resolution.',
+              title: 'Kein Rauschen, nur Signal',
+              desc: 'Saubere Charts ohne Ablenkung — sofort einsatzbereit.',
             },
             {
               icon: <Activity size={16} className="text-profit" />,
-              title: 'Streaming order flow',
-              desc: 'Delta, footprint, and absorption — live.',
+              title: 'Order Flow in Echtzeit',
+              desc: 'Delta, Absorption und Footprint — siehst du wer kauft und wer verkauft.',
             },
             {
               icon: <Layers size={16} className="text-ice-light" />,
-              title: 'Multi-timeframe bias',
-              desc: 'Confluent signals across 5m, 15m, and 1H.',
+              title: 'BIAS ueber alle Timeframes',
+              desc: 'Wenn 5m, 15m und 1H uebereinstimmen — dann handelst du.',
             },
           ].map(({ icon, title, desc }) => (
             <div

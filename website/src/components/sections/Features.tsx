@@ -245,9 +245,9 @@ const features: Feature[] = [
   {
     id: 'charts',
     icon: LineChart,
-    title: 'Real-Time Charts',
+    title: 'Dein Chart. Sauber und klar.',
     description:
-      'Sub-second OHLCV streaming for ES and NQ index futures. LightweightCharts rendering engine handles thousands of data points without frame loss. Direct exchange connectivity via Rithmic protocol.',
+      'ES und NQ in Echtzeit. Volumenprofil, VWAP, EMA — alles was du brauchst, nichts was dich ablenkt. Kein Grid-Chaos, kein Indikator-Friedhof.',
     illustration: CandlestickIllustration,
     colSpan: 2,
     accent: true,
@@ -255,27 +255,27 @@ const features: Feature[] = [
   {
     id: 'bias',
     icon: TrendingUp,
-    title: 'BIAS Analysis',
+    title: 'Welche Seite handelst du heute?',
     description:
-      'Multi-factor directional bias computation across configurable timeframes. Synthesizes 7 independent signals including cumulative delta, session structure, and volume profile to produce a single directional score.',
+      'Bevor du den ersten Trade machst, sagt dir Arctis: Long, Short, oder Finger weg. 7 unabhaengige Signale ergeben einen klaren Bias-Score. Kein Bauchgefuehl mehr.',
     illustration: ArrowIllustration,
     colSpan: 1,
   },
   {
     id: 'confluence',
     icon: Layers,
-    title: 'Confluence Scoring',
+    title: 'Nur handeln wenn alles stimmt.',
     description:
-      'Weighted multi-factor scoring engine. Evaluates momentum, volume, VWAP position, session structure, pattern context, time-of-day, and volatility regime. Outputs a 0-100 conviction score.',
+      'Confluence misst ob VWAP, EMA, Struktur, Volume und Bias in die gleiche Richtung zeigen. Score ueber 70? Hohe Wahrscheinlichkeit. Unter 30? Warten.',
     illustration: ConfluenceIllustration,
     colSpan: 1,
   },
   {
     id: 'patterns',
     icon: Search,
-    title: 'Pattern Detection',
+    title: 'Setups die du sonst verpasst.',
     description:
-      'Algorithmic recognition of engulfing bars, inside bars, exhaustion moves, and double-fake setups. Configurable sensitivity thresholds with real-time alerting.',
+      'ORB Breakout, IB Extension, POC Rejection, VA Edge — automatisch erkannt mit Entry, Stop und Target. Du siehst den Trade, nicht nur das Muster.',
     illustration: ZigzagIllustration,
     colSpan: 2,
     accent: true,
@@ -283,18 +283,18 @@ const features: Feature[] = [
   {
     id: 'sessions',
     icon: Clock,
-    title: 'Session Analytics',
+    title: 'Wisse wo du in der Session stehst.',
     description:
-      'Automatic detection of session boundaries across RTH, ETH, and overnight sessions. Tracks session high, low, range, VWAP, and POC with millisecond precision.',
+      'Pre-Market, NY Open, Midday, Power Hour — jede Session hat eigene Regeln. Arctis zeigt dir welche gerade gilt und was historisch passiert.',
     illustration: TimelineIllustration,
     colSpan: 1,
   },
   {
     id: 'risk',
     icon: ShieldCheck,
-    title: 'Risk Framework',
+    title: 'Nie wieder den Daily-Loss sprengen.',
     description:
-      'Integrated position sizing, maximum loss enforcement, and exposure tracking. Risk parameters are visible in every analysis view — not buried in a settings menu.',
+      'Max Trades, Max Loss, Position Size — alles eingebaut. Arctis stoppt dich bevor Emotionen uebernehmen. Disziplin ist kein Vorsatz mehr, sondern ein Feature.',
     illustration: ShieldIllustration,
     colSpan: 1,
   },
@@ -382,7 +382,7 @@ function FeatureCard({ feature, index }: FeatureCardProps) {
               style={{ boxShadow: '0 0 6px rgba(92,184,240,0.8)' }}
             />
             <span className="text-xs font-medium text-frost-secondary">
-              {index === 0 ? 'ES & NQ \u00b7 <100ms latency' : '8 pattern types \u00b7 live detection'}
+              {index === 0 ? 'ES & NQ \u00b7 Echtzeit' : 'ORB \u00b7 IB \u00b7 POC \u00b7 VA \u00b7 Live Detection'}
             </span>
           </div>
         )}
@@ -435,12 +435,12 @@ export function Features() {
             Analysis Modules
           </p>
           <h2 className="font-display text-3xl font-bold text-frost-white sm:text-4xl lg:text-5xl">
-            Six modules.
+            6 Werkzeuge. Ein Ziel:
             <br />
-            <span className="text-gradient-frost">One analysis framework.</span>
+            <span className="text-gradient-frost">Dein Profit.</span>
           </h2>
           <p className="mx-auto mt-4 max-w-2xl text-lg text-frost-secondary">
-            Each module operates independently and feeds data to the others. The result is a unified analysis surface that adapts to current market conditions.
+            Jedes Modul beantwortet eine Frage die du dir vor jedem Trade stellen solltest.
           </p>
         </motion.div>
 
