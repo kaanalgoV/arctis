@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { config } from '../lib/config'
 
 interface SettingsState {
   engineUrl: string
@@ -21,7 +22,7 @@ interface SettingsState {
 export const useSettingsStore = create<SettingsState>()(
   persist(
     (set) => ({
-      engineUrl: 'http://127.0.0.1:8001',
+      engineUrl: config.apiBase,
       autoReconnect: true,
       pollInterval: 5000,
       maxTrades: 10,
