@@ -132,7 +132,7 @@ export function Topbar({
   priceChange,
   isConnected = false,
 }: TopbarProps) {
-  const { market: storeMarket, timeframe: storeTf, setMarket, setTimeframe } = useMarketStore()
+  const { market: storeMarket, symbol: storeSymbol, timeframe: storeTf, setMarket, setTimeframe } = useMarketStore()
 
   // Derive resolved values: prefer controlled props, fall back to store
   const activeMarket = activeMarketProp ?? storeMarket
@@ -196,7 +196,7 @@ export function Topbar({
     >
       {/* Left: Symbol display */}
       <span className="font-mono text-[13px] font-semibold text-[#E6EDF3] shrink-0 tracking-wide">
-        {activeSymbol || activeMarket}
+        {storeSymbol || activeMarket}
       </span>
 
       {/* Divider */}
