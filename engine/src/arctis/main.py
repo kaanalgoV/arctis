@@ -11,7 +11,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from arctis.csv_parser import parse_csv
-from arctis.models import Market, Timeframe
+from arctis.models import (
+    Market,
+    MarketRoot,
+    MarketInfo,
+    ContractInfo,
+    Timeframe,
+    MARKET_NAMES,
+)
 from arctis.storage import ParquetStore
 
 DATA_DIR = Path(__file__).parent.parent.parent.parent / "data"
@@ -131,33 +138,108 @@ app.include_router(zones_router)
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "version": "0.1.0"}
+    from sqlalchemy import text
+    from arctis.db import get_engine
+    try:
+        engine = get_engine()
+        with engine.connect() as conn:
+            result = conn.execute(text("SELECT count(DISTINCT symbol) FROM bars"))
+            symbol_count = result.scalar() or 0
+        return {"status": "ok", "version": "0.1.0", "db": "connected", "symbols": symbol_count}
+    except Exception as e:
+        return {"status": "degraded", "version": "0.1.0", "db": "disconnected", "error": str(e)}
 
 
 @app.get("/api/markets")
 async def get_markets():
-    """Return available symbols from TimescaleDB, grouped by root."""
+    """Return available markets from TimescaleDB, structured by MarketRoot."""
     from arctis.db import fetch_available_symbols
-    symbols = fetch_available_symbols()
-    # Group by root
-    grouped: dict[str, list] = {}
-    for s in symbols:
-        root = s["root"]
-        if root not in grouped:
-            grouped[root] = []
-        grouped[root].append(s)
-    return {"markets": grouped, "symbols": symbols}
+    try:
+        symbol_dicts = fetch_available_symbols()
+        # Build a flat list of symbol strings for matching
+        symbol_strings = [s["symbol"] for s in symbol_dicts]
+
+        markets: list[MarketInfo] = []
+        # Use a set to avoid duplicates when Timeframe has aliased values
+        seen_timeframes: list[Timeframe] = list(dict.fromkeys(Timeframe))
+
+        for root in MarketRoot:
+            contracts: list[ContractInfo] = []
+            for sym in symbol_strings:
+                # MarketRoot.E6 has value "6E", MarketRoot.J6 has value "6J"
+                # All others (NQ, ES, CL, GC) match the first 2 chars directly
+                if sym.startswith(root.value):
+                    # month_code = second-to-last char, year_code = last char
+                    month_code = sym[-2] if len(sym) >= 2 else ""
+                    year_code = sym[-1] if len(sym) >= 1 else ""
+                    contracts.append(
+                        ContractInfo(
+                            symbol=sym,
+                            root=root,
+                            month_code=month_code,
+                            year_code=year_code,
+                        )
+                    )
+
+            if contracts:
+                markets.append(
+                    MarketInfo(
+                        root=root,
+                        name=MARKET_NAMES.get(root, root.value),
+                        contracts=contracts,
+                        timeframes=seen_timeframes,
+                    )
+                )
+
+        # If DB returned no data, fall back to all known markets without contracts
+        if not markets:
+            markets = [
+                MarketInfo(root=r, name=MARKET_NAMES.get(r, r.value))
+                for r in MarketRoot
+            ]
+
+        return {"markets": [m.model_dump() for m in markets]}
+
+    except Exception as e:
+        # Fallback: return all known markets without contract details
+        return {
+            "markets": [
+                MarketInfo(root=r, name=MARKET_NAMES.get(r, r.value)).model_dump()
+                for r in MarketRoot
+            ]
+        }
 
 
 @app.get("/api/db/bars")
 async def get_db_bars(
     symbol: str = Query(default="NQH6"),
     days: int = Query(default=30, ge=1, le=365),
+    timeframe: str = Query(default="1min"),
 ):
-    """Fetch OHLCV bars directly from TimescaleDB."""
-    from arctis.db import fetch_bars
-    bars = fetch_bars(symbol=symbol, days=days)
-    return {"symbol": symbol, "bars_count": len(bars), "bars": bars}
+    """Fetch OHLCV bars directly from TimescaleDB with optional timeframe aggregation.
+
+    Supported timeframes: 1min (default), 5min, 15min, 30min, 1h
+    """
+    from arctis.db import fetch_bars, aggregate_bars
+    from arctis.models import OHLCVBar
+    raw = fetch_bars(symbol=symbol, days=days)
+    if timeframe == "1min" or not raw:
+        return {"symbol": symbol, "timeframe": timeframe, "bars_count": len(raw), "bars": raw}
+    # Convert dicts to OHLCVBar, aggregate, then return as dicts
+    bar_models = [
+        OHLCVBar(
+            timestamp=r["timestamp"],
+            open=float(r["open"]),
+            high=float(r["high"]),
+            low=float(r["low"]),
+            close=float(r["close"]),
+            volume=int(r["volume"]),
+        )
+        for r in raw
+    ]
+    aggregated = aggregate_bars(bar_models, timeframe)
+    bars = [b.model_dump() for b in aggregated]
+    return {"symbol": symbol, "timeframe": timeframe, "bars_count": len(bars), "bars": bars}
 
 
 @app.post("/api/import")
