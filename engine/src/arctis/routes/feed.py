@@ -15,6 +15,7 @@ from arctis.analysis.volume import detect_volume_spikes, relative_volume
 from arctis.analysis.volume_profile import build_volume_profile, calculate_session_levels
 from arctis.analysis.vwap import calculate_vwap
 from arctis.db import fetch_bars_as_models
+from arctis.events import AnalysisSnapshot, get_engine
 from arctis.models import Market, Timeframe
 
 router = APIRouter(prefix="/api")
@@ -338,4 +339,130 @@ async def get_feed(
 
     # ── Sort descending, deduplicate closely stacked timestamps, limit 50 ──────
     events.sort(key=lambda e: e["timestamp"], reverse=True)
+
+    # ── Feed event engine: update state and persist new structured events ──────
+    try:
+        _update_event_engine(bars, now)
+    except Exception:
+        pass
+
     return {"events": events[:50]}
+
+
+def _update_event_engine(bars, now: int) -> None:
+    """Build an AnalysisSnapshot from current bars and push it into FeedEventEngine."""
+    engine = get_engine()
+
+    # Derive session
+    try:
+        session_val = classify_session(now).value
+    except Exception:
+        session_val = "unknown"
+
+    # Derive confluence score + direction
+    confluence_score = 0
+    confluence_direction = "neutral"
+    try:
+        swings = detect_swings(bars)
+        trend = classify_trend(swings)
+        vwap_list = calculate_vwap(bars)
+        ema_list = calculate_ema_ribbon(bars)
+        rsi_list = calculate_rsi(bars)
+        vol_profile = build_volume_profile(bars)
+        session_lvls = calculate_session_levels(bars)
+        spikes = detect_volume_spikes(bars)
+
+        lv = vwap_list[-1] if vwap_list else None
+        le = ema_list[-1] if ema_list else None
+        lr = rsi_list[-1] if rsi_list else None
+
+        cr = calculate_confluence(
+            bars=bars,
+            trend=trend.value,
+            vwap_data={"vwap": lv.vwap, "upper_1": lv.upper_1, "lower_1": lv.lower_1,
+                       "upper_2": lv.upper_2, "lower_2": lv.lower_2} if lv else None,
+            ema_data={"ema9": le.ema9, "ema21": le.ema21, "ema50": le.ema50,
+                      "alignment": le.alignment} if le else None,
+            rsi_data={"rsi": lr.rsi, "divergence": lr.divergence} if lr else None,
+            volume_profile={"poc": vol_profile.poc, "vah": vol_profile.vah,
+                            "val": vol_profile.val} if vol_profile else None,
+            session_levels={
+                "prev_high": session_lvls.prev_high, "prev_low": session_lvls.prev_low,
+                "prev_close": session_lvls.prev_close,
+                "opening_range_high": session_lvls.opening_range_high,
+                "opening_range_low": session_lvls.opening_range_low,
+            } if session_lvls else None,
+            volume_spikes=[{"ratio": sp.ratio} for sp in spikes[-3:]] if spikes else [],
+        )
+        confluence_score = cr.score
+        confluence_direction = cr.direction or "neutral"
+    except Exception:
+        pass
+
+    # Derive recent volume ratios (last 20 bars)
+    volume_ratios: list[float] = []
+    try:
+        spikes = detect_volume_spikes(bars)
+        volume_ratios = [sp.ratio for sp in spikes[-20:]]
+    except Exception:
+        pass
+
+    # Derive active pattern names
+    pattern_names: list[str] = []
+    try:
+        vwap_list = calculate_vwap(bars)
+        rsi_list = calculate_rsi(bars)
+        vol_profile = build_volume_profile(bars)
+        session_lvls = calculate_session_levels(bars)
+        lv = vwap_list[-1] if vwap_list else None
+        lr = rsi_list[-1] if rsi_list else None
+        pr = detect_patterns(
+            bars=bars,
+            vwap_data={"vwap": lv.vwap, "upper_1": lv.upper_1, "lower_1": lv.lower_1,
+                       "upper_2": lv.upper_2, "lower_2": lv.lower_2} if lv else None,
+            rsi_data={"rsi": lr.rsi, "divergence": lr.divergence} if lr else None,
+            volume_profile={"poc": vol_profile.poc, "vah": vol_profile.vah,
+                            "val": vol_profile.val} if vol_profile else None,
+            session_levels={
+                "prev_high": session_lvls.prev_high, "prev_low": session_lvls.prev_low,
+                "prev_close": session_lvls.prev_close,
+                "opening_range_high": session_lvls.opening_range_high,
+                "opening_range_low": session_lvls.opening_range_low,
+            } if session_lvls else None,
+        )
+        pattern_names = [ann.pattern for ann in pr.annotations]
+    except Exception:
+        pass
+
+    snapshot = AnalysisSnapshot(
+        timestamp=now,
+        session=session_val,
+        confluence_score=confluence_score,
+        confluence_direction=confluence_direction,
+        volume_ratios=volume_ratios,
+        patterns=pattern_names,
+    )
+    engine.update(snapshot)
+
+
+@router.get("/feed/events")
+async def get_feed_events(
+    since: int = Query(default=0, description="Unix timestamp; return events with timestamp >= since"),
+):
+    """Return structured feed events generated by the FeedEventEngine.
+
+    Events are generated when:
+    - session_change: session transitions between named sessions
+    - confluence_shift: confluence score changes by > 10 points
+    - volume_spike: RVOL exceeds 2 standard deviations above the recent mean
+    - pattern_trigger: a new pattern appears that wasn't present in the previous poll
+
+    Deduplication: events with the same (type, 30-second bucket) are suppressed.
+    """
+    engine = get_engine()
+    events = engine.get_events_since(since)
+    return {
+        "events": [e.to_dict() for e in events],
+        "count": len(events),
+        "since": since,
+    }
