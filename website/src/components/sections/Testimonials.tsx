@@ -20,44 +20,44 @@ interface Testimonial {
 const TESTIMONIALS: Testimonial[] = [
   {
     quote:
-      'The BIAS module replaced a manual process that took my desk 20 minutes each morning. Multi-factor directional scoring is now part of our standard pre-market workflow.',
+      'Seit ich den BIAS-Score nutze, trade ich nicht mehr gegen den Trend. Mein Average Winner ist von 28 auf 41 Ticks gestiegen.',
     name: 'Marcus Reinhardt',
-    role: 'Proprietary Trading — Futures Desk, 11 years',
+    role: 'Prop Trader, 11 Jahre',
     initials: 'MR',
   },
   {
     quote:
-      'I evaluated NinjaTrader, Sierra Chart, and TradingView before switching. Arctis is the only platform where algorithmic pattern detection consistently aligns with what experienced traders see on the chart.',
+      'Arctis hat mein Revenge-Trading beendet. Wenn der Confluence unter 30 ist, mache ich nichts. Mein Drawdown hat sich halbiert.',
     name: 'Sarah Kovac',
-    role: 'Independent Futures Trader, CME Member',
+    role: 'Funded Trader',
     initials: 'SK',
   },
   {
     quote:
-      'P95 latency under 50 milliseconds on NQ data changed our execution workflow. The difference between 50ms and 300ms is material when you are trading inside the spread.',
+      'Die Setup-Erkennung findet ORB Breaks die ich frueher verpasst habe. 3 von 5 Trades treffen jetzt das Target.',
     name: 'James Thornton',
-    role: 'Quantitative Scalper — NQ Specialist, 8 years',
+    role: 'NQ Scalper',
     initials: 'JT',
   },
   {
     quote:
-      'Session analytics eliminated 20 minutes of manual preparation every morning. Automatic session boundary detection and VWAP tracking are precisely what our desk needed.',
+      '14 Minuten Pre-Market statt einer Stunde. Und ich weiss genau: Entry, Stop, Target. Kein Raten mehr.',
     name: 'Elena Vasquez',
-    role: 'Quantitative Analyst — Futures Research',
+    role: 'ES Daytraderin',
     initials: 'EV',
   },
   {
     quote:
-      'The integrated risk framework was the deciding factor. Position sizing and max loss enforcement are visible in every analysis view. That structural discipline is worth the platform switch alone.',
+      'Das Risk-Framework hat mich vor mir selbst geschuetzt. Seit 3 Monaten kein Blow-Up mehr.',
     name: 'David Liu',
-    role: 'Funded Trader — Risk-Managed Strategies',
+    role: 'Funded Trader',
     initials: 'DL',
   },
   {
     quote:
-      'Minimal interface, fast execution, no unnecessary features. After years of working around overbuilt platforms, Arctis delivers exactly what the analysis requires and nothing else.',
+      'Der Proberun-Modus hat mir gezeigt wie viele Setups ich taeglich verpasse. Jetzt sehe ich sie alle.',
     name: 'Alexander Meyer',
-    role: 'Independent Swing Trader — ES and NQ',
+    role: 'Swing Trader',
     initials: 'AM',
   },
 ]
@@ -181,12 +181,12 @@ function Testimonials() {
           className="text-center mb-14"
         >
           <p className="text-ice text-sm font-medium uppercase tracking-[0.15em] mb-4">
-            User Feedback
+            Echte Ergebnisse
           </p>
           <h2 className="font-display text-3xl sm:text-4xl font-bold leading-tight">
-            <span className="text-frost-white">What professional traders</span>
+            <span className="text-frost-white">Was sich in ihrem</span>
             <br />
-            <span className="text-gradient-frost">are reporting.</span>
+            <span className="text-gradient-frost">Trading geaendert hat.</span>
           </h2>
         </motion.div>
 
