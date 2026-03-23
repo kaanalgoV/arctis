@@ -1,14 +1,9 @@
-import { useState } from 'react'
-import { ChevronRight, Settings, Wifi, WifiOff } from 'lucide-react'
+import { ChevronRight, Settings, WifiOff } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
-
-// ── Types ────────────────────────────────────────────────────────────────────
-
-type Timeframe = '1m' | '5m' | '15m' | '1h'
-
-const FALLBACK_MARKETS = ['ES', 'NQ', 'CL', 'GC', '6E']
-const TIMEFRAMES: Timeframe[] = ['1m', '5m', '15m', '1h']
+import { useMarketStore } from '@/store/market'
+import { TF_DISPLAY, TIMEFRAMES } from '@/types/contracts'
+import type { Timeframe } from '@/types/contracts'
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
@@ -113,9 +108,12 @@ function ConnectionBadge({ isConnected }: ConnectionBadgeProps) {
 
 interface TopbarProps {
   onSettingsClick?: () => void
+  /** Market root list (e.g. ['NQ','ES','CL']). Falls back to store market if empty. */
   markets?: string[]
+  /** Controlled active market. If omitted reads from store. */
   activeMarket?: string
   onMarketChange?: (market: string) => void
+  /** Controlled active timeframe — display label (e.g. "1m"). If omitted reads from store. */
   activeTimeframe?: string
   onTimeframeChange?: (tf: string) => void
   currentPrice?: number | null
@@ -134,27 +132,37 @@ export function Topbar({
   priceChange,
   isConnected = false,
 }: TopbarProps) {
-  // Internal state used only when props are not controlled from outside
-  const [internalMarket, setInternalMarket] = useState<string>('ES')
-  const [internalTimeframe, setInternalTimeframe] = useState<Timeframe>('1m')
+  const { market: storeMarket, timeframe: storeTf, setMarket, setTimeframe } = useMarketStore()
 
-  const marketList = markets && markets.length > 0 ? markets : FALLBACK_MARKETS
-  const activeMarket = activeMarketProp ?? internalMarket
-  const activeTimeframe = activeTimeframeProp ?? internalTimeframe
+  // Derive resolved values: prefer controlled props, fall back to store
+  const activeMarket = activeMarketProp ?? storeMarket
+
+  // storeTf is an internal Timeframe ('1min', etc.) — convert to display label
+  const storeTfDisplay = TF_DISPLAY[storeTf as Timeframe] ?? storeTf
+  const activeTimeframe = activeTimeframeProp ?? storeTfDisplay
+
+  // Market list: use prop if provided, else show only the currently active market
+  const marketList = markets && markets.length > 0 ? markets : [storeMarket]
 
   function handleMarketClick(market: string) {
     if (onMarketChange) {
       onMarketChange(market)
     } else {
-      setInternalMarket(market)
+      setMarket(market)
     }
   }
 
-  function handleTimeframeClick(tf: string) {
+  function handleTimeframeClick(displayTf: string) {
     if (onTimeframeChange) {
-      onTimeframeChange(tf)
+      onTimeframeChange(displayTf)
     } else {
-      setInternalTimeframe(tf as Timeframe)
+      // Find the internal timeframe key matching the display label
+      const entry = (Object.entries(TF_DISPLAY) as [Timeframe, string][]).find(
+        ([, label]) => label === displayTf,
+      )
+      if (entry) {
+        setTimeframe(entry[0])
+      }
     }
   }
 
@@ -186,7 +194,7 @@ export function Topbar({
         'border-b border-[var(--color-border-subtle)]',
       )}
     >
-      {/* Left: Breadcrumb */}
+      {/* Left: Breadcrumb — uses store market name */}
       <div className="shrink-0">
         <Breadcrumb segments={['AlgoView', 'Arctis', activeMarket]} />
       </div>
@@ -211,16 +219,19 @@ export function Topbar({
         {/* Divider */}
         <div className="w-px h-4 bg-[var(--color-border-subtle)] shrink-0" />
 
-        {/* Timeframe selector */}
+        {/* Timeframe selector — display labels from TF_DISPLAY */}
         <div className="flex items-center gap-0.5">
-          {TIMEFRAMES.map((tf) => (
-            <Pill
-              key={tf}
-              label={tf}
-              isActive={activeTimeframe === tf}
-              onClick={() => handleTimeframeClick(tf)}
-            />
-          ))}
+          {TIMEFRAMES.map((tf) => {
+            const label = TF_DISPLAY[tf]
+            return (
+              <Pill
+                key={tf}
+                label={label}
+                isActive={activeTimeframe === label}
+                onClick={() => handleTimeframeClick(label)}
+              />
+            )
+          })}
         </div>
       </div>
 
