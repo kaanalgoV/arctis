@@ -1,32 +1,35 @@
 import { useState, useEffect } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { X, Database, Loader2 } from 'lucide-react'
+import { X, Database, Loader2, Bell, BellOff } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { OverlayKey } from '@/components/charts/ChartToolbar'
+import { useSettingsStore } from '@/store/settings'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
-
-const ENGINE_URL = 'http://127.0.0.1:8001'
 
 const OVERLAY_LABELS: Record<OverlayKey, string> = {
   vwap: 'VWAP',
   ema: 'EMA',
+  volume: 'Volume',
   vp: 'Volume Profile',
   levels: 'Session Levels',
+  zones: 'Supply/Demand Zones',
 }
 
 const OVERLAY_DESCRIPTIONS: Record<OverlayKey, string> = {
   vwap: 'Volume-weighted average price band',
   ema: 'Exponential moving averages (8/21/50)',
+  volume: 'Volume bars at bottom of chart',
   vp: 'Volume profile histogram',
   levels: 'Previous day high/low/close',
+  zones: 'Key supply and demand zones',
 }
 
-const OVERLAY_KEYS: OverlayKey[] = ['vwap', 'ema', 'vp', 'levels']
+const OVERLAY_KEYS: OverlayKey[] = ['vwap', 'ema', 'volume', 'vp', 'levels', 'zones']
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type Tab = 'risk' | 'display' | 'connection'
+type Tab = 'risk' | 'display' | 'connection' | 'alerts'
 
 interface RiskConfig {
   account_size: number
@@ -308,6 +311,18 @@ interface DisplayTabProps {
 }
 
 function DisplayTab({ activeOverlays, onToggleOverlay }: DisplayTabProps) {
+  const { overlays, toggleOverlay } = useSettingsStore()
+
+  // Use store state when activeOverlays prop is empty (standalone mode),
+  // otherwise delegate to prop-driven callback (for chart sync).
+  const isActive = (key: OverlayKey): boolean =>
+    activeOverlays.size > 0 ? activeOverlays.has(key) : !!overlays[key as keyof typeof overlays]
+
+  const handleToggle = (key: OverlayKey) => {
+    toggleOverlay(key)
+    onToggleOverlay(key)
+  }
+
   return (
     <div className="flex flex-col gap-1 px-4 pb-4">
       {OVERLAY_KEYS.map((key) => (
@@ -322,31 +337,17 @@ function DisplayTab({ activeOverlays, onToggleOverlay }: DisplayTabProps) {
             'transition-colors duration-120',
             'cursor-pointer select-none',
           )}
-          onClick={() => onToggleOverlay(key)}
+          onClick={() => handleToggle(key)}
         >
           <div className="flex flex-col gap-0.5">
-            <span
-              style={{
-                fontSize: 12,
-                color: 'var(--color-text-primary)',
-                fontFamily: 'var(--font-mono)',
-              }}
-            >
+            <span style={{ fontSize: 12, color: 'var(--color-text-primary)', fontFamily: 'var(--font-mono)' }}>
               {OVERLAY_LABELS[key]}
             </span>
-            <span
-              style={{
-                fontSize: 10,
-                color: 'var(--color-text-muted)',
-              }}
-            >
+            <span style={{ fontSize: 10, color: 'var(--color-text-muted)' }}>
               {OVERLAY_DESCRIPTIONS[key]}
             </span>
           </div>
-          <ToggleSwitch
-            checked={activeOverlays.has(key)}
-            onChange={() => onToggleOverlay(key)}
-          />
+          <ToggleSwitch checked={isActive(key)} onChange={() => handleToggle(key)} />
         </div>
       ))}
     </div>
@@ -356,8 +357,12 @@ function DisplayTab({ activeOverlays, onToggleOverlay }: DisplayTabProps) {
 // ── Tab: Connection ────────────────────────────────────────────────────────────
 
 function ConnectionTab({ status }: { status: ConnectionStatus }) {
+  const { engineUrl, autoReconnect, pollInterval, setEngineUrl, setAutoReconnect, setPollInterval } =
+    useSettingsStore()
+
   return (
     <div className="flex flex-col gap-2 px-4 pb-4">
+      {/* Live connection status */}
       <div
         className={cn(
           'flex items-center justify-between p-3',
@@ -377,12 +382,8 @@ function ConnectionTab({ status }: { status: ConnectionStatus }) {
           <div
             className="w-2 h-2 rounded-full"
             style={{
-              backgroundColor: status.connected
-                ? 'var(--color-profit)'
-                : 'var(--color-loss)',
-              boxShadow: status.connected
-                ? '0 0 6px var(--color-profit)'
-                : 'none',
+              backgroundColor: status.connected ? 'var(--color-profit)' : 'var(--color-loss)',
+              boxShadow: status.connected ? '0 0 6px var(--color-profit)' : 'none',
             }}
           />
           <span
@@ -399,9 +400,7 @@ function ConnectionTab({ status }: { status: ConnectionStatus }) {
       </div>
 
       <div className="grid grid-cols-2 gap-2">
-        <div
-          className="flex flex-col gap-0.5 p-3 rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-raised)]/40"
-        >
+        <div className="flex flex-col gap-0.5 p-3 rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-raised)]/40">
           <span
             style={{ fontSize: 18, color: 'var(--color-text-primary)', fontFamily: 'var(--font-mono)', fontWeight: 700 }}
             className="tabular-nums"
@@ -413,9 +412,7 @@ function ConnectionTab({ status }: { status: ConnectionStatus }) {
             LATENCY
           </span>
         </div>
-        <div
-          className="flex flex-col gap-0.5 p-3 rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-raised)]/40"
-        >
+        <div className="flex flex-col gap-0.5 p-3 rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-raised)]/40">
           <span
             style={{ fontSize: 18, color: 'var(--color-text-primary)', fontFamily: 'var(--font-mono)', fontWeight: 700 }}
             className="tabular-nums"
@@ -426,6 +423,41 @@ function ConnectionTab({ status }: { status: ConnectionStatus }) {
             BARS LOADED
           </span>
         </div>
+      </div>
+
+      {/* Persisted settings */}
+      <Field label="Engine URL">
+        <input
+          type="text"
+          value={engineUrl}
+          onChange={(e) => setEngineUrl(e.target.value)}
+          className={cn(
+            'w-full h-8 px-2.5 rounded-[var(--radius-sm)]',
+            'bg-[var(--color-surface-raised)] border border-[var(--color-border-subtle)]',
+            'text-[var(--color-text-primary)]',
+            'outline-none transition-colors',
+            'focus:border-[var(--color-accent)] focus:ring-1 focus:ring-[var(--color-accent)]/30',
+            'hover:border-[var(--color-border)]',
+          )}
+          style={{ fontSize: 12, fontFamily: 'var(--font-mono)' }}
+        />
+      </Field>
+
+      <Field label="Poll Interval">
+        <NumericInput
+          value={pollInterval}
+          onChange={setPollInterval}
+          step={500}
+          min={1000}
+          suffix="ms"
+        />
+      </Field>
+
+      <div className="flex items-center justify-between py-1">
+        <span style={{ fontSize: 12, color: 'var(--color-text-secondary)', fontFamily: 'var(--font-mono)' }}>
+          Auto-Reconnect
+        </span>
+        <ToggleSwitch checked={autoReconnect} onChange={setAutoReconnect} />
       </div>
 
       <div
@@ -447,8 +479,76 @@ function ConnectionTab({ status }: { status: ConnectionStatus }) {
             marginLeft: 'auto',
           }}
         >
-          :8001
+          {engineUrl.replace(/^https?:\/\/[^:]+/, '')}
         </span>
+      </div>
+    </div>
+  )
+}
+
+// ── Tab: Alerts ────────────────────────────────────────────────────────────────
+
+function AlertsTab() {
+  const { soundAlerts, setSoundAlerts } = useSettingsStore()
+
+  return (
+    <div className="flex flex-col gap-3 px-4 pb-4">
+      <div
+        className={cn(
+          'flex items-center justify-between p-3',
+          'rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)]',
+          'bg-[var(--color-surface-raised)]/40',
+          'cursor-pointer select-none',
+          'hover:bg-[var(--color-surface-raised)] hover:border-[var(--color-border)]',
+          'transition-colors duration-120',
+        )}
+        onClick={() => setSoundAlerts(!soundAlerts)}
+      >
+        <div className="flex items-center gap-2.5">
+          {soundAlerts ? (
+            <Bell size={14} style={{ color: 'var(--color-accent)' }} strokeWidth={1.5} />
+          ) : (
+            <BellOff size={14} style={{ color: 'var(--color-text-muted)' }} strokeWidth={1.5} />
+          )}
+          <div className="flex flex-col gap-0.5">
+            <span style={{ fontSize: 12, color: 'var(--color-text-primary)', fontFamily: 'var(--font-mono)' }}>
+              Sound Alerts
+            </span>
+            <span style={{ fontSize: 10, color: 'var(--color-text-muted)' }}>
+              Play audio on signal events
+            </span>
+          </div>
+        </div>
+        <ToggleSwitch checked={soundAlerts} onChange={setSoundAlerts} />
+      </div>
+
+      <div
+        className="p-3 rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-raised)]/40"
+      >
+        <span
+          style={{ fontSize: 11, color: 'var(--color-text-muted)', fontFamily: 'var(--font-mono)' }}
+          className="uppercase tracking-wider"
+        >
+          Alert Triggers
+        </span>
+        {[
+          { label: 'Confluence Signal', description: 'High-confidence confluence events' },
+          { label: 'Volume Spike', description: 'RVOL exceeds 2σ threshold' },
+          { label: 'Pattern Trigger', description: 'New pattern detected' },
+          { label: 'Session Change', description: 'Market session transition' },
+        ].map(({ label, description }) => (
+          <div key={label} className="flex items-center justify-between mt-2.5">
+            <div className="flex flex-col gap-0.5">
+              <span style={{ fontSize: 12, color: 'var(--color-text-secondary)', fontFamily: 'var(--font-mono)' }}>
+                {label}
+              </span>
+              <span style={{ fontSize: 10, color: 'var(--color-text-muted)' }}>
+                {description}
+              </span>
+            </div>
+            <ToggleSwitch checked={soundAlerts} onChange={setSoundAlerts} />
+          </div>
+        ))}
       </div>
     </div>
   )
@@ -491,6 +591,7 @@ export function SettingsPanel({
     { key: 'risk', label: 'Risk' },
     { key: 'display', label: 'Display' },
     { key: 'connection', label: 'Connection' },
+    { key: 'alerts', label: 'Alerts' },
   ]
 
   return (
@@ -610,6 +711,7 @@ export function SettingsPanel({
               {activeTab === 'connection' && (
                 <ConnectionTab status={connectionStatus} />
               )}
+              {activeTab === 'alerts' && <AlertsTab />}
             </div>
           </motion.div>
         </>
