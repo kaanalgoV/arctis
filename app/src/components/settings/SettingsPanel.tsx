@@ -4,10 +4,11 @@ import { X, Database, Loader2, Bell, BellOff } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { OverlayKey } from '@/components/charts/ChartToolbar'
 import { useSettingsStore } from '@/store/settings'
+import { config } from '@/lib/config'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const ENGINE_URL = 'http://127.0.0.1:8001'
+const ENGINE_URL = config.apiBase
 
 const OVERLAY_LABELS: Record<OverlayKey, string> = {
   vwap: 'VWAP',
