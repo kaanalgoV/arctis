@@ -1,5 +1,4 @@
 import { motion } from 'framer-motion'
-import { cn } from '@/lib/utils'
 import type { PatternsAPIData } from '@/components/panels/PatternsPanel'
 
 // ── Types ─────────────────────────────────────────────────────────────────────

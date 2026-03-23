@@ -11,7 +11,7 @@ export function useMarketData() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const wsRef = useRef<WebSocket | null>(null)
-  const reconnectTimer = useRef<ReturnType<typeof setTimeout>>()
+  const reconnectTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const reconnectAttempt = useRef(0)
 
   // REST initial load

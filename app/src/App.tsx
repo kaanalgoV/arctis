@@ -502,7 +502,7 @@ export default function App() {
   // ── Determine grid layout based on active page ────────────────────────────
   // Dashboard / Patterns: no right panel (52px sidebar + main area)
   // Chart / Replay: with right panel (52px sidebar + main + 280px right)
-  const showRightPanel = activePage === 'chart' || (activePage === 'chart' && mode === 'replay')
+  const showRightPanel = activePage === 'chart'
   const gridCols = showRightPanel ? '52px 1fr 280px' : '52px 1fr'
 
   // Sidebar's active item: replay maps to 'replay', otherwise use activePage

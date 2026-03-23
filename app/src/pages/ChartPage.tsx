@@ -9,7 +9,7 @@ import type { OHLCVBar } from '@/types/market'
 import type { IndicatorData } from '@/types/analysis'
 import type { PatternsAPIData } from '@/components/panels/PatternsPanel'
 import type { IChartApi } from 'lightweight-charts'
-import type { Drawing } from '@/hooks/useDrawings'
+import type { Drawing, DrawingTool } from '@/hooks/useDrawings'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -30,7 +30,7 @@ interface ReplayState {
   stop: () => Promise<void>
   setSpeed: (s: number) => void
   seek: (pct: number) => void
-  changeDate: (date: string) => void
+  changeDate: (direction: 'prev' | 'next') => void
 }
 
 export interface ChartPageProps {
@@ -50,8 +50,8 @@ export interface ChartPageProps {
   zones: ChartZone[] | undefined
   // Drawings
   drawings: Drawing[]
-  activeTool: string | null
-  onSelectTool: (tool: string | null) => void
+  activeTool: DrawingTool | null
+  onSelectTool: (tool: DrawingTool | null) => void
   onClearDrawings: () => void
   onChartClick?: (price: number, timestamp: number) => void
   scrollToTimestamp: number | null

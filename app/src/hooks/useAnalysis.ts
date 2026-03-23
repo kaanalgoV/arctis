@@ -24,7 +24,7 @@ export function useAnalysis(pollIntervalMs = 5000) {
   })
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const intervalRef = useRef<ReturnType<typeof setInterval>>()
+  const intervalRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined)
 
   const fetchAll = useCallback(async () => {
     try {

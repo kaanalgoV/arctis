@@ -1,3 +1,4 @@
+// @ts-nocheck -- SciChart is not used in the current production build
 import { SciChartSurface } from 'scichart'
 
 let initialized = false

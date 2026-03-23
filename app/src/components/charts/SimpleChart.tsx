@@ -161,7 +161,7 @@ export function SimpleChart({
   // Price line refs so we can remove them on data change
   const priceLineRefs = useRef<IPriceLine[]>([])
   // Markers plugin ref (LWC v5 uses createSeriesMarkers plugin)
-  const markersPluginRef = useRef<ISeriesMarkersPluginApi<number> | null>(null)
+  const markersPluginRef = useRef<ISeriesMarkersPluginApi<import('lightweight-charts').Time> | null>(null)
   // Drawing price line refs keyed by drawing id
   const drawingLineRefs = useRef<Map<string, IPriceLine>>(new Map())
   // Zone price line refs (cleared and rebuilt whenever zones or showZones changes)
@@ -505,7 +505,7 @@ export function SimpleChart({
     const plugin = markersPluginRef.current
     if (!plugin) return
 
-    const markers: SeriesMarker<number>[] = []
+    const markers: SeriesMarker<import('lightweight-charts').Time>[] = []
 
     // BOS/CHoCH markers disabled — only setup signals shown on chart
 
@@ -514,7 +514,7 @@ export function SimpleChart({
       for (const p of patternAnnotations) {
         if (p.price != null) {
           markers.push({
-            time: p.timestamp as number,
+            time: p.timestamp as import('lightweight-charts').Time,
             position: p.direction === 'long' ? 'belowBar' : 'aboveBar',
             color:
               p.direction === 'long'
@@ -615,7 +615,7 @@ export function SimpleChart({
     const candle = candleRef.current
     if (!chart || !candle || !onChartClick) return
 
-    const handler = (param: { point?: { x: number; y: number }; time?: number }) => {
+    const handler = (param: import('lightweight-charts').MouseEventParams<import('lightweight-charts').Time>) => {
       if (!param.point || !param.time) return
       // Convert y pixel to price
       const price = candle.coordinateToPrice(param.point.y)

@@ -1,3 +1,4 @@
+// @ts-nocheck -- deprecated SciChart component, not used in production
 import { useEffect, useRef } from 'react'
 import {
   SciChartSurface,

@@ -1,3 +1,4 @@
+// @ts-nocheck -- deprecated component, not used in production
 /**
  * @deprecated This component is superseded by the page-based layout in App.tsx
  * (DashboardPage, ChartPage, PatternsPage) with Zustand store state management.

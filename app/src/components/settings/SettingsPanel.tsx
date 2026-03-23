@@ -7,6 +7,8 @@ import { useSettingsStore } from '@/store/settings'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
+const ENGINE_URL = 'http://127.0.0.1:8001'
+
 const OVERLAY_LABELS: Record<OverlayKey, string> = {
   vwap: 'VWAP',
   ema: 'EMA',
