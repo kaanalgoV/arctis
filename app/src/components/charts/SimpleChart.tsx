@@ -517,30 +517,41 @@ export function SimpleChart({
     const plugin = markersPluginRef.current
     if (!plugin) return
 
-    const markers: SeriesMarker<import('lightweight-charts').Time>[] = []
+    const allMarkers: SeriesMarker<import('lightweight-charts').Time>[] = []
 
-    // BOS/CHoCH structure break markers (limited to last 20 to prevent clutter)
+    // BOS/CHoCH structure break markers (limited to last 5 to reduce clutter)
     if (showBosChoch && structureBreaks && structureBreaks.length > 0) {
-      const limited = structureBreaks.slice(-20)
+      const limited = structureBreaks.slice(-5)
       for (const sb of limited) {
         const isBullish = sb.direction === 'bullish' || sb.direction === 'long'
-        markers.push({
+        allMarkers.push({
           time: sb.timestamp as import('lightweight-charts').Time,
           position: isBullish ? 'belowBar' : 'aboveBar',
           color: isBullish ? '#22C55E' : '#EF4444',
           shape: sb.type === 'CHoCH' ? 'circle' : isBullish ? 'arrowUp' : 'arrowDown',
           text: sb.type,
+          size: 1,
         })
       }
     }
 
-    // Pattern annotations (only clear setups with entry/target)
+    // Pattern annotations (only clear setups with entry/target, limited to last 5)
     if (patternAnnotations && patternAnnotations.length > 0) {
-      for (const p of patternAnnotations) {
+      const limited = patternAnnotations.slice(-5)
+      let positionToggle = false
+      for (const p of limited) {
         if (p.price != null) {
-          markers.push({
+          // Alternate aboveBar/belowBar for neutral markers to avoid vertical stacking
+          const position =
+            p.direction === 'long'
+              ? 'belowBar'
+              : p.direction === 'short'
+              ? 'aboveBar'
+              : (positionToggle = !positionToggle) ? 'aboveBar' : 'belowBar'
+          const label = p.pattern.length > 12 ? p.pattern.slice(0, 10) + '..' : p.pattern
+          allMarkers.push({
             time: p.timestamp as import('lightweight-charts').Time,
-            position: p.direction === 'long' ? 'belowBar' : 'aboveBar',
+            position,
             color:
               p.direction === 'long'
                 ? '#008757'
@@ -553,15 +564,26 @@ export function SimpleChart({
                 : p.direction === 'short'
                 ? 'arrowDown'
                 : 'circle',
-            text: p.pattern,
+            text: label,
+            size: 1,
           })
         }
       }
     }
 
     // LWC requires markers sorted ascending by time
-    markers.sort((a, b) => (a.time as number) - (b.time as number))
-    plugin.setMarkers(markers)
+    allMarkers.sort((a, b) => (a.time as number) - (b.time as number))
+
+    // Deduplicate by 60-second bucket — keep first marker per bucket
+    const deduped = new Map<number, SeriesMarker<import('lightweight-charts').Time>>()
+    for (const m of allMarkers) {
+      const bucket = Math.floor((m.time as number) / 60) * 60
+      if (!deduped.has(bucket)) {
+        deduped.set(bucket, m)
+      }
+    }
+
+    plugin.setMarkers(Array.from(deduped.values()))
   }, [showBosChoch, structureBreaks, patternAnnotations])
 
   // ── Zone price lines ──────────────────────────────────────────────────────
