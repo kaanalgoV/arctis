@@ -247,7 +247,7 @@ const features: Feature[] = [
     icon: LineChart,
     title: 'Real-Time Charts',
     description:
-      'Sub-second OHLCV streaming across 21 futures contracts. LightweightCharts rendering engine handles thousands of data points without frame loss. Direct exchange connectivity via Rithmic protocol.',
+      'Sub-second OHLCV streaming for ES and NQ index futures. LightweightCharts rendering engine handles thousands of data points without frame loss. Direct exchange connectivity via Rithmic protocol.',
     illustration: CandlestickIllustration,
     colSpan: 2,
     accent: true,
@@ -382,7 +382,7 @@ function FeatureCard({ feature, index }: FeatureCardProps) {
               style={{ boxShadow: '0 0 6px rgba(92,184,240,0.8)' }}
             />
             <span className="text-xs font-medium text-frost-secondary">
-              {index === 0 ? '21 markets \u00b7 <100ms latency' : '8 pattern types \u00b7 live detection'}
+              {index === 0 ? 'ES & NQ \u00b7 <100ms latency' : '8 pattern types \u00b7 live detection'}
             </span>
           </div>
         )}

@@ -24,7 +24,7 @@ const FAQ_ITEMS: FAQItem[] = [
     id: 'markets',
     question: 'What markets does Arctis support?',
     answer:
-      'Arctis currently supports 21 futures markets including ES (S&P 500), NQ (Nasdaq 100), CL (Crude Oil), GC (Gold), and major currency futures. We\'re adding more markets every quarter based on user demand.',
+      'Arctis supports ES (S&P 500 E-mini) and NQ (Nasdaq 100 E-mini) — the two most liquid index futures. These markets offer optimal conditions for our analysis: deep liquidity, tight spreads, and well-defined session structure.',
   },
   {
     id: 'data-feed',

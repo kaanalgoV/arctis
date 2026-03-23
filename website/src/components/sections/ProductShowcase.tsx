@@ -789,7 +789,7 @@ function ProductShowcase() {
             className="hidden lg:flex -left-4 top-16"
           />
           <FloatingBadge
-            label="21 futures contracts"
+            label="ES & NQ futures"
             icon={<Globe size={12} />}
             parallaxY={badge2Y}
             delay={0.4}

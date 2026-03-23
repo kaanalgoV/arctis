@@ -35,7 +35,7 @@ const tiers: PricingTier[] = [
     price: '$0',
     priceNote: 'No time limit',
     features: [
-      '3 markets (ES, NQ, CL)',
+      'ES & NQ markets',
       'Real-time charts',
       'Basic session analytics',
       'Community support',
@@ -49,7 +49,7 @@ const tiers: PricingTier[] = [
     price: { monthly: '$49/mo', annual: '$39/mo' },
     priceNote: { annual: 'billed annually' },
     features: [
-      'All 21 markets',
+      'ES & NQ with full depth',
       'BIAS analysis module',
       'Confluence scoring',
       'Pattern detection',
