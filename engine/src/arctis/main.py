@@ -212,18 +212,24 @@ async def get_markets():
 
 @app.get("/api/db/bars")
 async def get_db_bars(
-    symbol: str = Query(default="NQH6"),
+    symbol: str = Query(..., description="Exaktes DB-Symbol, z.B. NQH6 oder ESZ5"),
     days: int = Query(default=30, ge=1, le=365),
     timeframe: str = Query(default="1min"),
 ):
     """Fetch OHLCV bars directly from TimescaleDB with optional timeframe aggregation.
 
     Supported timeframes: 1min (default), 5min, 15min, 30min, 1h
+    The 'symbol' parameter must be an exact DB symbol (e.g. NQH6), not a market root.
     """
     from arctis.db import fetch_bars, aggregate_bars
     from arctis.models import OHLCVBar
     raw = fetch_bars(symbol=symbol, days=days)
-    if timeframe == "1min" or not raw:
+    if not raw:
+        return JSONResponse(
+            status_code=404,
+            content={"error": f"Keine Bars fuer Symbol '{symbol}' gefunden."},
+        )
+    if timeframe == "1min":
         return {"symbol": symbol, "timeframe": timeframe, "bars_count": len(raw), "bars": raw}
     # Convert dicts to OHLCVBar, aggregate, then return as dicts
     bar_models = [
@@ -276,29 +282,44 @@ async def get_bars(
         bars_list = sim.get_bars()
     else:
         from arctis.db import fetch_bars_as_models
-        bars_list = fetch_bars_as_models(market=market, days=30, timeframe=timeframe)
+        try:
+            bars_list = fetch_bars_as_models(market=market, days=30, timeframe=timeframe)
+        except KeyError as e:
+            return JSONResponse(status_code=404, content={"error": str(e)})
+        except Exception as e:
+            return JSONResponse(status_code=500, content={"error": f"Datenbankfehler: {e}"})
     return [b.model_dump() for b in bars_list]
 
 
 @app.post("/api/sim/start")
 async def sim_start(
-    market: str = Query(default="NQ"),
+    market: str = Query(...),
     timeframe: str = Query(default="1min"),
     speed: int = Query(default=10, ge=1, le=100),
     date: str | None = Query(default=None),
 ):
     """Start simulation. Speed = bars per real second. Optional date (YYYY-MM-DD) filters to that day."""
-    ok = sim.start(market=market, timeframe=timeframe, date=date, speed=speed)
+    try:
+        ok = sim.start(market=market, timeframe=timeframe, date=date, speed=speed)
+    except KeyError as e:
+        return JSONResponse(status_code=404, content={"error": str(e)})
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": f"Datenbankfehler: {e}"})
     if not ok:
-        return JSONResponse(status_code=400, content={"error": "Keine Daten vorhanden"})
+        return JSONResponse(status_code=400, content={"error": "Keine Daten fuer die angegebene Kombination vorhanden"})
     return {"message": "Simulation gestartet", **sim.status()}
 
 
 @app.get("/api/replay/dates")
-async def get_replay_dates(market: str = Query(default="NQ")):
+async def get_replay_dates(market: str = Query(...)):
     """Return available trading dates for replay (last 60 days)."""
     from arctis.db import fetch_bars_as_models
-    bars = fetch_bars_as_models(market=market, days=60)
+    try:
+        bars = fetch_bars_as_models(market=market, days=60)
+    except KeyError as e:
+        return JSONResponse(status_code=404, content={"error": str(e)})
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": f"Datenbankfehler: {e}"})
     dates: set[str] = set()
     for b in bars:
         from datetime import datetime, timezone
