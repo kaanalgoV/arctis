@@ -12,12 +12,12 @@ import { RightPanelSection, RightPanelDivider } from '@/components/layout/RightP
 import {
   SessionPanel,
   ConfluencePanel,
-  PatternsPanel,
   FeedPanel,
   RiskPanel,
   BiasPanel,
   ArctisPanel,
   SignalsPanel,
+  StrategyLibrary,
 } from '@/components/panels'
 import type { ConfluenceAPIData } from '@/components/panels/ConfluencePanel'
 import type { PatternsAPIData } from '@/components/panels/PatternsPanel'
@@ -32,16 +32,14 @@ import { useDrawings } from '@/hooks/useDrawings'
 import type { OHLCVBar } from '@/types/market'
 import type { IndicatorData, VolumeData, TradingConfig } from '@/types/analysis'
 import { TF_DISPLAY, TIMEFRAMES } from '@/types/contracts'
-import type { Timeframe } from '@/types/contracts'
+import type { Timeframe, MarketInfo } from '@/types/contracts'
 import { PanelSkeleton } from '@/components/ui/Skeleton'
 import { cn } from '@/lib/utils'
 import type { IChartApi } from 'lightweight-charts'
 import { DashboardPage } from '@/pages/DashboardPage'
 import { ChartPage } from '@/pages/ChartPage'
 import { PatternsPage } from '@/pages/PatternsPage'
-import { config } from '@/lib/config'
-
-const ENGINE_URL = config.apiBase
+import { useSettingsStore } from '@/store/settings'
 
 const SESSION_DISPLAY: Record<string, string> = {
   pre_market: 'Pre-Mkt',
@@ -63,12 +61,6 @@ type AppMode = 'live' | 'replay'
 
 // Active page in sidebar navigation
 type ActivePage = 'dashboard' | 'chart' | 'patterns' | 'replay' | 'settings'
-
-interface MarketInfo {
-  symbol: string
-  root: string
-  description?: string
-}
 
 interface StructureBreak {
   type: string
@@ -216,9 +208,14 @@ export default function App() {
     market,
     symbol,
     timeframe,
+    markets,
     setMarket: storeSetMarket,
     setTimeframe: storeSetTimeframe,
+    setMarkets: storeSetMarkets,
   } = useMarketStore()
+
+  // ── Settings store — engineUrl used for direct fetch calls in App ─────────
+  const engineUrl = useSettingsStore((s) => s.engineUrl)
 
   // ── Page navigation ────────────────────────────────────────────────────────
   const [activePage, setActivePage] = useState<ActivePage>('chart')
@@ -226,15 +223,15 @@ export default function App() {
   // ── Mode ───────────────────────────────────────────────────────────────────
   const [mode, setMode] = useState<AppMode>('live')
 
-  // ── Markets list from API ──────────────────────────────────────────────────
-  const [markets, setMarkets] = useState<MarketInfo[]>([])
-
   // ── Replay bars state (sim-filtered bars during active replay) ─────────────
   const [replayBarsData, setReplayBarsData] = useState<OHLCVBar[]>([])
   const replayBarCountRef = useRef(0)
 
   // ── UI state ───────────────────────────────────────────────────────────────
   const [showSettings, setShowSettings] = useState(false)
+
+  // ── Strategy Library active count (for RightPanelSection badge) ──────────
+  const [activeStrategyCount, setActiveStrategyCount] = useState<number | undefined>(undefined)
 
   // ── Drawing state ─────────────────────────────────────────────────────────
   const { drawings, activeTool, setActiveTool, addDrawing, clearDrawings } =
@@ -287,7 +284,7 @@ export default function App() {
     bias: biasData,
     zones: zonesDataRaw,
     signals: signalsData,
-  } = useAnalysis()
+  } = useAnalysis(mode === 'replay' ? 1500 : 5000)
 
   // Cast untyped analysis results to expected types
   const structureData = structureDataRaw as StructureAPIData | null
@@ -318,7 +315,7 @@ export default function App() {
 
     const fetchReplayBars = async () => {
       try {
-        const r = await fetch(`${ENGINE_URL}/api/bars?market=${market}&timeframe=${timeframe}`)
+        const r = await fetch(`${engineUrl}/api/bars?market=${market}&timeframe=${timeframe}`)
         if (r.ok) {
           const data = await r.json() as OHLCVBar[]
           // Only update if bar count actually changed (new bar arrived)
@@ -360,9 +357,9 @@ export default function App() {
     })
   }, [])
 
-  // ── Fetch /api/markets once on mount ──────────────────────────────────────
+  // ── Fetch /api/markets once on mount → populate store ────────────────────
   useEffect(() => {
-    fetch(`${ENGINE_URL}/api/markets`)
+    fetch(`${engineUrl}/api/markets`)
       .then((r) => (r.ok ? r.json() : null))
       .then((d: unknown) => {
         if (!d) return
@@ -371,12 +368,14 @@ export default function App() {
           : Array.isArray((d as Record<string, unknown>).markets)
           ? ((d as Record<string, unknown>).markets as MarketInfo[])
           : null
-        if (list) setMarkets(list)
+        if (list) {
+          storeSetMarkets(list)
+        }
       })
       .catch(() => {
         // Optional endpoint — fall back to store defaults
       })
-  }, [])
+  }, [storeSetMarkets])
 
   // ── Handlers ──────────────────────────────────────────────────────────────
   const handleMarketChange = useCallback(
@@ -496,7 +495,7 @@ export default function App() {
       : bars
   const replayCurrentTime =
     replayCurrentBar > 0 && activeBarsForReplay.length > 0
-      ? formatBarTimeET(activeBarsForReplay[Math.min(replayCurrentBar - 1, activeBarsForReplay.length - 1)]?.timestamp ?? 0)
+      ? formatBarTimeET(activeBarsForReplay[Math.max(0, Math.min(replayCurrentBar - 1, activeBarsForReplay.length - 1))]?.timestamp ?? 0)
       : '--:--'
   const replayTotalTime =
     replayTotalBars > 0 && activeBarsForReplay.length > 0
@@ -632,6 +631,7 @@ export default function App() {
             onChartClick={activeTool ? handleChartClick : undefined}
             scrollToTimestamp={scrollToTimestamp}
             onChartReady={handleChartReady}
+            signals={(signalsData as any)?.signals}
             mode={mode}
             replay={replay}
             replayCurrentTime={replayCurrentTime}
@@ -652,46 +652,38 @@ export default function App() {
         >
           <RightPanelSection
             title="Signals"
+            accent="ice"
             count={(signalsData as SignalsAPIData | null)?.signals.length ?? undefined}
           >
-            <div className="px-3 pb-3">
-              {signalsData == null ? <PanelSkeleton /> : <SignalsPanel data={signalsData as SignalsAPIData} />}
-            </div>
+            {signalsData == null ? <PanelSkeleton /> : <SignalsPanel data={signalsData as SignalsAPIData} />}
           </RightPanelSection>
 
           <RightPanelDivider />
 
-          <RightPanelSection title="Session" count={(sessionData as SessionAPIData | null)?.bar_count}>
-            <div className="px-3 pb-3">
-              {sessionData == null ? <PanelSkeleton /> : <SessionPanel data={sessionData as SessionAPIData} />}
-            </div>
+          <RightPanelSection title="Session" accent="ice" count={(sessionData as SessionAPIData | null)?.bar_count}>
+            {sessionData == null ? <PanelSkeleton /> : <SessionPanel data={sessionData as SessionAPIData} />}
           </RightPanelSection>
 
           <RightPanelDivider />
 
-          <RightPanelSection title="Confluence">
-            <div className="px-3 pb-3">
-              {confluenceData == null ? <PanelSkeleton /> : <ConfluencePanel data={confluenceData as ConfluenceAPIData} />}
-            </div>
+          <RightPanelSection title="Confluence" accent="ice">
+            {confluenceData == null ? <PanelSkeleton /> : <ConfluencePanel data={confluenceData as ConfluenceAPIData} />}
           </RightPanelSection>
 
           <RightPanelDivider />
 
-          <RightPanelSection title="Bias" count={biasData ? 1 : undefined}>
-            <div className="px-3 pb-3">
-              {biasData == null ? <PanelSkeleton /> : <BiasPanel data={biasData as BiasData} />}
-            </div>
+          <RightPanelSection title="Bias" accent="profit">
+            {biasData == null ? <PanelSkeleton /> : <BiasPanel data={biasData as BiasData} />}
           </RightPanelSection>
 
           <RightPanelDivider />
 
           <RightPanelSection
-            title="Patterns"
-            count={(patternsData as PatternsAPIData | null)?.annotations.length ?? undefined}
+            title="Strategies"
+            accent="warning"
+            count={activeStrategyCount}
           >
-            <div className="px-3 pb-3">
-              {patternsData == null ? <PanelSkeleton /> : <PatternsPanel data={patternsData as PatternsAPIData} />}
-            </div>
+            <StrategyLibrary onActiveCountChange={setActiveStrategyCount} />
           </RightPanelSection>
 
           <RightPanelDivider />
@@ -699,34 +691,27 @@ export default function App() {
           <RightPanelSection
             title="Feed"
             count={feedItems.length > 0 ? feedItems.length : undefined}
+            defaultCollapsed
           >
-            <div className="px-3 pb-3">
-              <FeedPanel
-                items={feedItems.length > 0 ? feedItems : undefined}
-                onItemClick={handleFeedItemClick}
-              />
-            </div>
+            <FeedPanel
+              items={feedItems.length > 0 ? feedItems : undefined}
+              onItemClick={handleFeedItemClick}
+            />
           </RightPanelSection>
 
           <RightPanelDivider />
 
-          <RightPanelSection title="Risk">
-            <div className="px-3 pb-3">
-              {/* trades/contracts are not provided by the analysis API — panel
-                  shows "—" for those fields instead of a misleading 0. */}
-              <RiskPanel config={tradingConfig ?? undefined} />
-            </div>
+          <RightPanelSection title="Risk" defaultCollapsed>
+            <RiskPanel config={tradingConfig ?? undefined} />
           </RightPanelSection>
 
           <RightPanelDivider />
 
-          <RightPanelSection title="Arctis AI">
-            <div className="px-3 pb-3">
-              <ArctisPanel
-                currentPattern={arctisPattern}
-                currentBias={arctisBias}
-              />
-            </div>
+          <RightPanelSection title="Arctis AI" defaultCollapsed>
+            <ArctisPanel
+              currentPattern={arctisPattern}
+              currentBias={arctisBias}
+            />
           </RightPanelSection>
         </div>
       )}
