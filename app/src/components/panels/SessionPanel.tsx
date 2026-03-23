@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils'
+import { Skeleton } from '@/components/ui/Skeleton'
 
 // ---------------------------------------------------------------------------
 // API shape from /api/analysis/sessions
@@ -45,16 +46,6 @@ const SESSION_DISPLAY_NAMES: Record<string, string> = {
   power_hour: 'Power Hr',
   after_hours: 'After Hrs',
 }
-
-// ---------------------------------------------------------------------------
-// Static fallback data (used when no `data` prop is supplied)
-// ---------------------------------------------------------------------------
-const DEFAULT_SESSIONS: Session[] = [
-  { key: 'premarket', name: 'Pre-Mkt', progress: 100, active: false },
-  { key: 'ny_open', name: 'NY Open', progress: 45, active: true },
-  { key: 'midday', name: 'Midday', progress: 0, active: false },
-  { key: 'power_hour', name: 'Power Hr', progress: 0, active: false },
-]
 
 // ---------------------------------------------------------------------------
 // Helper: derive progress for the current active session.
@@ -114,15 +105,58 @@ function mapApiDataToSessions(data: SessionAPIData): Session[] {
 // Props
 // ---------------------------------------------------------------------------
 interface SessionPanelProps {
-  /** Live API response. When omitted the panel falls back to static data. */
-  data?: SessionAPIData
+  /** Live API response. When omitted the panel shows a loading skeleton. */
+  data?: SessionAPIData | null
+  /** Whether data is currently being fetched. */
+  loading?: boolean
+  /** Error message when the last fetch failed. */
+  error?: string | null
+}
+
+// ---------------------------------------------------------------------------
+// Loading skeleton
+// ---------------------------------------------------------------------------
+function SessionSkeleton() {
+  return (
+    <div className="flex flex-col gap-2">
+      {SESSION_ORDER.map((key) => (
+        <div key={key} className="flex items-center gap-2 px-1.5 py-1">
+          <Skeleton className="h-2.5 w-[52px]" />
+          <Skeleton className="flex-1 h-[3px]" />
+        </div>
+      ))}
+    </div>
+  )
 }
 
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
-export function SessionPanel({ data }: SessionPanelProps) {
-  const sessions: Session[] = data ? mapApiDataToSessions(data) : DEFAULT_SESSIONS
+export function SessionPanel({ data, loading, error }: SessionPanelProps) {
+  // Loading state
+  if (loading && data == null) {
+    return <SessionSkeleton />
+  }
+
+  // Error state
+  if (error && data == null) {
+    return (
+      <div className="flex items-center justify-center py-3">
+        <span className="text-[10px] text-[var(--color-loss)]">{error}</span>
+      </div>
+    )
+  }
+
+  // No data yet (backend not running or first load)
+  if (data == null) {
+    return (
+      <div className="flex items-center justify-center py-3">
+        <span className="text-[10px] text-[var(--color-text-muted)]">Waiting for data...</span>
+      </div>
+    )
+  }
+
+  const sessions: Session[] = mapApiDataToSessions(data)
 
   return (
     <div className="flex flex-col gap-1">
