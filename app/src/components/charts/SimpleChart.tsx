@@ -89,11 +89,17 @@ export interface SimpleChartProps {
   sessionLevels?: SessionLevels | null
   structureBreaks?: StructureBreak[]
   patternAnnotations?: PatternAnnotation[]
+  /** Opening range box overlay data (high/low price with time bounds). */
+  openingRange?: { high: number; low: number; startTime: number; endTime: number } | null
   // Overlay visibility
   showVwap?: boolean
   showEma?: boolean
   showVp?: boolean
   showLevels?: boolean
+  /** Whether to render the Opening Range Box overlay. */
+  showOpeningRange?: boolean
+  /** Whether to render BOS/CHoCH structure break markers. */
+  showBosChoch?: boolean
   /** Called once when the chart instance is created, providing the API reference. */
   onChartReady?: (chart: IChartApi) => void
   /** If set, the chart will scroll to this unix timestamp (seconds). */
@@ -132,10 +138,13 @@ export function SimpleChart({
   sessionLevels,
   structureBreaks,
   patternAnnotations,
+  openingRange,
   showVwap = false,
   showEma = false,
   showVp = false,
   showLevels = false,
+  showOpeningRange = true,
+  showBosChoch = false,
   onChartReady,
   scrollToTimestamp,
   drawings,
@@ -166,6 +175,8 @@ export function SimpleChart({
   const drawingLineRefs = useRef<Map<string, IPriceLine>>(new Map())
   // Zone price line refs (cleared and rebuilt whenever zones or showZones changes)
   const zoneLinesRef = useRef<IPriceLine[]>([])
+  // Opening Range Box price line refs (OR High + OR Low)
+  const orLinesRef = useRef<IPriceLine[]>([])
 
   // ── Build chart on first mount (bars change re-creates chart) ──────────────
   useEffect(() => {
@@ -332,6 +343,7 @@ export function SimpleChart({
       candleRef.current = null
       priceLineRefs.current = []
       zoneLinesRef.current = []
+      orLinesRef.current = []
       markersPluginRef.current = null
       drawingLineRefs.current.clear()
       overlayRef.current = {
@@ -507,7 +519,20 @@ export function SimpleChart({
 
     const markers: SeriesMarker<import('lightweight-charts').Time>[] = []
 
-    // BOS/CHoCH markers disabled — only setup signals shown on chart
+    // BOS/CHoCH structure break markers (limited to last 20 to prevent clutter)
+    if (showBosChoch && structureBreaks && structureBreaks.length > 0) {
+      const limited = structureBreaks.slice(-20)
+      for (const sb of limited) {
+        const isBullish = sb.direction === 'bullish' || sb.direction === 'long'
+        markers.push({
+          time: sb.timestamp as import('lightweight-charts').Time,
+          position: isBullish ? 'belowBar' : 'aboveBar',
+          color: isBullish ? '#22C55E' : '#EF4444',
+          shape: sb.type === 'CHoCH' ? 'circle' : isBullish ? 'arrowUp' : 'arrowDown',
+          text: sb.type,
+        })
+      }
+    }
 
     // Pattern annotations (only clear setups with entry/target)
     if (patternAnnotations && patternAnnotations.length > 0) {
@@ -537,7 +562,7 @@ export function SimpleChart({
     // LWC requires markers sorted ascending by time
     markers.sort((a, b) => (a.time as number) - (b.time as number))
     plugin.setMarkers(markers)
-  }, [structureBreaks, patternAnnotations])
+  }, [showBosChoch, structureBreaks, patternAnnotations])
 
   // ── Zone price lines ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -589,6 +614,38 @@ export function SimpleChart({
       }
     }
   }, [showZones, zones])
+
+  // ── Opening Range Box price lines ─────────────────────────────────────────
+  useEffect(() => {
+    const candle = candleRef.current
+    if (!candle) return
+
+    // Remove previous OR lines
+    orLinesRef.current.forEach((pl) => {
+      try { candle.removePriceLine(pl) } catch { /* already removed */ }
+    })
+    orLinesRef.current = []
+
+    if (!showOpeningRange || !openingRange) return
+
+    const orHigh = candle.createPriceLine({
+      price: openingRange.high,
+      color: 'rgba(92, 184, 240, 0.4)',
+      lineWidth: 1,
+      lineStyle: LineStyle.Dashed,
+      axisLabelVisible: true,
+      title: 'OR High',
+    })
+    const orLow = candle.createPriceLine({
+      price: openingRange.low,
+      color: 'rgba(92, 184, 240, 0.4)',
+      lineWidth: 1,
+      lineStyle: LineStyle.Dashed,
+      axisLabelVisible: true,
+      title: 'OR Low',
+    })
+    orLinesRef.current = [orHigh, orLow]
+  }, [showOpeningRange, openingRange])
 
   // ── Scroll to timestamp when feed item is clicked ─────────────────────────
   useEffect(() => {
