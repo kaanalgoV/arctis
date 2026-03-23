@@ -24,18 +24,17 @@ import type { FeedItem } from '@/components/panels/FeedPanel'
 import type { BiasData } from '@/components/panels/BiasPanel'
 import type { SignalsAPIData } from '@/components/panels/SignalsPanel'
 import { SettingsPanel } from '@/components/settings/SettingsPanel'
-import { SimpleChart } from '@/components/charts/SimpleChart'
 import type { ChartZone } from '@/components/charts/SimpleChart'
-import { ChartToolbar } from '@/components/charts/ChartToolbar'
 import type { OverlayKey } from '@/components/charts/ChartToolbar'
-import { DrawingToolbar } from '@/components/charts/DrawingToolbar'
 import { useDrawings } from '@/hooks/useDrawings'
 import type { Market, Timeframe, OHLCVBar } from '@/types/market'
 import type { IndicatorData, VolumeData, TradingConfig } from '@/types/analysis'
-import { ReplayBar } from '@/components/replay/ReplayBar'
 import { PanelSkeleton } from '@/components/ui/Skeleton'
 import { cn } from '@/lib/utils'
 import type { IChartApi } from 'lightweight-charts'
+import { DashboardPage } from '@/pages/DashboardPage'
+import { ChartPage } from '@/pages/ChartPage'
+import { PatternsPage } from '@/pages/PatternsPage'
 
 const ENGINE_URL = 'http://127.0.0.1:8001'
 const POLL_INTERVAL_MS = 5000
@@ -79,6 +78,9 @@ const SESSION_DISPLAY: Record<string, string> = {
 // ---------------------------------------------------------------------------
 
 type AppMode = 'live' | 'replay'
+
+// Active page in sidebar navigation
+type ActivePage = 'dashboard' | 'chart' | 'patterns' | 'replay' | 'settings'
 
 interface MarketInfo {
   symbol: string
@@ -235,6 +237,9 @@ function buildFeedItems(
 }
 
 export default function App() {
+  // ── Page navigation ────────────────────────────────────────────────────────
+  const [activePage, setActivePage] = useState<ActivePage>('chart')
+
   // ── Mode ───────────────────────────────────────────────────────────────────
   const [mode, setMode] = useState<AppMode>('live')
 
@@ -287,11 +292,9 @@ export default function App() {
       if (!activeTool) return
       if (activeTool === 'hline') {
         addDrawing('hline', { price })
-        // Deselect tool after placing
         setActiveTool(null)
       }
-      // rectangle / trendline / text are P2 — require two-click interaction
-      void timestamp // used in future two-click tools
+      void timestamp
     },
     [activeTool, addDrawing, setActiveTool],
   )
@@ -435,7 +438,6 @@ export default function App() {
     (next: Market) => {
       setMarket(next)
       setSymbol(resolveSymbol(next, markets))
-      // Clear stale analysis while new poll fires
       setSessionData(null)
       setConfluenceData(null)
       setPatternsData(null)
@@ -454,6 +456,26 @@ export default function App() {
     setTimeframe(internalTf)
   }, [])
 
+  // ── Sidebar navigation ─────────────────────────────────────────────────────
+  const handleNavigate = useCallback(
+    async (id: ActivePage) => {
+      if (id === 'replay') {
+        setMode('replay')
+        setActivePage('chart') // chart page with replay mode active
+      } else if (id === 'settings') {
+        setShowSettings(true)
+        // Keep current page visible behind the settings overlay
+      } else {
+        if (id === 'chart' && mode === 'replay') {
+          await replay.stop()
+          setMode('live')
+        }
+        setActivePage(id)
+      }
+    },
+    [mode, replay],
+  )
+
   // ── Derived HUD values ────────────────────────────────────────────────────
   const latestRvol = volumeData?.relative_volume?.at(-1)?.rvol ?? null
   const latestRsi = indicatorData?.rsi?.at(-1)
@@ -470,7 +492,7 @@ export default function App() {
   const travisPattern = patternsData?.annotations.at(-1)?.pattern ?? undefined
   const travisBias = biasData?.bias_state?.state ?? undefined
 
-  // ── Price (must be declared before useEffect that references it) ──────────
+  // ── Price ─────────────────────────────────────────────────────────────────
   const price = lastClose ?? null
 
   // ── Dynamic document title ─────────────────────────────────────────────────
@@ -480,7 +502,6 @@ export default function App() {
   }, [symbol, price])
 
   // ── Keyboard shortcuts ─────────────────────────────────────────────────────
-  // Timeframe labels in order for keys 1-5
   const timeframeKeys = ['1min', '5min', '15min', '30min', '1h'] as const
   useKeyboardShortcuts({
     onToggleReplay: () => {
@@ -514,7 +535,6 @@ export default function App() {
     async (next: AppMode) => {
       setMode(next)
       if (next === 'live') {
-        // Stop any running replay when switching back to live
         await replay.stop()
       }
     },
@@ -522,8 +542,6 @@ export default function App() {
   )
 
   // ── Replay time display ────────────────────────────────────────────────────
-  // During active replay, use sim-filtered bars fetched from /api/bars.
-  // Fallback to useMarketData bars when sim is not active.
   const replayCurrentBar = replay.simStatus?.visible_bars ?? 0
   const replayTotalBars = replay.simStatus?.total_bars ?? 0
   const activeBarsForReplay =
@@ -545,54 +563,34 @@ export default function App() {
       ? replayBarsData
       : bars
 
-  // ── Derive session_levels for SimpleChart (only numeric values) ────────────
-  const sessionLevelsForChart =
-    indicatorData?.session_levels &&
-    indicatorData.session_levels.prev_high != null &&
-    indicatorData.session_levels.prev_low != null &&
-    indicatorData.session_levels.prev_close != null
-      ? {
-          prev_high: indicatorData.session_levels.prev_high as number,
-          prev_low: indicatorData.session_levels.prev_low as number,
-          prev_close: indicatorData.session_levels.prev_close as number,
-          opening_range_high: (indicatorData.session_levels.opening_range_high ?? 0) as number,
-          opening_range_low: (indicatorData.session_levels.opening_range_low ?? 0) as number,
-        }
-      : null
+  // ── Determine grid layout based on active page ────────────────────────────
+  // Dashboard / Patterns: no right panel (52px sidebar + main area)
+  // Chart / Replay: with right panel (52px sidebar + main + 280px right)
+  const showRightPanel = activePage === 'chart' || (activePage === 'chart' && mode === 'replay')
+  const gridCols = showRightPanel ? '52px 1fr 280px' : '52px 1fr'
 
-  // Grid rows: topbar | hud | chart | [replaybar?] | statusbar
-  const gridRows = mode === 'replay'
-    ? '48px 28px 1fr 32px 24px'
-    : '48px 28px 1fr 24px'
-
-  // Row index for right panel (spans hud + chart + optional replay row)
-  const rightPanelRowEnd = mode === 'replay' ? 5 : 4
-  // Row index for statusbar
-  const statusBarRow = mode === 'replay' ? 5 : 4
+  // Sidebar's active item: replay maps to 'replay', otherwise use activePage
+  const sidebarActive: ActivePage = mode === 'replay' ? 'replay' : activePage
 
   return (
     <div
       className="h-screen overflow-hidden"
       style={{
         display: 'grid',
-        gridTemplateColumns: '52px 1fr 280px',
-        gridTemplateRows: gridRows,
+        gridTemplateColumns: gridCols,
+        gridTemplateRows: '48px 28px 1fr 24px',
       }}
     >
       {/* Sidebar — col 1, all rows */}
       <div style={{ gridColumn: '1', gridRow: '1 / -1' }}>
         <Sidebar
-          defaultActive={mode === 'replay' ? 'replay' : 'chart'}
-          onNavigate={(id) => {
-            if (id === 'replay') setMode('replay')
-            else if (id === 'chart' || id === 'dashboard') setMode('live')
-            else if (id === 'settings') setShowSettings(true)
-          }}
+          activeItem={sidebarActive}
+          onNavigate={(id) => void handleNavigate(id)}
         />
       </div>
 
-      {/* Topbar — col 2-3, row 1 */}
-      <div style={{ gridColumn: '2 / 4', gridRow: '1' }}>
+      {/* Topbar — col 2+, row 1 */}
+      <div style={{ gridColumn: `2 / ${showRightPanel ? 4 : 3}`, gridRow: '1' }}>
         <Topbar
           markets={marketRoots}
           activeMarket={market}
@@ -618,201 +616,169 @@ export default function App() {
         />
       </div>
 
-      {/* Mode toggle — col 3, row 2 (replaces right panel header area) */}
-      <div
-        className="flex items-center justify-end px-3 gap-0.5 border-b border-[var(--color-border-subtle)] bg-[var(--color-surface-secondary)]/95"
-        style={{ gridColumn: '3', gridRow: '2' }}
-      >
-        {(['live', 'replay'] as AppMode[]).map((m) => (
-          <button
-            key={m}
-            onClick={() => void handleModeChange(m)}
-            className={cn(
-              'px-2 py-0.5 rounded',
-              'font-mono text-[10px] leading-none uppercase tracking-wide',
-              'transition-colors duration-100',
-              'outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent)]',
-              mode === m
-                ? m === 'replay'
-                  ? 'bg-[#5CB8F0]/15 text-[#5CB8F0]'
-                  : 'bg-[var(--color-accent-muted)] text-[var(--color-accent)]'
-                : 'text-[var(--color-text-muted)] hover:bg-white/[0.04] hover:text-[var(--color-text-secondary)]',
-            )}
-          >
-            {m}
-          </button>
-        ))}
-      </div>
-
-      {/* Chart — col 2, row 3 */}
-      <div
-        className="bg-[var(--color-surface-base)] relative overflow-hidden"
-        style={{ gridColumn: '2', gridRow: '3', display: 'flex', flexDirection: 'column' }}
-      >
-        {/* Chart toolbar */}
-        <ChartToolbar
-          symbol={symbol}
-          activeOverlays={activeOverlays}
-          onToggleOverlay={handleToggleOverlay}
-        />
-
-        {/* Chart body */}
-        <div className="flex-1 relative overflow-hidden">
-          {error ? (
-            <div className="w-full h-full flex items-center justify-center">
-              <span className="font-mono text-sm text-[var(--color-loss)]">{error}</span>
-            </div>
-          ) : isLoading ? (
-            <div className="w-full h-full flex items-center justify-center">
-              <span className="font-mono text-sm text-[var(--color-text-muted)] animate-pulse tabular-nums">
-                Loading {symbol}...
-              </span>
-            </div>
-          ) : chartBars.length > 0 ? (
-            <>
-              <SimpleChart
-                bars={chartBars}
-                className="w-full h-full"
-                vwapData={indicatorData?.vwap}
-                emaData={indicatorData?.ema}
-                volumeProfile={indicatorData?.volume_profile}
-                sessionLevels={sessionLevelsForChart}
-                structureBreaks={structureData?.structure_breaks}
-                patternAnnotations={patternsData?.annotations}
-                showVwap={activeOverlays.has('vwap')}
-                showEma={activeOverlays.has('ema')}
-                showVp={activeOverlays.has('vp')}
-                showLevels={activeOverlays.has('levels')}
-                zones={zonesData?.zones}
-                showZones={activeOverlays.has('zones')}
-                onChartReady={handleChartReady}
-                scrollToTimestamp={scrollToTimestamp}
-                drawings={drawings}
-                onChartClick={activeTool ? handleChartClick : undefined}
-              />
-              <DrawingToolbar
-                activeTool={activeTool}
-                onSelectTool={setActiveTool}
-                onClear={clearDrawings}
-                drawingCount={drawings.length}
-              />
-            </>
-          ) : (
-            <div className="w-full h-full flex items-center justify-center">
-              <span className="font-mono text-sm text-[var(--color-text-muted)]">No data</span>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Replay bar — col 2, row 4 — only in replay mode */}
-      {mode === 'replay' && (
-        <div style={{ gridColumn: '2', gridRow: '4' }}>
-          <ReplayBar
-            isPlaying={replay.isPlaying}
-            speed={replay.speed}
-            progress={replay.progress}
-            currentTime={replayCurrentTime}
-            totalTime={replayTotalTime}
-            date={replay.replayDate ?? ''}
-            onPlay={() => void replay.start()}
-            onPause={() => void replay.stop()}
-            onSpeedChange={(s) => {
-              replay.setSpeed(s)
-              // Restart with new speed if already playing
-              if (replay.isPlaying) void replay.start()
-            }}
-            onSeek={replay.seek}
-            onDateChange={replay.changeDate}
-          />
+      {/* Mode toggle — col 3, row 2 — only when right panel is visible */}
+      {showRightPanel && (
+        <div
+          className="flex items-center justify-end px-3 gap-0.5 border-b border-[var(--color-border-subtle)] bg-[var(--color-surface-secondary)]/95"
+          style={{ gridColumn: '3', gridRow: '2' }}
+        >
+          {(['live', 'replay'] as AppMode[]).map((m) => (
+            <button
+              key={m}
+              onClick={() => void handleModeChange(m)}
+              className={cn(
+                'px-2 py-0.5 rounded',
+                'font-mono text-[10px] leading-none uppercase tracking-wide',
+                'transition-colors duration-100',
+                'outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent)]',
+                mode === m
+                  ? m === 'replay'
+                    ? 'bg-[#5CB8F0]/15 text-[#5CB8F0]'
+                    : 'bg-[var(--color-accent-muted)] text-[var(--color-accent)]'
+                  : 'text-[var(--color-text-muted)] hover:bg-white/[0.04] hover:text-[var(--color-text-secondary)]',
+              )}
+            >
+              {m}
+            </button>
+          ))}
         </div>
       )}
 
-      {/* Right panel — col 3, rows 2-4 (or 2-3 in live mode) */}
-      <div
-        className="border-l border-[var(--color-border-subtle)] bg-[var(--color-surface-secondary)]/95 overflow-y-auto"
-        style={{ gridColumn: '3', gridRow: `3 / ${rightPanelRowEnd}` }}
-      >
-        <RightPanelSection
-          title="Signals"
-          count={signalsData?.signals.length ?? undefined}
-        >
-          <div className="px-3 pb-3">
-            {signalsData == null ? <PanelSkeleton /> : <SignalsPanel data={signalsData} />}
-          </div>
-        </RightPanelSection>
+      {/* Main content area — col 2, row 3 */}
+      <div style={{ gridColumn: '2', gridRow: '3' }} className="overflow-hidden">
+        {activePage === 'dashboard' && (
+          <DashboardPage
+            onNavigateToChart={() => setActivePage('chart')}
+            nqPrice={market === 'NQ' ? price : null}
+            nqChange={null}
+            esPrice={market === 'ES' ? price : null}
+            esChange={null}
+            biasData={biasData}
+            confluenceData={confluenceData}
+            sessionData={sessionData}
+            patternsData={patternsData}
+          />
+        )}
 
-        <RightPanelDivider />
+        {activePage === 'chart' && (
+          <ChartPage
+            symbol={symbol}
+            chartBars={chartBars}
+            isLoading={isLoading}
+            isConnected={isConnected}
+            error={error}
+            activeOverlays={activeOverlays}
+            onToggleOverlay={handleToggleOverlay}
+            indicatorData={indicatorData}
+            structureBreaks={structureData?.structure_breaks}
+            patternAnnotations={patternsData?.annotations}
+            zones={zonesData?.zones}
+            drawings={drawings}
+            activeTool={activeTool}
+            onSelectTool={setActiveTool}
+            onClearDrawings={clearDrawings}
+            onChartClick={activeTool ? handleChartClick : undefined}
+            scrollToTimestamp={scrollToTimestamp}
+            onChartReady={handleChartReady}
+            mode={mode}
+            replay={replay}
+            replayCurrentTime={replayCurrentTime}
+            replayTotalTime={replayTotalTime}
+          />
+        )}
 
-        <RightPanelSection title="Session" count={sessionData?.bar_count}>
-          <div className="px-3 pb-3">
-            {sessionData == null ? <PanelSkeleton /> : <SessionPanel data={sessionData} />}
-          </div>
-        </RightPanelSection>
-
-        <RightPanelDivider />
-
-        <RightPanelSection title="Confluence">
-          <div className="px-3 pb-3">
-            {confluenceData == null ? <PanelSkeleton /> : <ConfluencePanel data={confluenceData} />}
-          </div>
-        </RightPanelSection>
-
-        <RightPanelDivider />
-
-        <RightPanelSection title="Bias" count={biasData ? 1 : undefined}>
-          <div className="px-3 pb-3">
-            {biasData == null ? <PanelSkeleton /> : <BiasPanel data={biasData} />}
-          </div>
-        </RightPanelSection>
-
-        <RightPanelDivider />
-
-        <RightPanelSection
-          title="Patterns"
-          count={patternsData?.annotations.length ?? undefined}
-        >
-          <div className="px-3 pb-3">
-            {patternsData == null ? <PanelSkeleton /> : <PatternsPanel data={patternsData} />}
-          </div>
-        </RightPanelSection>
-
-        <RightPanelDivider />
-
-        <RightPanelSection
-          title="Feed"
-          count={feedItems.length > 0 ? feedItems.length : undefined}
-        >
-          <div className="px-3 pb-3">
-            <FeedPanel
-              items={feedItems.length > 0 ? feedItems : undefined}
-              onItemClick={handleFeedItemClick}
-            />
-          </div>
-        </RightPanelSection>
-
-        <RightPanelDivider />
-
-        <RightPanelSection title="Risk">
-          <div className="px-3 pb-3">
-            <RiskPanel config={tradingConfig ?? undefined} />
-          </div>
-        </RightPanelSection>
-
-        <RightPanelDivider />
-
-        <RightPanelSection title="Travis">
-          <div className="px-3 pb-3">
-            <TravisPanel
-              currentPattern={travisPattern}
-              currentBias={travisBias}
-            />
-          </div>
-        </RightPanelSection>
+        {activePage === 'patterns' && (
+          <PatternsPage data={patternsData} />
+        )}
       </div>
 
-      {/* StatusBar — col 1-3, last row */}
-      <div style={{ gridColumn: '1 / -1', gridRow: statusBarRow }}>
+      {/* Right panel — col 3, rows 2-3 — only when chart page is active */}
+      {showRightPanel && (
+        <div
+          className="border-l border-[var(--color-border-subtle)] bg-[var(--color-surface-secondary)]/95 overflow-y-auto"
+          style={{ gridColumn: '3', gridRow: '3' }}
+        >
+          <RightPanelSection
+            title="Signals"
+            count={signalsData?.signals.length ?? undefined}
+          >
+            <div className="px-3 pb-3">
+              {signalsData == null ? <PanelSkeleton /> : <SignalsPanel data={signalsData} />}
+            </div>
+          </RightPanelSection>
+
+          <RightPanelDivider />
+
+          <RightPanelSection title="Session" count={sessionData?.bar_count}>
+            <div className="px-3 pb-3">
+              {sessionData == null ? <PanelSkeleton /> : <SessionPanel data={sessionData} />}
+            </div>
+          </RightPanelSection>
+
+          <RightPanelDivider />
+
+          <RightPanelSection title="Confluence">
+            <div className="px-3 pb-3">
+              {confluenceData == null ? <PanelSkeleton /> : <ConfluencePanel data={confluenceData} />}
+            </div>
+          </RightPanelSection>
+
+          <RightPanelDivider />
+
+          <RightPanelSection title="Bias" count={biasData ? 1 : undefined}>
+            <div className="px-3 pb-3">
+              {biasData == null ? <PanelSkeleton /> : <BiasPanel data={biasData} />}
+            </div>
+          </RightPanelSection>
+
+          <RightPanelDivider />
+
+          <RightPanelSection
+            title="Patterns"
+            count={patternsData?.annotations.length ?? undefined}
+          >
+            <div className="px-3 pb-3">
+              {patternsData == null ? <PanelSkeleton /> : <PatternsPanel data={patternsData} />}
+            </div>
+          </RightPanelSection>
+
+          <RightPanelDivider />
+
+          <RightPanelSection
+            title="Feed"
+            count={feedItems.length > 0 ? feedItems.length : undefined}
+          >
+            <div className="px-3 pb-3">
+              <FeedPanel
+                items={feedItems.length > 0 ? feedItems : undefined}
+                onItemClick={handleFeedItemClick}
+              />
+            </div>
+          </RightPanelSection>
+
+          <RightPanelDivider />
+
+          <RightPanelSection title="Risk">
+            <div className="px-3 pb-3">
+              <RiskPanel config={tradingConfig ?? undefined} />
+            </div>
+          </RightPanelSection>
+
+          <RightPanelDivider />
+
+          <RightPanelSection title="Travis">
+            <div className="px-3 pb-3">
+              <TravisPanel
+                currentPattern={travisPattern}
+                currentBias={travisBias}
+              />
+            </div>
+          </RightPanelSection>
+        </div>
+      )}
+
+      {/* StatusBar — col 1 to end, last row */}
+      <div style={{ gridColumn: '1 / -1', gridRow: '4' }}>
         <StatusBar
           connected={isConnected}
           latencyMs={latencyMs}
@@ -821,7 +787,7 @@ export default function App() {
         />
       </div>
 
-      {/* Settings slide-over panel — rendered outside grid, fixed position */}
+      {/* Settings slide-over panel — fixed overlay, always available */}
       <SettingsPanel
         open={showSettings}
         onClose={() => setShowSettings(false)}

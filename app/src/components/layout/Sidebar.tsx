@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { motion } from 'framer-motion'
 import {
   LayoutDashboard,
@@ -69,15 +68,19 @@ function SidebarNavItem({ item, isActive, onClick }: SidebarNavItemProps) {
 }
 
 interface SidebarProps {
+  /** Controlled active item — managed externally by App */
+  activeItem?: NavItemId
+  /** Legacy prop — kept for backwards compat, ignored when activeItem is provided */
   defaultActive?: NavItemId
   onNavigate?: (id: NavItemId) => void
 }
 
-export function Sidebar({ defaultActive = 'chart', onNavigate }: SidebarProps) {
-  const [activeItem, setActiveItem] = useState<NavItemId>(defaultActive)
+export function Sidebar({ activeItem, defaultActive = 'chart', onNavigate }: SidebarProps) {
+  // Use controlled prop when provided, otherwise fall back to defaultActive for
+  // scenarios where Sidebar is used standalone (e.g. storybook / tests)
+  const resolvedActive: NavItemId = activeItem ?? defaultActive
 
   const handleNavigate = (id: NavItemId) => {
-    setActiveItem(id)
     onNavigate?.(id)
   }
 
@@ -104,7 +107,7 @@ export function Sidebar({ defaultActive = 'chart', onNavigate }: SidebarProps) {
           <SidebarNavItem
             key={item.id}
             item={item}
-            isActive={activeItem === item.id}
+            isActive={resolvedActive === item.id}
             onClick={handleNavigate}
           />
         ))}
@@ -117,7 +120,7 @@ export function Sidebar({ defaultActive = 'chart', onNavigate }: SidebarProps) {
           <SidebarNavItem
             key={item.id}
             item={item}
-            isActive={activeItem === item.id}
+            isActive={resolvedActive === item.id}
             onClick={handleNavigate}
           />
         ))}

@@ -9,6 +9,62 @@ from arctis.analysis.zones import calculate_zones
 router = APIRouter(prefix="/api/analysis")
 
 
+@router.get("/backtest")
+async def run_backtest_endpoint(
+    market: Market = Query(...),
+    timeframe: Timeframe = Query(...),
+    days: int = Query(default=30, ge=7, le=90),
+):
+    """Run backtest on historical data and return signal accuracy report.
+
+    Simulates the full signal detection pipeline at intraday checkpoints over
+    the requested number of trading days and measures:
+    - Win rate per signal type
+    - Average R multiple
+    - Profit factor
+    - Confidence-level breakdown (high/medium/low)
+
+    Query params:
+        market:    ES | NQ
+        timeframe: 1min | 5min
+        days:      7-90 (default 30)
+
+    Returns a JSON report with aggregate stats and the 20 most recent trades.
+    """
+    from arctis.analysis.backtester import run_backtest
+
+    bars = fetch_bars_as_models(market=market.value, days=days, timeframe=timeframe.value)
+    report = run_backtest(bars)
+
+    return {
+        "total_trades": report.total_trades,
+        "wins": report.wins,
+        "losses": report.losses,
+        "win_rate": report.win_rate,
+        "avg_r": report.avg_r,
+        "profit_factor": report.profit_factor,
+        "best_type": report.best_type,
+        "worst_type": report.worst_type,
+        "by_type": report.by_type,
+        "by_confidence": report.by_confidence,
+        "recent_trades": [
+            {
+                "type": t.signal_type,
+                "dir": t.direction,
+                "entry": t.entry_price,
+                "exit": t.exit_price,
+                "r": t.r_multiple,
+                "won": t.won,
+                "bars": t.bars_held,
+                "date": t.date,
+                "confidence": t.confidence,
+                "exit_reason": t.exit_reason,
+            }
+            for t in report.trades[-20:]
+        ],
+    }
+
+
 def _get_sim():
     from arctis.main import sim
     return sim
