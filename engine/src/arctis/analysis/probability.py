@@ -6,6 +6,114 @@ import numpy as np
 
 from arctis.models import OHLCVBar
 
+# ---------------------------------------------------------------------------
+# Rule-based probability zones
+# ---------------------------------------------------------------------------
+
+
+def calculate_probability_zones(bars: list[OHLCVBar]) -> list[dict]:
+    """Calculate rule-based probability zones from a bar series.
+
+    Three zone types are produced:
+    - Opening-range extension zones (ORB breakout/failure probability)
+    - VWAP reversion zones (mean-reversion around VWAP)
+    - Key level proximity zones (rolling quantile extremes)
+
+    Args:
+        bars: OHLCV bars, ideally a full session or multi-session history.
+
+    Returns:
+        List of zone dicts with keys:
+        ``type``, ``target_high``, ``target_low``, ``probability``, ``method``.
+    """
+    if len(bars) < 30:
+        return []
+
+    closes = np.array([b.close for b in bars])
+    highs = np.array([b.high for b in bars])
+    lows = np.array([b.low for b in bars])
+    volumes = np.array([b.volume for b in bars], dtype=float)
+
+    current_price = float(closes[-1])
+    zones: list[dict] = []
+
+    # --- Opening-range extension zones (first 15 bars = opening range) ------
+    or_len = min(15, len(bars) // 4)
+    or_high = float(np.max(highs[:or_len]))
+    or_low = float(np.min(lows[:or_len]))
+    or_range = or_high - or_low
+    if or_range > 0:
+        # How often did price extend 1x OR above the high?
+        ext_high_target = or_high + or_range
+        ext_low_target = or_low - or_range
+        reach_high = float(np.mean(highs > ext_high_target))
+        reach_low = float(np.mean(lows < ext_low_target))
+        zones.append({
+            "type": "or_extension_high",
+            "target_high": round(ext_high_target + or_range * 0.1, 2),
+            "target_low": round(ext_high_target, 2),
+            "probability": round(float(reach_high), 3),
+            "method": "opening_range",
+        })
+        zones.append({
+            "type": "or_extension_low",
+            "target_high": round(ext_low_target, 2),
+            "target_low": round(ext_low_target - or_range * 0.1, 2),
+            "probability": round(float(reach_low), 3),
+            "method": "opening_range",
+        })
+
+    # --- VWAP reversion zones -----------------------------------------------
+    typical_price = (highs + lows + closes) / 3.0
+    cum_vol = np.cumsum(volumes)
+    cum_tp_vol = np.cumsum(typical_price * volumes)
+    vwap = cum_tp_vol[-1] / (cum_vol[-1] + 1e-9)
+
+    price_std = float(np.std(closes))
+    if price_std > 0:
+        # 1-sigma reversion band around VWAP
+        vwap_high = vwap + price_std
+        vwap_low = vwap - price_std
+        # Probability = fraction of bars that touched the band from current side
+        if current_price > vwap:
+            reversion_prob = float(np.mean(lows < vwap + price_std * 0.5))
+        else:
+            reversion_prob = float(np.mean(highs > vwap - price_std * 0.5))
+        zones.append({
+            "type": "vwap_reversion",
+            "target_high": round(float(vwap_high), 2),
+            "target_low": round(float(vwap_low), 2),
+            "probability": round(reversion_prob, 3),
+            "method": "vwap_reversion",
+        })
+
+    # --- Key level proximity zones (rolling 20-bar high/low) ----------------
+    window = min(20, len(bars))
+    recent_high = float(np.max(highs[-window:]))
+    recent_low = float(np.min(lows[-window:]))
+    tick_band = (recent_high - recent_low) * 0.05  # 5% band around extremes
+
+    # Probability that price revisits the recent high/low
+    revisit_high_prob = float(np.mean(highs[-window:] >= recent_high * 0.995))
+    revisit_low_prob = float(np.mean(lows[-window:] <= recent_low * 1.005))
+
+    zones.append({
+        "type": "key_level_high",
+        "target_high": round(recent_high + tick_band, 2),
+        "target_low": round(recent_high - tick_band, 2),
+        "probability": round(revisit_high_prob, 3),
+        "method": "key_level",
+    })
+    zones.append({
+        "type": "key_level_low",
+        "target_high": round(recent_low + tick_band, 2),
+        "target_low": round(recent_low - tick_band, 2),
+        "probability": round(revisit_low_prob, 3),
+        "method": "key_level",
+    })
+
+    return zones
+
 
 @dataclass
 class TargetZone:
