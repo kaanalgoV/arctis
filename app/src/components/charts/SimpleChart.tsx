@@ -82,26 +82,18 @@ interface PatternAnnotation {
 export interface SimpleChartProps {
   bars: OHLCVBar[]
   className?: string
-  // Loading / error states
-  isLoading?: boolean
-  error?: string | null
-  // Overlay data (external, server-provided)
+  // Overlay data
   vwapData?: VwapPoint[]
   emaData?: EmaPoint[]
   volumeProfile?: VolumeProfile | null
   sessionLevels?: SessionLevels | null
   structureBreaks?: StructureBreak[]
   patternAnnotations?: PatternAnnotation[]
-  // Previous day levels (direct props)
-  pdh?: number | null
-  pdl?: number | null
-  pdc?: number | null
   // Overlay visibility
   showVwap?: boolean
   showEma?: boolean
   showVp?: boolean
   showLevels?: boolean
-  showSessionSeparators?: boolean
   /** Called once when the chart instance is created, providing the API reference. */
   onChartReady?: (chart: IChartApi) => void
   /** If set, the chart will scroll to this unix timestamp (seconds). */
@@ -129,166 +121,21 @@ interface OverlaySeries {
   ema50: ISeriesApi<'Line'> | null
 }
 
-// ─── VWAP Calculation ────────────────────────────────────────────────────────
-
-/**
- * Returns hour in ET (UTC-5 standard, UTC-4 daylight).
- * Approximation: use UTC-4 (EDT) for trading season (Mar-Nov), UTC-5 (EST) otherwise.
- */
-function getHourET(timestampSeconds: number): number {
-  const d = new Date(timestampSeconds * 1000)
-  const month = d.getUTCMonth() // 0=Jan
-  // EDT (UTC-4): March(2) through November(10)
-  const offsetHours = month >= 2 && month <= 10 ? 4 : 5
-  return (d.getUTCHours() - offsetHours + 24) % 24
-}
-
-function getMinuteET(timestampSeconds: number): number {
-  const d = new Date(timestampSeconds * 1000)
-  return d.getUTCMinutes()
-}
-
-/** Calculate VWAP with SD bands from bars, resetting at 09:30 ET each day. */
-function calculateVwap(bars: OHLCVBar[]): VwapPoint[] {
-  const result: VwapPoint[] = []
-
-  let cumPV = 0
-  let cumV = 0
-  let cumPV2 = 0 // for variance: sum of (typical_price^2 * volume)
-  let prevDay = -1
-
-  for (const bar of bars) {
-    const h = getHourET(bar.timestamp)
-    const m = getMinuteET(bar.timestamp)
-    const d = new Date(bar.timestamp * 1000).getUTCDate()
-
-    // Reset at 09:30 ET or new day
-    const isRthOpen = h === 9 && m === 30
-    const isNewDay = d !== prevDay && h === 9 && m >= 30
-
-    if (isRthOpen || (isNewDay && h > 9)) {
-      cumPV = 0
-      cumV = 0
-      cumPV2 = 0
-    }
-
-    if (d !== prevDay) prevDay = d
-
-    const tp = (bar.high + bar.low + bar.close) / 3
-    cumPV += tp * bar.volume
-    cumV += bar.volume
-    cumPV2 += tp * tp * bar.volume
-
-    if (cumV === 0) continue
-
-    const vwap = cumPV / cumV
-    const variance = Math.max(0, cumPV2 / cumV - vwap * vwap)
-    const sd = Math.sqrt(variance)
-
-    result.push({
-      timestamp: bar.timestamp,
-      vwap,
-      upper_1: vwap + sd,
-      lower_1: vwap - sd,
-      upper_2: vwap + 2 * sd,
-      lower_2: vwap - 2 * sd,
-    })
-  }
-
-  return result
-}
-
-// ─── EMA Calculation ─────────────────────────────────────────────────────────
-
-function calculateEma(closes: number[], period: number): number[] {
-  if (closes.length === 0) return []
-  const k = 2 / (period + 1)
-  const result: number[] = []
-  let ema = closes[0]
-  result.push(ema)
-  for (let i = 1; i < closes.length; i++) {
-    ema = closes[i] * k + ema * (1 - k)
-    result.push(ema)
-  }
-  return result
-}
-
-function calculateEmaRibbon(bars: OHLCVBar[]): { timestamp: number; ema9: number; ema21: number; ema50: number }[] {
-  if (bars.length === 0) return []
-  const closes = bars.map((b) => b.close)
-  const ema9 = calculateEma(closes, 9)
-  const ema21 = calculateEma(closes, 21)
-  const ema50 = calculateEma(closes, 50)
-  return bars.map((b, i) => ({
-    timestamp: b.timestamp,
-    ema9: ema9[i],
-    ema21: ema21[i],
-    ema50: ema50[i],
-  }))
-}
-
-// ─── Session separator timestamps ────────────────────────────────────────────
-
-interface SessionBoundary {
-  timestamp: number
-  label: string
-}
-
-/**
- * Given a set of bars, extract unique session boundary timestamps (by ET hour).
- * Sessions: Pre-market (06:00), RTH Open (09:30), Lunch (12:00), RTH Close (16:00)
- */
-function extractSessionBoundaries(bars: OHLCVBar[]): SessionBoundary[] {
-  const seen = new Set<string>()
-  const boundaries: SessionBoundary[] = []
-
-  for (const bar of bars) {
-    const h = getHourET(bar.timestamp)
-    const m = getMinuteET(bar.timestamp)
-    const d = new Date(bar.timestamp * 1000).toISOString().slice(0, 10)
-
-    const boundaries2check: Array<[number, number, string]> = [
-      [6, 0, 'Pre'],
-      [9, 30, 'Open'],
-      [12, 0, 'Lunch'],
-      [16, 0, 'Close'],
-    ]
-
-    for (const [bh, bm, label] of boundaries2check) {
-      if (h === bh && m === bm) {
-        const key = `${d}-${label}`
-        if (!seen.has(key)) {
-          seen.add(key)
-          boundaries.push({ timestamp: bar.timestamp, label })
-        }
-      }
-    }
-  }
-
-  return boundaries
-}
-
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export function SimpleChart({
   bars,
   className,
-  isLoading = false,
-  error,
   vwapData,
   emaData,
   volumeProfile,
   sessionLevels,
   structureBreaks,
   patternAnnotations,
-  pdh,
-  pdl,
-  pdc,
   showVwap = false,
   showEma = false,
   showVp = false,
   showLevels = false,
-  showSessionSeparators = true,
   onChartReady,
   scrollToTimestamp,
   drawings,
@@ -300,8 +147,6 @@ export function SimpleChart({
   const chartRef = useRef<IChartApi | null>(null)
   // Candle series ref for price lines and markers
   const candleRef = useRef<ISeriesApi<'Candlestick'> | null>(null)
-  // Volume series ref for incremental updates
-  const volumeSeriesRef = useRef<ISeriesApi<'Histogram'> | null>(null)
   // Overlay series refs
   const overlayRef = useRef<OverlaySeries>({
     vwap: null,
@@ -321,12 +166,10 @@ export function SimpleChart({
   const drawingLineRefs = useRef<Map<string, IPriceLine>>(new Map())
   // Zone price line refs (cleared and rebuilt whenever zones or showZones changes)
   const zoneLinesRef = useRef<IPriceLine[]>([])
-  // Previous bars length to detect incremental vs full reload
-  const prevBarsLengthRef = useRef<number>(0)
 
-  // ── Build chart on first mount ────────────────────────────────────────────
+  // ── Build chart on first mount (bars change re-creates chart) ──────────────
   useEffect(() => {
-    if (!containerRef.current) return
+    if (!containerRef.current || bars.length === 0) return
 
     const chart = createChart(containerRef.current, {
       width: containerRef.current.clientWidth,
@@ -360,6 +203,15 @@ export function SimpleChart({
       wickUpColor: '#008757',
       wickDownColor: '#EF4136',
     })
+    candleSeries.setData(
+      bars.map((b) => ({
+        time: b.timestamp as any,
+        open: b.open,
+        high: b.high,
+        low: b.low,
+        close: b.close,
+      }))
+    )
     candleRef.current = candleSeries
 
     // ── Volume bars ───────────────────────────────────────────────────────────
@@ -370,18 +222,24 @@ export function SimpleChart({
     chart.priceScale('volume').applyOptions({
       scaleMargins: { top: 0.8, bottom: 0 },
     })
-    volumeSeriesRef.current = volumeSeries
+    volumeSeries.setData(
+      bars.map((b) => ({
+        time: b.timestamp as any,
+        value: b.volume,
+        color: b.close >= b.open ? 'rgba(0,135,87,0.3)' : 'rgba(239,65,54,0.3)',
+      }))
+    )
 
     // ── VWAP overlay series (always added, visibility controlled) ─────────────
     const vwapSeries = chart.addSeries(LineSeries, {
-      color: '#5CB8F0',
-      lineWidth: 2,
+      color: 'rgba(251,191,36,0.9)',
+      lineWidth: 1,
       priceLineVisible: false,
       lastValueVisible: false,
       visible: false,
     })
     const vwapUp1Series = chart.addSeries(LineSeries, {
-      color: 'rgba(92,184,240,0.3)',
+      color: 'rgba(251,191,36,0.35)',
       lineWidth: 1,
       lineStyle: LineStyle.Dashed,
       priceLineVisible: false,
@@ -389,7 +247,7 @@ export function SimpleChart({
       visible: false,
     })
     const vwapDn1Series = chart.addSeries(LineSeries, {
-      color: 'rgba(92,184,240,0.3)',
+      color: 'rgba(251,191,36,0.35)',
       lineWidth: 1,
       lineStyle: LineStyle.Dashed,
       priceLineVisible: false,
@@ -397,7 +255,7 @@ export function SimpleChart({
       visible: false,
     })
     const vwapUp2Series = chart.addSeries(LineSeries, {
-      color: 'rgba(92,184,240,0.15)',
+      color: 'rgba(251,191,36,0.15)',
       lineWidth: 1,
       lineStyle: LineStyle.Dotted,
       priceLineVisible: false,
@@ -405,7 +263,7 @@ export function SimpleChart({
       visible: false,
     })
     const vwapDn2Series = chart.addSeries(LineSeries, {
-      color: 'rgba(92,184,240,0.15)',
+      color: 'rgba(251,191,36,0.15)',
       lineWidth: 1,
       lineStyle: LineStyle.Dotted,
       priceLineVisible: false,
@@ -420,22 +278,25 @@ export function SimpleChart({
 
     // ── EMA ribbon series ─────────────────────────────────────────────────────
     const ema9Series = chart.addSeries(LineSeries, {
-      color: '#5CB8F0',
+      color: '#34D399',
       lineWidth: 1,
+      lineStyle: LineStyle.Dashed,
       priceLineVisible: false,
       lastValueVisible: false,
       visible: false,
     })
     const ema21Series = chart.addSeries(LineSeries, {
-      color: '#8B5CF6',
+      color: '#58A6FF',
       lineWidth: 1,
+      lineStyle: LineStyle.Dashed,
       priceLineVisible: false,
       lastValueVisible: false,
       visible: false,
     })
     const ema50Series = chart.addSeries(LineSeries, {
-      color: '#F59E0B',
+      color: '#A855F7',
       lineWidth: 1,
+      lineStyle: LineStyle.Dashed,
       priceLineVisible: false,
       lastValueVisible: false,
       visible: false,
@@ -448,152 +309,53 @@ export function SimpleChart({
     const markersPlugin = createSeriesMarkers(candleSeries)
     markersPluginRef.current = markersPlugin
 
-    // ── ResizeObserver ────────────────────────────────────────────────────────
-    const ro = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        const { width, height } = entry.contentRect
-        chart.resize(width, height)
-      }
-    })
-    ro.observe(containerRef.current)
+    chart.timeScale().fitContent()
 
     // Notify parent that chart is ready
     onChartReady?.(chart)
+
+    // ── ResizeObserver ────────────────────────────────────────────────────────
+    const ro = new ResizeObserver(() => {
+      if (containerRef.current) {
+        chart.applyOptions({
+          width: containerRef.current.clientWidth,
+          height: containerRef.current.clientHeight,
+        })
+      }
+    })
+    ro.observe(containerRef.current)
 
     return () => {
       ro.disconnect()
       chart.remove()
       chartRef.current = null
       candleRef.current = null
-      volumeSeriesRef.current = null
       priceLineRefs.current = []
       zoneLinesRef.current = []
       markersPluginRef.current = null
       drawingLineRefs.current.clear()
-      prevBarsLengthRef.current = 0
       overlayRef.current = {
         vwap: null, vwapUp1: null, vwapDn1: null,
         vwapUp2: null, vwapDn2: null,
         ema9: null, ema21: null, ema50: null,
       }
     }
-    // Chart is created once — data updates handled by separate effects
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  // ── Bar data updates (incremental) ────────────────────────────────────────
-  useEffect(() => {
-    const candle = candleRef.current
-    const volume = volumeSeriesRef.current
-    if (!candle || !volume || bars.length === 0) return
-
-    const prevLen = prevBarsLengthRef.current
-
-    if (prevLen === 0) {
-      // Full reload — set all data
-      candle.setData(
-        bars.map((b) => ({
-          time: b.timestamp as any,
-          open: b.open,
-          high: b.high,
-          low: b.low,
-          close: b.close,
-        }))
-      )
-      volume.setData(
-        bars.map((b) => ({
-          time: b.timestamp as any,
-          value: b.volume,
-          color: b.close >= b.open ? 'rgba(0,135,87,0.3)' : 'rgba(239,65,54,0.3)',
-        }))
-      )
-      chartRef.current?.timeScale().fitContent()
-    } else if (bars.length === prevLen) {
-      // Same length — update last bar in place (price tick)
-      const last = bars[bars.length - 1]
-      candle.update({
-        time: last.timestamp as any,
-        open: last.open,
-        high: last.high,
-        low: last.low,
-        close: last.close,
-      })
-      volume.update({
-        time: last.timestamp as any,
-        value: last.volume,
-        color: last.close >= last.open ? 'rgba(0,135,87,0.3)' : 'rgba(239,65,54,0.3)',
-      })
-    } else if (bars.length === prevLen + 1) {
-      // One new bar appended — update last (now complete) and add new
-      const prev = bars[bars.length - 2]
-      const last = bars[bars.length - 1]
-      candle.update({
-        time: prev.timestamp as any,
-        open: prev.open,
-        high: prev.high,
-        low: prev.low,
-        close: prev.close,
-      })
-      candle.update({
-        time: last.timestamp as any,
-        open: last.open,
-        high: last.high,
-        low: last.low,
-        close: last.close,
-      })
-      volume.update({
-        time: prev.timestamp as any,
-        value: prev.volume,
-        color: prev.close >= prev.open ? 'rgba(0,135,87,0.3)' : 'rgba(239,65,54,0.3)',
-      })
-      volume.update({
-        time: last.timestamp as any,
-        value: last.volume,
-        color: last.close >= last.open ? 'rgba(0,135,87,0.3)' : 'rgba(239,65,54,0.3)',
-      })
-    } else {
-      // Larger diff (e.g. symbol change) — full reload
-      candle.setData(
-        bars.map((b) => ({
-          time: b.timestamp as any,
-          open: b.open,
-          high: b.high,
-          low: b.low,
-          close: b.close,
-        }))
-      )
-      volume.setData(
-        bars.map((b) => ({
-          time: b.timestamp as any,
-          value: b.volume,
-          color: b.close >= b.open ? 'rgba(0,135,87,0.3)' : 'rgba(239,65,54,0.3)',
-        }))
-      )
-      chartRef.current?.timeScale().fitContent()
-    }
-
-    prevBarsLengthRef.current = bars.length
   }, [bars])
 
-  // ── VWAP: prefer server data, fall back to internal calculation ───────────
+  // ── VWAP data + visibility ─────────────────────────────────────────────────
   useEffect(() => {
     const ov = overlayRef.current
     if (!ov.vwap) return
 
-    const visible = showVwap && bars.length > 0
+    const visible = !!(showVwap && vwapData && vwapData.length > 0)
 
-    if (visible) {
-      // Use server-provided data if available, otherwise calculate from bars
-      const data: VwapPoint[] =
-        vwapData && vwapData.length > 0
-          ? [...vwapData].sort((a, b) => a.timestamp - b.timestamp)
-          : calculateVwap(bars)
-
-      ov.vwap.setData(data.map((v) => ({ time: v.timestamp as any, value: v.vwap })))
-      ov.vwapUp1!.setData(data.map((v) => ({ time: v.timestamp as any, value: v.upper_1 })))
-      ov.vwapDn1!.setData(data.map((v) => ({ time: v.timestamp as any, value: v.lower_1 })))
-      ov.vwapUp2!.setData(data.map((v) => ({ time: v.timestamp as any, value: v.upper_2 })))
-      ov.vwapDn2!.setData(data.map((v) => ({ time: v.timestamp as any, value: v.lower_2 })))
+    if (visible && vwapData) {
+      const sorted = [...vwapData].sort((a, b) => a.timestamp - b.timestamp)
+      ov.vwap.setData(sorted.map((v) => ({ time: v.timestamp as any, value: v.vwap })))
+      ov.vwapUp1!.setData(sorted.map((v) => ({ time: v.timestamp as any, value: v.upper_1 })))
+      ov.vwapDn1!.setData(sorted.map((v) => ({ time: v.timestamp as any, value: v.lower_1 })))
+      ov.vwapUp2!.setData(sorted.map((v) => ({ time: v.timestamp as any, value: v.upper_2 })))
+      ov.vwapDn2!.setData(sorted.map((v) => ({ time: v.timestamp as any, value: v.lower_2 })))
     }
 
     ov.vwap.applyOptions({ visible })
@@ -601,41 +363,35 @@ export function SimpleChart({
     ov.vwapDn1!.applyOptions({ visible })
     ov.vwapUp2!.applyOptions({ visible })
     ov.vwapDn2!.applyOptions({ visible })
-  }, [showVwap, vwapData, bars])
+  }, [showVwap, vwapData])
 
-  // ── EMA: prefer server data, fall back to internal calculation ────────────
+  // ── EMA data + visibility ─────────────────────────────────────────────────
   useEffect(() => {
     const ov = overlayRef.current
     if (!ov.ema9) return
 
-    const visible = showEma && bars.length > 0
+    const visible = !!(showEma && emaData && emaData.length > 0)
 
-    if (visible) {
-      const data =
-        emaData && emaData.length > 0
-          ? [...emaData]
-              .sort((a, b) => a.timestamp - b.timestamp)
-              .map((e) => ({ timestamp: e.timestamp, ema9: e.ema9, ema21: e.ema21, ema50: e.ema50 }))
-          : calculateEmaRibbon(bars)
-
-      ov.ema9!.setData(data.map((e) => ({ time: e.timestamp as any, value: e.ema9 })))
-      ov.ema21!.setData(data.map((e) => ({ time: e.timestamp as any, value: e.ema21 })))
-      ov.ema50!.setData(data.map((e) => ({ time: e.timestamp as any, value: e.ema50 })))
+    if (visible && emaData) {
+      const sorted = [...emaData].sort((a, b) => a.timestamp - b.timestamp)
+      ov.ema9!.setData(sorted.map((e) => ({ time: e.timestamp as any, value: e.ema9 })))
+      ov.ema21!.setData(sorted.map((e) => ({ time: e.timestamp as any, value: e.ema21 })))
+      ov.ema50!.setData(sorted.map((e) => ({ time: e.timestamp as any, value: e.ema50 })))
     }
 
     ov.ema9!.applyOptions({ visible })
     ov.ema21!.applyOptions({ visible })
     ov.ema50!.applyOptions({ visible })
-  }, [showEma, emaData, bars])
+  }, [showEma, emaData])
 
   // ── Volume Profile price lines ────────────────────────────────────────────
   useEffect(() => {
     const candle = candleRef.current
     if (!candle) return
 
-    // Remove existing VP price lines (first 3)
+    // Remove existing VP price lines
     priceLineRefs.current
-      .slice(0, 3)
+      .filter((_, i) => i < 3)
       .forEach((pl) => {
         try { candle.removePriceLine(pl) } catch (_) { /* already removed */ }
       })
@@ -675,6 +431,8 @@ export function SimpleChart({
     const candle = candleRef.current
     if (!candle) return
 
+    // Remove existing level price lines (stored after VP lines, i.e. index 3+)
+    // We keep a separate ref slice for levels
     const vpCount = showVp && volumeProfile ? 3 : 0
     priceLineRefs.current
       .slice(vpCount)
@@ -683,118 +441,75 @@ export function SimpleChart({
       })
     priceLineRefs.current = priceLineRefs.current.slice(0, vpCount)
 
-    if (showLevels) {
+    if (showLevels && sessionLevels) {
+      const sl = sessionLevels
       const lines: IPriceLine[] = []
 
-      // Session levels (from sessionLevels prop)
-      if (sessionLevels) {
-        const sl = sessionLevels
-        if (sl.prev_high != null) {
-          lines.push(candle.createPriceLine({
-            price: sl.prev_high,
-            color: '#008757',
-            lineWidth: 1,
-            lineStyle: LineStyle.Dashed,
-            axisLabelVisible: true,
-            title: 'PDH',
-          }))
-        }
-        if (sl.prev_low != null) {
-          lines.push(candle.createPriceLine({
-            price: sl.prev_low,
-            color: '#EF4136',
-            lineWidth: 1,
-            lineStyle: LineStyle.Dashed,
-            axisLabelVisible: true,
-            title: 'PDL',
-          }))
-        }
-        if (sl.prev_close != null) {
-          lines.push(candle.createPriceLine({
-            price: sl.prev_close,
-            color: '#949DA8',
-            lineWidth: 1,
-            lineStyle: LineStyle.SparseDotted,
-            axisLabelVisible: true,
-            title: 'PDC',
-          }))
-        }
-        if (sl.opening_range_high != null) {
-          lines.push(candle.createPriceLine({
-            price: sl.opening_range_high,
-            color: 'rgba(92,184,240,0.6)',
-            lineWidth: 1,
-            lineStyle: LineStyle.Dashed,
-            axisLabelVisible: true,
-            title: 'ORH',
-          }))
-        }
-        if (sl.opening_range_low != null) {
-          lines.push(candle.createPriceLine({
-            price: sl.opening_range_low,
-            color: 'rgba(92,184,240,0.6)',
-            lineWidth: 1,
-            lineStyle: LineStyle.Dashed,
-            axisLabelVisible: true,
-            title: 'ORL',
-          }))
-        }
-      }
-
-      // Direct PDH/PDL/PDC props (override sessionLevels if provided)
-      if (pdh != null) {
+      if (sl.prev_high != null) {
         lines.push(candle.createPriceLine({
-          price: pdh,
-          color: 'rgba(0,135,87,0.7)',
+          price: sl.prev_high,
+          color: '#008757',
           lineWidth: 1,
           lineStyle: LineStyle.Dashed,
           axisLabelVisible: true,
           title: 'PDH',
         }))
       }
-      if (pdl != null) {
+      if (sl.prev_low != null) {
         lines.push(candle.createPriceLine({
-          price: pdl,
-          color: 'rgba(239,65,54,0.7)',
+          price: sl.prev_low,
+          color: '#EF4136',
           lineWidth: 1,
           lineStyle: LineStyle.Dashed,
           axisLabelVisible: true,
           title: 'PDL',
         }))
       }
-      if (pdc != null) {
+      if (sl.prev_close != null) {
         lines.push(candle.createPriceLine({
-          price: pdc,
-          color: 'rgba(148,157,168,0.7)',
+          price: sl.prev_close,
+          color: '#949DA8',
           lineWidth: 1,
           lineStyle: LineStyle.SparseDotted,
           axisLabelVisible: true,
           title: 'PDC',
         }))
       }
+      if (sl.opening_range_high != null) {
+        lines.push(candle.createPriceLine({
+          price: sl.opening_range_high,
+          color: 'rgba(92,184,240,0.6)',
+          lineWidth: 1,
+          lineStyle: LineStyle.Dashed,
+          axisLabelVisible: true,
+          title: 'ORH',
+        }))
+      }
+      if (sl.opening_range_low != null) {
+        lines.push(candle.createPriceLine({
+          price: sl.opening_range_low,
+          color: 'rgba(92,184,240,0.6)',
+          lineWidth: 1,
+          lineStyle: LineStyle.Dashed,
+          axisLabelVisible: true,
+          title: 'ORL',
+        }))
+      }
 
       priceLineRefs.current = [...priceLineRefs.current, ...lines]
     }
-  }, [showLevels, sessionLevels, pdh, pdl, pdc, showVp, volumeProfile])
+  }, [showLevels, sessionLevels, showVp, volumeProfile])
 
-  // ── Session separators (vertical markers) ─────────────────────────────────
-  useEffect(() => {
-    const plugin = markersPluginRef.current
-    if (!plugin || !showSessionSeparators || bars.length === 0) {
-      // Keep markers update handled in the combined markers effect below
-      return
-    }
-    // Session boundaries are merged with pattern markers in the combined effect
-  }, [showSessionSeparators, bars])
-
-  // ── Markers: BOS/CHoCH + Pattern annotations + Session separators ──────────
+  // ── Markers: BOS/CHoCH + Pattern annotations ───────────────────────────────
   useEffect(() => {
     const plugin = markersPluginRef.current
     if (!plugin) return
 
     const markers: SeriesMarker<number>[] = []
 
-    // Pattern annotations
+    // BOS/CHoCH markers disabled — only setup signals shown on chart
+
+    // Pattern annotations (only clear setups with entry/target)
     if (patternAnnotations && patternAnnotations.length > 0) {
       for (const p of patternAnnotations) {
         if (p.price != null) {
@@ -819,25 +534,10 @@ export function SimpleChart({
       }
     }
 
-    // Session separator markers
-    if (showSessionSeparators && bars.length > 0) {
-      const boundaries = extractSessionBoundaries(bars)
-      for (const b of boundaries) {
-        markers.push({
-          time: b.timestamp as number,
-          position: 'aboveBar',
-          color: '#3A3F4A',
-          shape: 'square',
-          text: b.label,
-          size: 0,
-        })
-      }
-    }
-
     // LWC requires markers sorted ascending by time
     markers.sort((a, b) => (a.time as number) - (b.time as number))
     plugin.setMarkers(markers)
-  }, [structureBreaks, patternAnnotations, showSessionSeparators, bars])
+  }, [structureBreaks, patternAnnotations])
 
   // ── Zone price lines ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -972,122 +672,5 @@ export function SimpleChart({
     }
   }, [drawings])
 
-  // ── Loading / error / no-data states ─────────────────────────────────────
-
-  if (isLoading) {
-    return (
-      <div
-        className={className}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          width: '100%',
-          height: '100%',
-          background: '#0A0D12',
-        }}
-      >
-        <ChartSkeleton />
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div
-        className={className}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          width: '100%',
-          height: '100%',
-          background: '#0A0D12',
-        }}
-      >
-        <span
-          style={{
-            fontFamily: "'JetBrains Mono', monospace",
-            fontSize: '0.75rem',
-            color: '#EF4136',
-            letterSpacing: '0.05em',
-          }}
-        >
-          {error}
-        </span>
-      </div>
-    )
-  }
-
-  if (bars.length === 0) {
-    return (
-      <div
-        className={className}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          width: '100%',
-          height: '100%',
-          background: '#0A0D12',
-        }}
-      >
-        <span
-          style={{
-            fontFamily: "'JetBrains Mono', monospace",
-            fontSize: '0.75rem',
-            color: '#6E7681',
-            letterSpacing: '0.05em',
-          }}
-        >
-          No data
-        </span>
-      </div>
-    )
-  }
-
   return <div ref={containerRef} className={className} />
-}
-
-// ─── Chart skeleton ───────────────────────────────────────────────────────────
-
-function ChartSkeleton() {
-  return (
-    <div
-      style={{
-        width: '100%',
-        height: '100%',
-        background: '#0A0D12',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 8,
-        padding: 16,
-        boxSizing: 'border-box',
-      }}
-    >
-      {Array.from({ length: 6 }).map((_, i) => (
-        <div
-          key={i}
-          style={{
-            height: 10,
-            borderRadius: 2,
-            background: '#272F3A',
-            opacity: 0.5 - i * 0.06,
-            width: `${85 - i * 7}%`,
-          }}
-        />
-      ))}
-      <div
-        style={{
-          marginTop: 'auto',
-          fontFamily: "'JetBrains Mono', monospace",
-          color: '#6E7681',
-          fontSize: '0.7rem',
-          letterSpacing: '0.05em',
-        }}
-      >
-        Loading chart...
-      </div>
-    </div>
-  )
 }
