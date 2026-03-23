@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils'
+import { useMarketStore } from '@/store/market'
 
 interface StatusBarProps {
   connected?: boolean
@@ -9,12 +10,48 @@ interface StatusBarProps {
 }
 
 export function StatusBar({
-  connected = true,
-  latencyMs = 12,
-  barsLoaded = 247,
-  lastUpdate = '09:57:42 ET',
+  connected,
+  latencyMs = 0,
+  barsLoaded = 0,
+  lastUpdate = '--:--:--',
   version = '0.1.0',
 }: StatusBarProps) {
+  const { wsStatus, symbol, lastBarTs } = useMarketStore()
+
+  // Resolve connection from wsStatus if connected prop not explicitly passed
+  const isConnected = connected !== undefined ? connected : wsStatus === 'connected'
+  const isReconnecting = wsStatus === 'reconnecting'
+
+  // Dot color: green = connected, yellow = reconnecting, red = disconnected
+  const dotColor = isConnected
+    ? 'bg-[var(--color-profit)]'
+    : isReconnecting
+    ? 'bg-[var(--color-warning)]'
+    : 'bg-[var(--color-loss)]'
+
+  const statusLabel = isConnected
+    ? 'Connected'
+    : isReconnecting
+    ? 'Reconnecting'
+    : 'Disconnected'
+
+  const statusTextColor = isConnected
+    ? 'text-[var(--color-profit)]'
+    : isReconnecting
+    ? 'text-[var(--color-warning)]'
+    : 'text-[var(--color-loss)]'
+
+  // Format last bar timestamp for display
+  const lastBarDisplay = lastBarTs != null
+    ? new Date(lastBarTs * 1000).toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false,
+        timeZone: 'America/New_York',
+      }) + ' ET'
+    : lastUpdate
+
   return (
     <footer
       className={cn(
@@ -26,33 +63,29 @@ export function StatusBar({
     >
       {/* Left: Connection status */}
       <div className="flex items-center gap-1.5 shrink-0">
-        <span
-          className={cn(
-            'w-1.5 h-1.5 rounded-full shrink-0',
-            connected ? 'bg-[var(--color-profit)]' : 'bg-[var(--color-loss)]',
-          )}
-        />
-        <span
-          className={cn(
-            'leading-none',
-            connected ? 'text-[var(--color-profit)]' : 'text-[var(--color-loss)]',
-          )}
-        >
-          Connected
+        <span className={cn('w-1.5 h-1.5 rounded-full shrink-0', dotColor)} />
+        <span className={cn('leading-none', statusTextColor)}>
+          {statusLabel}
         </span>
         <span className="text-[var(--color-border)] mx-0.5 leading-none">|</span>
         <span className="leading-none text-[var(--color-text-muted)]">
           Latency:{' '}
-          <span className="text-[var(--color-profit)]">{latencyMs}ms</span>
+          <span className={isConnected ? 'text-[var(--color-profit)]' : 'text-[var(--color-text-muted)]'}>
+            {latencyMs}ms
+          </span>
         </span>
       </div>
 
-      {/* Center: Bar count + last update */}
-      <div className="flex-1 flex items-center justify-center min-w-0">
+      {/* Center: Symbol + bar count + last bar timestamp */}
+      <div className="flex-1 flex items-center justify-center min-w-0 gap-2">
+        <span className="leading-none text-[var(--color-text-secondary)]">
+          {symbol}
+        </span>
+        <span className="text-[var(--color-border)]">|</span>
         <span className="leading-none truncate">
           {barsLoaded} bars loaded
           <span className="text-[var(--color-border)] mx-1.5">|</span>
-          Last update: {lastUpdate}
+          Last bar: {lastBarDisplay}
         </span>
       </div>
 
