@@ -21,64 +21,52 @@ interface FAQItem {
 
 const FAQ_ITEMS: FAQItem[] = [
   {
-    id: 'markets',
-    question: 'What markets does Arctis support?',
+    id: 'profitability',
+    question: 'Macht mich Arctis wirklich profitabler?',
     answer:
-      'Arctis supports ES (S&P 500 E-mini) and NQ (Nasdaq 100 E-mini) — the two most liquid index futures. These markets offer optimal conditions for our analysis: deep liquidity, tight spreads, and well-defined session structure.',
+      'Arctis ersetzt kein Trading-Wissen — aber es macht deine Analyse objektiv und konsistent. Trader berichten von besserer Win-Rate und weniger emotionalen Fehlentscheidungen.',
+  },
+  {
+    id: 'already-profitable',
+    question: 'Ich bin schon profitabel. Bringt mir das trotzdem was?',
+    answer:
+      'Ja. Profitablen Tradern hilft Arctis am meisten beim Zeitsparen (14 statt 42 Min Pre-Market) und bei der Vermeidung von B-Setups. Du nimmst nur noch die besten Trades.',
+  },
+  {
+    id: 'bias-score',
+    question: 'Was bedeutet der BIAS-Score konkret?',
+    answer:
+      'Der Score von -10 bis +10 zeigt die Tagesrichtung. Positiv = Long-Bias, negativ = Short-Bias. Ueber +5 oder unter -5 ist ein starker Trend. Um 0 herum: Range-Tag, handle die Kanten.',
+  },
+  {
+    id: 'signal-accuracy',
+    question: 'Wie genau sind die Setup-Signale?',
+    answer:
+      'Die Setup-Erkennung (ORB, IB, POC, VA) liefert Entry, Stop und Target mit berechnetem R:R. Die historische Trefferquote liegt bei ca. 60-70% — aber nur wenn der Confluence-Score ueber 50 ist.',
+  },
+  {
+    id: 'markets',
+    question: 'Welche Maerkte werden unterstuetzt?',
+    answer:
+      'ES (S&P 500 E-mini) und NQ (Nasdaq 100 E-mini) — die liquidesten Index-Futures. Optimale Bedingungen fuer unsere Analyse.',
   },
   {
     id: 'data-feed',
-    question: 'Do I need a data feed subscription?',
+    question: 'Brauche ich einen separaten Datenfeed?',
     answer:
-      'Arctis connects to your existing data provider. We support Rithmic, Tradovate, and direct exchange connections. If you already have a funded trading account, you likely already have the data access you need.',
-  },
-  {
-    id: 'bias-module',
-    question: 'How is the BIAS module different from a moving average crossover?',
-    answer:
-      'The BIAS module analyzes 7 independent factors including volume profile, session structure, momentum divergence, and order flow imbalance — not just price crossovers. It produces a directional score that adapts to current market regime.',
+      'Ja, Arctis verbindet sich ueber Rithmic mit der Boerse. Du brauchst einen Rithmic-kompatiblen Broker (z.B. AMP, Optimus, Tradovate).',
   },
   {
     id: 'platforms',
-    question: 'Is Arctis available on Mac and Windows?',
+    question: 'Laeuft Arctis auf Mac und Windows?',
     answer:
-      'Yes. Arctis is built with Tauri, delivering native performance on both macOS and Windows. The app weighs under 15MB and uses significantly less memory than Electron-based alternatives.',
+      'Aktuell macOS. Windows-Version kommt in Kuerze. Die App ist unter 15 MB gross und laeuft komplett lokal — keine Cloud, keine Verzoegerung.',
   },
   {
-    id: 'latency',
-    question: "What's the latency for real-time data?",
+    id: 'pricing',
+    question: 'Was kostet es?',
     answer:
-      'P95 latency is under 50 milliseconds from exchange feed to rendered display. The Rust-based backend minimizes processing overhead at every layer of the data pipeline.',
-  },
-  {
-    id: 'backtesting',
-    question: 'Can I use Arctis for backtesting?',
-    answer:
-      'Yes. The analysis engine includes a backtesting module that replays historical data through the same BIAS, confluence, and pattern detection algorithms you use live. Results include detailed trade logs and performance metrics.',
-  },
-  {
-    id: 'data-privacy',
-    question: 'Is my trading data stored on your servers?',
-    answer:
-      'Arctis processes all data locally on your machine. No trading data, positions, or account information is transmitted to or stored on external servers.',
-  },
-  {
-    id: 'free-tier',
-    question: 'What happens when my free trial ends?',
-    answer:
-      'The Free tier has no expiration date. You retain permanent access to 3 markets and core features. Pro capabilities become available when you upgrade.',
-  },
-  {
-    id: 'cancel',
-    question: 'How do I cancel my Pro subscription?',
-    answer:
-      'Navigate to Settings, then Billing, then Cancel. Your Pro features remain active through the end of the current billing period. No additional steps required.',
-  },
-  {
-    id: 'api',
-    question: 'Is there an API for custom integrations?',
-    answer:
-      'Enterprise plans include full API access for custom integrations with your existing trading infrastructure, risk systems, and reporting tools. Contact our team to discuss your requirements.',
+      'Pro: 49€/Monat (oder 39€ jaehrlich). Kein Free-Tier, keine abgespeckte Version. Du bekommst alles vom ersten Tag.',
   },
 ]
 
@@ -162,13 +150,12 @@ function LeftPanel() {
       </p>
 
       <h2 className="font-display text-3xl font-bold text-frost-white sm:text-4xl">
-        Frequently asked{' '}
-        <span className="text-gradient-frost">questions.</span>
+        Deine Fragen,{' '}
+        <span className="text-gradient-frost">beantwortet.</span>
       </h2>
 
       <p className="mt-4 max-w-sm text-base leading-relaxed text-frost-secondary">
-        Everything you need to know about Arctis. Can&apos;t find what you&apos;re
-        looking for?
+        Alles was du wissen musst, bevor du anfaengst. Nicht gefunden was du suchst?
       </p>
 
       <div className="mt-6">
@@ -180,7 +167,7 @@ function LeftPanel() {
             'transition-colors duration-200 hover:text-ice-light',
           )}
         >
-          Contact Support
+          Support kontaktieren
         </a>
       </div>
 
@@ -240,18 +227,18 @@ export function FAQ() {
               FAQ
             </p>
             <h2 className="font-display text-3xl font-bold text-frost-white sm:text-4xl">
-              Questions?{' '}
-              <span className="text-gradient-frost">We&apos;ve got answers.</span>
+              Deine Fragen,{' '}
+              <span className="text-gradient-frost">beantwortet.</span>
             </h2>
             <p className="mt-4 text-base leading-relaxed text-frost-secondary">
-              Everything you need to know about Arctis.{' '}
+              Alles was du wissen musst, bevor du anfaengst.{' '}
               <a
                 href="mailto:support@arctis.app"
                 className="text-ice underline underline-offset-4 transition-colors duration-200 hover:text-ice-light"
               >
-                Contact Support
+                Support kontaktieren
               </a>{' '}
-              if you can&apos;t find what you&apos;re looking for.
+              falls du nicht findest was du suchst.
             </p>
           </motion.div>
         </div>
