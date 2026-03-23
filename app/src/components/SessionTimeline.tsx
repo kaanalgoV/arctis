@@ -1,4 +1,8 @@
-import type { SessionStats } from "./Dashboard";
+// Dashboard.tsx was deprecated — type defined inline here.
+interface SessionStats {
+  current_session: string
+  session_stats: Record<string, { bar_count: number } | undefined>
+}
 
 const SESSION_ORDER = ["premarket", "ny_open", "midday", "power_hour", "after_hours"];
 
