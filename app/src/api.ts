@@ -1,119 +1,152 @@
-const ENGINE_URL = "http://127.0.0.1:8001";
+import type { Bar, MarketsResponse, HealthResponse } from './types/contracts'
 
-export async function checkHealth(): Promise<{ status: string; version: string }> {
-  const res = await fetch(`${ENGINE_URL}/health`);
-  if (!res.ok) throw new Error(`Engine health check failed: ${res.status}`);
-  return res.json();
+const BASE_URL = 'http://127.0.0.1:8001'
+
+async function fetchJSON<T>(path: string, params?: Record<string, string>): Promise<T> {
+  const url = new URL(path, BASE_URL)
+  if (params) {
+    Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v))
+  }
+  const res = await fetch(url.toString())
+  if (!res.ok) {
+    throw new Error(`API error: ${res.status} ${res.statusText}`)
+  }
+  return res.json()
 }
 
-export async function importCSV(
-  file: File,
-  market: "ES" | "NQ",
-  timeframe: "1min" | "5min"
-): Promise<{ market: string; timeframe: string; bars_imported: number }> {
-  const form = new FormData();
-  form.append("file", file);
-  form.append("market", market);
-  form.append("timeframe", timeframe);
-  const res = await fetch(`${ENGINE_URL}/api/import`, { method: "POST", body: form });
-  if (!res.ok) throw new Error(`Import failed: ${res.status}`);
-  return res.json();
+export async function fetchMarkets(): Promise<MarketsResponse> {
+  return fetchJSON<MarketsResponse>('/api/markets')
 }
 
-export async function fetchBars(market: string, timeframe: string) {
-  const res = await fetch(`${ENGINE_URL}/api/bars?market=${market}&timeframe=${timeframe}`);
-  if (!res.ok) throw new Error(`Failed to fetch bars: ${res.status}`);
-  return res.json();
+export async function fetchBars(symbol: string, days: number, timeframe: string): Promise<{ bars: Bar[], count: number }> {
+  return fetchJSON('/api/db/bars', { symbol, days: String(days), timeframe })
 }
 
-export async function fetchStructure(market: string, timeframe: string) {
-  const res = await fetch(`${ENGINE_URL}/api/analysis/structure?market=${market}&timeframe=${timeframe}`);
-  if (!res.ok) throw new Error(`Failed to fetch structure: ${res.status}`);
-  return res.json();
+export async function fetchHealth(): Promise<HealthResponse> {
+  return fetchJSON<HealthResponse>('/health')
 }
 
-export async function fetchVolume(market: string, timeframe: string) {
-  const res = await fetch(`${ENGINE_URL}/api/analysis/volume?market=${market}&timeframe=${timeframe}`);
-  if (!res.ok) throw new Error(`Failed to fetch volume: ${res.status}`);
-  return res.json();
+// Legacy health check alias for backward compatibility
+export async function checkHealth(): Promise<HealthResponse> {
+  return fetchHealth()
 }
 
+// Analysis endpoints
 export async function fetchSessions(market: string, timeframe: string) {
-  const res = await fetch(`${ENGINE_URL}/api/analysis/sessions?market=${market}&timeframe=${timeframe}`);
-  if (!res.ok) throw new Error(`Failed to fetch sessions: ${res.status}`);
-  return res.json();
-}
-
-export async function fetchWarnings(market: string, timeframe: string) {
-  const res = await fetch(`${ENGINE_URL}/api/analysis/warnings?market=${market}&timeframe=${timeframe}`);
-  if (!res.ok) throw new Error(`Failed to fetch warnings: ${res.status}`);
-  return res.json();
-}
-
-export async function fetchProbability(market: string, timeframe: string) {
-  const res = await fetch(`${ENGINE_URL}/api/analysis/probability?market=${market}&timeframe=${timeframe}`);
-  if (!res.ok) throw new Error(`Failed to fetch probability: ${res.status}`);
-  return res.json();
-}
-
-export async function fetchConfig() {
-  const res = await fetch(`${ENGINE_URL}/api/config`);
-  if (!res.ok) throw new Error(`Failed to fetch config: ${res.status}`);
-  return res.json();
-}
-
-export async function saveConfig(config: Record<string, unknown>) {
-  const res = await fetch(`${ENGINE_URL}/api/config`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(config),
-  });
-  if (!res.ok) throw new Error(`Failed to save config: ${res.status}`);
-  return res.json();
-}
-
-export async function fetchIndicators(market: string, timeframe: string) {
-  const res = await fetch(`${ENGINE_URL}/api/analysis/indicators?market=${market}&timeframe=${timeframe}`);
-  if (!res.ok) throw new Error(`Failed to fetch indicators: ${res.status}`);
-  return res.json();
+  return fetchJSON('/api/analysis/sessions', { market, timeframe })
 }
 
 export async function fetchConfluence(market: string, timeframe: string) {
-  const res = await fetch(`${ENGINE_URL}/api/analysis/confluence?market=${market}&timeframe=${timeframe}`);
-  if (!res.ok) throw new Error(`Failed to fetch confluence: ${res.status}`);
-  return res.json();
+  return fetchJSON('/api/analysis/confluence', { market, timeframe })
 }
 
 export async function fetchPatterns(market: string, timeframe: string) {
-  const res = await fetch(`${ENGINE_URL}/api/analysis/patterns?market=${market}&timeframe=${timeframe}`);
-  if (!res.ok) throw new Error(`Failed to fetch patterns: ${res.status}`);
-  return res.json();
+  return fetchJSON('/api/analysis/patterns', { market, timeframe })
 }
 
-export async function simStart(market: string, timeframe: string, speed: number = 10) {
-  const res = await fetch(`${ENGINE_URL}/api/sim/start?market=${market}&timeframe=${timeframe}&speed=${speed}`, { method: "POST" });
-  if (!res.ok) throw new Error(`Failed to start sim: ${res.status}`);
-  return res.json();
+export async function fetchIndicators(market: string, timeframe: string) {
+  return fetchJSON('/api/analysis/indicators', { market, timeframe })
+}
+
+export async function fetchVolume(market: string, timeframe: string) {
+  return fetchJSON('/api/analysis/volume', { market, timeframe })
+}
+
+export async function fetchStructure(market: string, timeframe: string) {
+  return fetchJSON('/api/analysis/structure', { market, timeframe })
+}
+
+export async function fetchConfig() {
+  return fetchJSON('/api/config')
+}
+
+export async function fetchRiskCheck() {
+  return fetchJSON('/api/risk/daily-check')
+}
+
+export async function fetchBias(market: string, timeframe: string) {
+  return fetchJSON('/api/analysis/bias', { market, timeframe })
+}
+
+export async function fetchZones(market: string, timeframe: string) {
+  return fetchJSON('/api/analysis/zones', { market, timeframe })
+}
+
+export async function fetchSignals(market: string, timeframe: string) {
+  return fetchJSON('/api/analysis/signals', { market, timeframe })
+}
+
+// Config management
+export async function saveConfig(config: Record<string, unknown>) {
+  const url = new URL('/api/config', BASE_URL)
+  const res = await fetch(url.toString(), {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(config),
+  })
+  if (!res.ok) {
+    throw new Error(`API error: ${res.status} ${res.statusText}`)
+  }
+  return res.json()
+}
+
+// CSV import
+export async function importCSV(
+  file: File,
+  market: 'ES' | 'NQ',
+  timeframe: '1min' | '5min',
+): Promise<{ market: string; timeframe: string; bars_imported: number }> {
+  const form = new FormData()
+  form.append('file', file)
+  form.append('market', market)
+  form.append('timeframe', timeframe)
+  const url = new URL('/api/import', BASE_URL)
+  const res = await fetch(url.toString(), { method: 'POST', body: form })
+  if (!res.ok) {
+    throw new Error(`API error: ${res.status} ${res.statusText}`)
+  }
+  return res.json()
+}
+
+// Sim controls
+export async function simStart(market: string, timeframe: string, speed = 10) {
+  const url = new URL('/api/sim/start', BASE_URL)
+  url.searchParams.set('market', market)
+  url.searchParams.set('timeframe', timeframe)
+  url.searchParams.set('speed', String(speed))
+  const res = await fetch(url.toString(), { method: 'POST' })
+  if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`)
+  return res.json()
 }
 
 export async function simStop() {
-  const res = await fetch(`${ENGINE_URL}/api/sim/stop`, { method: "POST" });
-  if (!res.ok) throw new Error(`Failed to stop sim: ${res.status}`);
-  return res.json();
+  const url = new URL('/api/sim/stop', BASE_URL)
+  const res = await fetch(url.toString(), { method: 'POST' })
+  if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`)
+  return res.json()
 }
 
 export async function simStatus() {
-  const res = await fetch(`${ENGINE_URL}/api/sim/status`);
-  if (!res.ok) throw new Error(`Failed to get sim status: ${res.status}`);
-  return res.json();
+  return fetchJSON('/api/sim/status')
 }
 
+// Risk
 export async function calculatePositionSize(stopDistance: number, market: string) {
-  const res = await fetch(`${ENGINE_URL}/api/risk/position-size`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
+  const url = new URL('/api/risk/position-size', BASE_URL)
+  const res = await fetch(url.toString(), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ stop_distance: stopDistance, market }),
-  });
-  if (!res.ok) throw new Error(`Failed to calculate position size: ${res.status}`);
-  return res.json();
+  })
+  if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`)
+  return res.json()
+}
+
+// Warnings and probability (legacy endpoints)
+export async function fetchWarnings(market: string, timeframe: string) {
+  return fetchJSON('/api/analysis/warnings', { market, timeframe })
+}
+
+export async function fetchProbability(market: string, timeframe: string) {
+  return fetchJSON('/api/analysis/probability', { market, timeframe })
 }
