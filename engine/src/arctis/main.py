@@ -2,9 +2,12 @@
 
 import asyncio
 import json
+import logging
 import tempfile
 import time as _time
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 from fastapi import FastAPI, File, Form, Query, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
@@ -99,8 +102,9 @@ class Simulation:
 
 sim = Simulation()
 
-# WebSocket connections per symbol
-_ws_connections: dict[str, list[WebSocket]] = {}
+from arctis.ws import ConnectionManager
+
+manager = ConnectionManager()
 
 app = FastAPI(
     title="Arctis Engine",
@@ -340,30 +344,59 @@ async def sim_status():
     return sim.status()
 
 
+@app.on_event("startup")
+async def start_bar_poller():
+    """Background task that checks for new bars and broadcasts to subscribers."""
+    async def poll_bars():
+        from arctis.db import fetch_bars
+        last_ts: dict[str, int] = {}
+        while True:
+            await asyncio.sleep(5)
+            for symbol in manager.active_symbols:
+                try:
+                    bars = fetch_bars(symbol=symbol, days=1)
+                    if bars:
+                        latest = bars[-1]
+                        ts = latest.get("timestamp", 0) if isinstance(latest, dict) else latest.timestamp
+                        if symbol not in last_ts or ts > last_ts[symbol]:
+                            last_ts[symbol] = ts
+                            await manager.broadcast(symbol, {
+                                "type": "bar",
+                                "bar": latest if isinstance(latest, dict) else latest.__dict__,
+                                "symbol": symbol,
+                            })
+                except Exception as e:
+                    logger.error("Bar poll error for %s: %s", symbol, e)
+
+    asyncio.create_task(poll_bars())
+
+
 @app.websocket("/ws/bars/{symbol}")
 async def websocket_bars(websocket: WebSocket, symbol: str):
     """Stream new bars for a symbol via WebSocket."""
-    await websocket.accept()
-    if symbol not in _ws_connections:
-        _ws_connections[symbol] = []
-    _ws_connections[symbol].append(websocket)
+    await manager.connect(websocket, symbol)
     try:
-        # Send latest bar on connect
+        # Send initial snapshot (last 10 bars)
         from arctis.db import fetch_bars
-        bars = fetch_bars(symbol=symbol, days=1)
-        if bars:
-            await websocket.send_json({"type": "bar", "data": bars[-1]})
-            await websocket.send_json({"type": "connected", "symbol": symbol, "bars_available": len(bars)})
-        # Keep alive — wait for client messages or disconnect
+        initial = fetch_bars(symbol=symbol, days=1)
+        if initial:
+            await websocket.send_json({
+                "type": "snapshot",
+                "bars": initial[-10:],
+                "symbol": symbol,
+            })
+
+        # Keep connection alive, listen for client messages
         while True:
             try:
-                await asyncio.wait_for(websocket.receive_text(), timeout=30.0)
+                data = await asyncio.wait_for(websocket.receive_text(), timeout=30.0)
+                msg = json.loads(data)
+                if msg.get("type") == "ping":
+                    await websocket.send_json({"type": "pong"})
             except asyncio.TimeoutError:
-                # Send heartbeat
+                # Send heartbeat on timeout
                 await websocket.send_json({"type": "heartbeat"})
     except WebSocketDisconnect:
-        if symbol in _ws_connections:
-            _ws_connections[symbol] = [ws for ws in _ws_connections[symbol] if ws != websocket]
-    except Exception:
-        if symbol in _ws_connections:
-            _ws_connections[symbol] = [ws for ws in _ws_connections[symbol] if ws != websocket]
+        pass
+    finally:
+        await manager.disconnect(websocket, symbol)
