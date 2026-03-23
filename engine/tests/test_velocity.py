@@ -87,3 +87,39 @@ def test_velocity_timestamps_correct():
     # First result corresponds to bar at index 20
     assert result[0].timestamp == base_ts + 20 * 60
     assert result[1].timestamp == base_ts + 21 * 60
+
+
+def test_velocity_scale_boundaries():
+    """Scale thresholds map correctly at boundary ratios."""
+    # Build bars so ratio is exactly at each boundary.
+    # 20 baseline bars with move = 1.0, then one bar with the desired move.
+    def _single(ratio: float) -> int:
+        slow = [(100.0, 101.0)] * 20  # avg velocity = 1.0
+        fast_move = 1.0 * ratio
+        target = [(100.0, 100.0 + fast_move)]
+        bars = _make_bars(slow + target)
+        result = calculate_velocity(bars, period=20)
+        return result[0].scale
+
+    assert _single(0.2) == 1   # ratio < 0.3
+    assert _single(0.4) == 2   # 0.3-0.5
+    assert _single(0.6) == 3   # 0.5-0.7
+    assert _single(0.8) == 4   # 0.7-0.9
+    assert _single(1.0) == 5   # 0.9-1.1
+    assert _single(1.2) == 6   # 1.1-1.3
+    assert _single(1.4) == 7   # 1.3-1.5
+    assert _single(1.7) == 8   # 1.5-2.0
+    assert _single(2.2) == 9   # 2.0-2.5
+    assert _single(3.0) == 10  # > 2.5
+
+
+def test_velocity_result_fields_present():
+    """Each VelocityPoint has all required fields with correct types."""
+    bars = _make_bars([(100.0, 102.0)] * 22)
+    result = calculate_velocity(bars, period=20)
+    for pt in result:
+        assert isinstance(pt.timestamp, int)
+        assert isinstance(pt.velocity, float)
+        assert isinstance(pt.avg_velocity, float)
+        assert isinstance(pt.ratio, float)
+        assert 1 <= pt.scale <= 10
