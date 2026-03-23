@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
+import { Skeleton } from '@/components/ui/Skeleton'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -34,17 +35,11 @@ const FILTERS: FilterConfig[] = [
   { key: 'risk', label: 'Risk', matches: ['risk', 'warning'] },
 ]
 
-const defaultItems: FeedItem[] = [
-  { time: '09:31', message: 'ORB Long triggered - 84%', type: 'signal' },
-  { time: '09:30', message: 'NY Open Session', type: 'info' },
-  { time: '09:28', message: 'RVOL Spike 3.2x', type: 'volume' },
-  { time: '09:25', message: 'EMA Bull Alignment', type: 'signal' },
-  { time: '09:22', message: 'Trend: Uptrend HH+HL', type: 'structure' },
-  { time: '09:18', message: 'BOS Long confirmed', type: 'structure' },
-  { time: '09:15', message: 'ORB Range: 5128-5140', type: 'info' },
-  { time: '09:10', message: 'Gap Up +0.3%', type: 'warning' },
-]
-
+// Severity-based dot colors:
+// info/bias   = muted (accent)
+// signal/structure = green (profit)
+// volume/warning  = yellow (warning)
+// risk        = red (loss)
 const dotColor: Record<FeedItem['type'], string> = {
   signal: 'var(--color-profit)',
   info: 'var(--color-accent)',
@@ -52,7 +47,36 @@ const dotColor: Record<FeedItem['type'], string> = {
   structure: 'var(--color-accent)',
   volume: 'var(--color-warning)',
   risk: 'var(--color-loss)',
-  bias: 'var(--color-info)',
+  bias: 'var(--color-text-muted)',
+}
+
+// Severity-based text color for the message
+const messageColor: Record<FeedItem['type'], string> = {
+  signal: 'var(--color-text-secondary)',
+  info: 'var(--color-text-muted)',
+  warning: 'var(--color-warning)',
+  structure: 'var(--color-text-secondary)',
+  volume: 'var(--color-warning)',
+  risk: 'var(--color-loss)',
+  bias: 'var(--color-text-muted)',
+}
+
+// ---------------------------------------------------------------------------
+// Loading skeleton
+// ---------------------------------------------------------------------------
+
+function FeedSkeleton() {
+  return (
+    <div className="flex flex-col gap-px">
+      {Array.from({ length: 5 }).map((_, i) => (
+        <div key={i} className="flex items-start gap-1.5 py-1 px-1">
+          <Skeleton className="h-2 w-8 mt-1 flex-shrink-0" />
+          <Skeleton className="w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1.5" />
+          <Skeleton className="flex-1 h-2.5 mt-0.5" />
+        </div>
+      ))}
+    </div>
+  )
 }
 
 // ---------------------------------------------------------------------------
@@ -61,15 +85,57 @@ const dotColor: Record<FeedItem['type'], string> = {
 
 interface FeedPanelProps {
   items?: FeedItem[]
+  /** Whether data is currently being fetched (first load). */
+  loading?: boolean
+  /** Error message when the last fetch failed. */
+  error?: string | null
   onItemClick?: (timestamp: number) => void
 }
 
-export function FeedPanel({ items, onItemClick }: FeedPanelProps) {
+export function FeedPanel({ items, loading, error, onItemClick }: FeedPanelProps) {
   const [activeFilter, setActiveFilter] = useState<FilterKey>('all')
 
-  const allItems = (items ?? defaultItems).slice(0, 50)
+  // Loading state (no items yet)
+  if (loading && (items == null || items.length === 0)) {
+    return (
+      <div className="flex flex-col gap-1.5">
+        <div className="flex flex-wrap gap-1">
+          {FILTERS.map((f) => (
+            <span
+              key={f.key}
+              className="px-2 py-0.5 rounded-[var(--radius-sm)] text-[10px] font-medium text-[var(--color-text-muted)] bg-white/[0.02]"
+            >
+              {f.label}
+            </span>
+          ))}
+        </div>
+        <FeedSkeleton />
+      </div>
+    )
+  }
 
-  // Count per filter (excluding 'all')
+  // Error state (no items)
+  if (error && (items == null || items.length === 0)) {
+    return (
+      <div className="flex items-center justify-center py-3">
+        <span className="text-[10px] text-[var(--color-loss)]">{error}</span>
+      </div>
+    )
+  }
+
+  // No data state
+  if (items == null || items.length === 0) {
+    return (
+      <div className="flex items-center justify-center py-3">
+        <span className="text-[11px] text-[var(--color-text-muted)]">No events yet</span>
+      </div>
+    )
+  }
+
+  // Reverse-chronological order (most recent first) — already sorted by App.tsx
+  const allItems = items.slice(0, 50)
+
+  // Count per filter
   const countByFilter = (filter: FilterConfig): number => {
     if (filter.key === 'all') return allItems.length
     return allItems.filter((item) => filter.matches.includes(item.type)).length
@@ -119,7 +185,7 @@ export function FeedPanel({ items, onItemClick }: FeedPanelProps) {
         })}
       </div>
 
-      {/* Event list */}
+      {/* Event list — reverse-chronological */}
       <div className="flex flex-col gap-px max-h-[200px] overflow-y-auto">
         {displayItems.length === 0 ? (
           <p className="py-2 px-1 text-[11px] text-[var(--color-text-muted)]">
@@ -147,7 +213,10 @@ export function FeedPanel({ items, onItemClick }: FeedPanelProps) {
                 className="w-1 h-1 rounded-full flex-shrink-0 mt-[5px]"
                 style={{ background: dotColor[item.type] }}
               />
-              <span className="text-[11px] text-[var(--color-text-secondary)] leading-snug">
+              <span
+                className="text-[11px] leading-snug"
+                style={{ color: messageColor[item.type] }}
+              >
                 {item.message}
               </span>
             </div>
