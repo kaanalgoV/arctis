@@ -430,6 +430,9 @@ export default function App() {
   const travisPattern = patternsData?.annotations.at(-1)?.pattern ?? undefined
   const travisBias = biasData?.bias_state?.state ?? undefined
 
+  // ── Price (must be declared before useEffect that references it) ──────────
+  const price = lastClose ?? null
+
   // ── Dynamic document title ─────────────────────────────────────────────────
   useEffect(() => {
     const priceStr = price != null ? ` ${price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : ''
@@ -491,9 +494,6 @@ export default function App() {
     replayTotalBars > 0 && replayBars.length > 0
       ? formatBarTimeET(replayBars[replayBars.length - 1]?.timestamp ?? 0)
       : '--:--'
-
-  // ── Price ─────────────────────────────────────────────────────────────────
-  const price = lastClose ?? null
 
   // ── Derive session_levels for SimpleChart (only numeric values) ────────────
   const sessionLevelsForChart =
