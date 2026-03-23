@@ -2,7 +2,7 @@
 
 import time
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, HTTPException, Query
 
 from arctis.analysis.confluence import calculate_confluence
 from arctis.analysis.discipline import DisciplineContext, generate_warnings
@@ -24,12 +24,18 @@ def _get_sim():
     return sim
 
 
-def _load_bars(market: Market, timeframe: Timeframe):
+def _load_bars(market: Market, timeframe: Timeframe, days: int = 30):
     """Load bars from TimescaleDB, respecting simulation mode."""
     sim = _get_sim()
     if sim.active and sim.market == market and sim.timeframe == timeframe:
         return sim.get_bars()
-    return fetch_bars_as_models(market=market.value, days=30, timeframe=timeframe.value)
+    bars = fetch_bars_as_models(market=market.value, days=days, timeframe=timeframe.value)
+    if not bars:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Keine Bars fuer {market.value} ({timeframe.value}) in der DB gefunden.",
+        )
+    return bars
 
 
 def _current_timestamp() -> int:
@@ -43,10 +49,17 @@ def _current_timestamp() -> int:
 @router.get("/structure")
 async def analyze_structure(
     market: Market = Query(...),
-    timeframe: Timeframe = Query(...),
+    timeframe: Timeframe = Query(default=Timeframe.M1),
+    days: int = Query(default=30, ge=1, le=365),
     lookback: int = Query(default=15, ge=2, le=50),
 ):
-    bars = _load_bars(market, timeframe)
+    try:
+        bars = _load_bars(market, timeframe, days=days)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Fehler beim Laden der Strukturdaten: {e}")
+
     swings = detect_swings(bars, lookback=lookback)
     trend = classify_trend(swings)
     breaks = detect_structure_breaks(swings)
@@ -56,6 +69,8 @@ async def analyze_structure(
     recent_breaks.reverse()
 
     return {
+        "market": market.value,
+        "timeframe": timeframe.value,
         "trend": trend.value,
         "swings": [
             {"type": sw.type.value, "price": sw.price, "index": sw.index, "timestamp": sw.timestamp}
@@ -72,15 +87,24 @@ async def analyze_structure(
 @router.get("/volume")
 async def analyze_volume(
     market: Market = Query(...),
-    timeframe: Timeframe = Query(...),
+    timeframe: Timeframe = Query(default=Timeframe.M1),
+    days: int = Query(default=30, ge=1, le=365),
     period: int = Query(default=20, ge=5, le=100),
     spike_sigma: float = Query(default=2.0, ge=1.0, le=5.0),
 ):
-    bars = _load_bars(market, timeframe)
+    try:
+        bars = _load_bars(market, timeframe, days=days)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Fehler beim Laden der Volumendaten: {e}")
+
     rvol = relative_volume(bars, period=period)
     spikes = detect_volume_spikes(bars, period=period, threshold_sigma=spike_sigma)
 
     return {
+        "market": market.value,
+        "timeframe": timeframe.value,
         "relative_volume": [
             {"index": i, "timestamp": bars[i].timestamp, "rvol": v}
             for i, v in enumerate(rvol) if v is not None
@@ -96,15 +120,24 @@ async def analyze_volume(
 @router.get("/sessions")
 async def analyze_sessions(
     market: Market = Query(...),
-    timeframe: Timeframe = Query(...),
+    timeframe: Timeframe = Query(default=Timeframe.M1),
+    days: int = Query(default=30, ge=1, le=365),
 ):
-    bars = _load_bars(market, timeframe)
+    try:
+        bars = _load_bars(market, timeframe, days=days)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Fehler beim Laden der Session-Daten: {e}")
+
     stats = get_session_stats(bars)
     # Use last bar's timestamp as data context; fall back to wall-clock only if no bars available
     ref_ts = bars[-1].timestamp if bars else _current_timestamp()
     current = classify_session(ref_ts)
 
     return {
+        "market": market.value,
+        "timeframe": timeframe.value,
         "current_session": current.value,
         "session_stats": {
             session.value: {
@@ -122,9 +155,16 @@ async def analyze_sessions(
 @router.get("/warnings")
 async def get_warnings(
     market: Market = Query(...),
-    timeframe: Timeframe = Query(...),
+    timeframe: Timeframe = Query(default=Timeframe.M1),
+    days: int = Query(default=30, ge=1, le=365),
 ):
-    bars = _load_bars(market, timeframe)
+    try:
+        bars = _load_bars(market, timeframe, days=days)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Fehler beim Laden der Warnung-Daten: {e}")
+
     swings = detect_swings(bars)
     trend = classify_trend(swings)
     # Use last bar's timestamp as data context; fall back to wall-clock only if no bars available
@@ -142,6 +182,8 @@ async def get_warnings(
     warnings = generate_warnings(ctx)
 
     return {
+        "market": market.value,
+        "timeframe": timeframe.value,
         "warnings": [{"message": w.message, "severity": w.severity.value} for w in warnings],
     }
 
@@ -149,10 +191,16 @@ async def get_warnings(
 @router.get("/indicators")
 async def get_indicators(
     market: Market = Query(...),
-    timeframe: Timeframe = Query(...),
+    timeframe: Timeframe = Query(default=Timeframe.M1),
+    days: int = Query(default=30, ge=1, le=365),
 ):
     """Return VWAP, EMA, RSI, Volume Profile, Session Levels."""
-    bars = _load_bars(market, timeframe)
+    try:
+        bars = _load_bars(market, timeframe, days=days)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Fehler beim Laden der Indikatoren: {e}")
 
     vwap_list = calculate_vwap(bars)
     ema_list = calculate_ema_ribbon(bars)
@@ -195,10 +243,16 @@ async def get_indicators(
 @router.get("/confluence")
 async def get_confluence(
     market: Market = Query(...),
-    timeframe: Timeframe = Query(...),
+    timeframe: Timeframe = Query(default=Timeframe.M1),
+    days: int = Query(default=30, ge=1, le=365),
 ):
     """Return confluence score combining all indicators."""
-    bars = _load_bars(market, timeframe)
+    try:
+        bars = _load_bars(market, timeframe, days=days)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Fehler beim Laden der Confluence-Daten: {e}")
 
     # Calculate all indicators
     swings = detect_swings(bars)
@@ -274,14 +328,20 @@ async def get_confluence(
 @router.get("/patterns")
 async def get_patterns(
     market: Market = Query(...),
-    timeframe: Timeframe = Query(...),
+    timeframe: Timeframe = Query(default=Timeframe.M1),
+    days: int = Query(default=30, ge=1, le=365),
 ):
     """Detect statistical trading patterns and return chart annotations.
 
     Annotations persist for 3 days. Each annotation includes pattern name,
     direction, confidence, win rate (from published research), and chart marker info.
     """
-    bars = _load_bars(market, timeframe)
+    try:
+        bars = _load_bars(market, timeframe, days=days)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Fehler beim Laden der Pattern-Daten: {e}")
 
     # Calculate all needed indicators
     vwap_list = calculate_vwap(bars)
