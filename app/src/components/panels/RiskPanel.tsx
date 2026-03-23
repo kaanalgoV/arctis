@@ -1,5 +1,3 @@
-import { cn } from '@/lib/utils'
-
 interface TradingConfig {
   account_size: number
   risk_percent: number
