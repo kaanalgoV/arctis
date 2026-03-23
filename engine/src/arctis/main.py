@@ -131,6 +131,7 @@ from arctis.routes.bias import router as bias_router
 from arctis.routes.feed import router as feed_router
 from arctis.routes.travis import router as travis_router
 from arctis.routes.zones import router as zones_router
+from arctis.routes.signals import router as signals_router
 app.include_router(analysis_router)
 app.include_router(probability_router)
 app.include_router(risk_router)
@@ -138,6 +139,7 @@ app.include_router(bias_router)
 app.include_router(feed_router)
 app.include_router(travis_router)
 app.include_router(zones_router)
+app.include_router(signals_router)
 
 
 @app.get("/health")
@@ -342,6 +344,18 @@ async def sim_stop():
 @app.get("/api/sim/status")
 async def sim_status():
     return sim.status()
+
+
+@app.post("/api/sim/step")
+async def sim_step(direction: str = Query(default="forward")):
+    """Step simulation forward or backward by one bar."""
+    if not sim.active:
+        raise HTTPException(404, "No active simulation")
+    if direction == "forward":
+        sim._manual_offset = getattr(sim, '_manual_offset', 0) + 1
+    elif direction == "backward":
+        sim._manual_offset = max(getattr(sim, '_manual_offset', 0) - 1, 0)
+    return {"status": "ok", "offset": getattr(sim, '_manual_offset', 0)}
 
 
 @app.on_event("startup")
