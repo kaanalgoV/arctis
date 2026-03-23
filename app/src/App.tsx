@@ -15,12 +15,14 @@ import {
   RiskPanel,
   BiasPanel,
   TravisPanel,
+  SignalsPanel,
 } from '@/components/panels'
 import type { ConfluenceAPIData } from '@/components/panels/ConfluencePanel'
 import type { PatternsAPIData } from '@/components/panels/PatternsPanel'
 import type { SessionAPIData } from '@/components/panels/SessionPanel'
 import type { FeedItem } from '@/components/panels/FeedPanel'
 import type { BiasData } from '@/components/panels/BiasPanel'
+import type { SignalsAPIData } from '@/components/panels/SignalsPanel'
 import { SettingsPanel } from '@/components/settings/SettingsPanel'
 import { SimpleChart } from '@/components/charts/SimpleChart'
 import type { ChartZone } from '@/components/charts/SimpleChart'
@@ -28,7 +30,7 @@ import { ChartToolbar } from '@/components/charts/ChartToolbar'
 import type { OverlayKey } from '@/components/charts/ChartToolbar'
 import { DrawingToolbar } from '@/components/charts/DrawingToolbar'
 import { useDrawings } from '@/hooks/useDrawings'
-import type { Market, Timeframe } from '@/types/market'
+import type { Market, Timeframe, OHLCVBar } from '@/types/market'
 import type { IndicatorData, VolumeData, TradingConfig } from '@/types/analysis'
 import { ReplayBar } from '@/components/replay/ReplayBar'
 import { PanelSkeleton } from '@/components/ui/Skeleton'
@@ -255,6 +257,10 @@ export default function App() {
   const [structureData, setStructureData] = useState<StructureAPIData | null>(null)
   const [biasData, setBiasData] = useState<BiasData | null>(null)
   const [zonesData, setZonesData] = useState<{ zones: ChartZone[] } | null>(null)
+  const [signalsData, setSignalsData] = useState<SignalsAPIData | null>(null)
+
+  // ── Replay bars state (sim-filtered bars during active replay) ─────────────
+  const [replayBarsData, setReplayBarsData] = useState<OHLCVBar[]>([])
 
   // ── UI state ───────────────────────────────────────────────────────────────
   const [showSettings, setShowSettings] = useState(false)
@@ -299,6 +305,30 @@ export default function App() {
 
   // ── Replay hook ────────────────────────────────────────────────────────────
   const replay = useReplay(market, timeframe)
+
+  // ── Replay bars polling — fetches sim-visible bars during active replay ────
+  useEffect(() => {
+    if (mode !== 'replay' || !replay.isPlaying) {
+      setReplayBarsData([])
+      return
+    }
+
+    const fetchReplayBars = async () => {
+      try {
+        const r = await fetch(`${ENGINE_URL}/api/bars?market=${market}&timeframe=${timeframe}`)
+        if (r.ok) {
+          const data = await r.json() as OHLCVBar[]
+          setReplayBarsData(data)
+        }
+      } catch {
+        // Silently ignore — chart falls back to useMarketData bars
+      }
+    }
+
+    void fetchReplayBars()
+    const interval = setInterval(() => void fetchReplayBars(), 1000)
+    return () => clearInterval(interval)
+  }, [mode, replay.isPlaying, market, timeframe])
 
   // ── Last bar close ─────────────────────────────────────────────────────────
   const lastClose = bars.at(-1)?.close
@@ -347,7 +377,7 @@ export default function App() {
     const base = `${ENGINE_URL}/api/analysis`
     const qs = `market=${market}&timeframe=${timeframe}`
 
-    const [sessR, confR, patR, indR, volR, cfgR, strR, biasR, zonesR] = await Promise.allSettled([
+    const [sessR, confR, patR, indR, volR, cfgR, strR, biasR, zonesR, sigR] = await Promise.allSettled([
       fetch(`${base}/sessions?${qs}`).then((r) => (r.ok ? r.json() : null)),
       fetch(`${base}/confluence?${qs}`).then((r) => (r.ok ? r.json() : null)),
       fetch(`${base}/patterns?${qs}`).then((r) => (r.ok ? r.json() : null)),
@@ -357,6 +387,7 @@ export default function App() {
       fetch(`${base}/structure?${qs}`).then((r) => (r.ok ? r.json() : null)),
       fetch(`${ENGINE_URL}/api/analysis/bias?${qs}`).then((r) => (r.ok ? r.json() : null)),
       fetch(`${base}/zones?${qs}`).then((r) => (r.ok ? r.json() : null)),
+      fetch(`${base}/signals?${qs}`).then((r) => (r.ok ? r.json() : null)),
     ])
 
     if (sessR.status === 'fulfilled' && sessR.value)
@@ -377,6 +408,8 @@ export default function App() {
       setBiasData(biasR.value as BiasData)
     if (zonesR.status === 'fulfilled' && zonesR.value)
       setZonesData(zonesR.value as { zones: ChartZone[] })
+    if (sigR.status === 'fulfilled' && sigR.value)
+      setSignalsData(sigR.value as SignalsAPIData)
 
     setLatencyMs(Math.round(performance.now() - t0))
     const n = new Date()
@@ -411,6 +444,7 @@ export default function App() {
       setStructureData(null)
       setBiasData(null)
       setZonesData(null)
+      setSignalsData(null)
     },
     [markets],
   )
@@ -488,18 +522,28 @@ export default function App() {
   )
 
   // ── Replay time display ────────────────────────────────────────────────────
-  // Current bar ET time from sim status
+  // During active replay, use sim-filtered bars fetched from /api/bars.
+  // Fallback to useMarketData bars when sim is not active.
   const replayCurrentBar = replay.simStatus?.visible_bars ?? 0
   const replayTotalBars = replay.simStatus?.total_bars ?? 0
-  const replayBars = bars // bars are already filtered by sim on backend when active
+  const activeBarsForReplay =
+    mode === 'replay' && replay.isPlaying && replayBarsData.length > 0
+      ? replayBarsData
+      : bars
   const replayCurrentTime =
-    replayCurrentBar > 0 && replayBars.length > 0
-      ? formatBarTimeET(replayBars[Math.min(replayCurrentBar - 1, replayBars.length - 1)]?.timestamp ?? 0)
+    replayCurrentBar > 0 && activeBarsForReplay.length > 0
+      ? formatBarTimeET(activeBarsForReplay[Math.min(replayCurrentBar - 1, activeBarsForReplay.length - 1)]?.timestamp ?? 0)
       : '--:--'
   const replayTotalTime =
-    replayTotalBars > 0 && replayBars.length > 0
-      ? formatBarTimeET(replayBars[replayBars.length - 1]?.timestamp ?? 0)
+    replayTotalBars > 0 && activeBarsForReplay.length > 0
+      ? formatBarTimeET(activeBarsForReplay[activeBarsForReplay.length - 1]?.timestamp ?? 0)
       : '--:--'
+
+  // chartBars: sim-filtered during replay, full dataset in live mode
+  const chartBars =
+    mode === 'replay' && replay.isPlaying && replayBarsData.length > 0
+      ? replayBarsData
+      : bars
 
   // ── Derive session_levels for SimpleChart (only numeric values) ────────────
   const sessionLevelsForChart =
@@ -624,10 +668,10 @@ export default function App() {
                 Loading {symbol}...
               </span>
             </div>
-          ) : bars.length > 0 ? (
+          ) : chartBars.length > 0 ? (
             <>
               <SimpleChart
-                bars={bars}
+                bars={chartBars}
                 className="w-full h-full"
                 vwapData={indicatorData?.vwap}
                 emaData={indicatorData?.ema}
@@ -689,6 +733,17 @@ export default function App() {
         className="border-l border-[var(--color-border-subtle)] bg-[var(--color-surface-secondary)]/95 overflow-y-auto"
         style={{ gridColumn: '3', gridRow: `3 / ${rightPanelRowEnd}` }}
       >
+        <RightPanelSection
+          title="Signals"
+          count={signalsData?.signals.length ?? undefined}
+        >
+          <div className="px-3 pb-3">
+            {signalsData == null ? <PanelSkeleton /> : <SignalsPanel data={signalsData} />}
+          </div>
+        </RightPanelSection>
+
+        <RightPanelDivider />
+
         <RightPanelSection title="Session" count={sessionData?.bar_count}>
           <div className="px-3 pb-3">
             {sessionData == null ? <PanelSkeleton /> : <SessionPanel data={sessionData} />}
