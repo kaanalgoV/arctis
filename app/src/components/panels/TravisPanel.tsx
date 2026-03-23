@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import { Search, BookOpen, Loader2 } from 'lucide-react'
+import { Search, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useMarketStore } from '@/store/market'
 import { config } from '@/lib/config'
@@ -15,6 +15,8 @@ export interface ArctisPanelProps {
 interface ArctisResult {
   title: string
   content: string
+  action?: string
+  type?: 'status' | 'signal' | 'no_signal'
 }
 
 interface ArctisResponse {
@@ -240,7 +242,7 @@ export function ArctisPanel({
       {results !== null && !isLoading && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           {results.map((r, i) => (
-            <ResultCard key={i} title={r.title} content={r.content} />
+            <ResultCard key={i} title={r.title} content={r.content} action={r.action} type={r.type} />
           ))}
         </div>
       )}
@@ -291,54 +293,74 @@ export function ArctisPanel({
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-interface ResultCardProps {
-  title: string
-  content: string
-}
+function ResultCard({ title, content, action, type }: ArctisResult) {
+  const actionColor = action?.startsWith('EINSTEIGEN') ? '#22C55E'
+    : action?.startsWith('BEREIT') ? '#F0A500'
+    : action?.startsWith('VERPASST') ? '#EF4444'
+    : '#8B949E'
 
-function ResultCard({ title, content }: ResultCardProps) {
+  const borderColor = type === 'signal' ? 'rgba(34,197,94,0.25)'
+    : type === 'no_signal' ? 'rgba(139,148,158,0.15)'
+    : 'rgba(92,184,240,0.15)'
+
+  const bgColor = type === 'signal' ? 'rgba(34,197,94,0.04)'
+    : type === 'no_signal' ? 'rgba(139,148,158,0.04)'
+    : 'rgba(92,184,240,0.04)'
+
   return (
     <div
       style={{
-        background: 'rgba(92,184,240,0.05)',
-        border: '1px solid rgba(92,184,240,0.15)',
+        background: bgColor,
+        border: `1px solid ${borderColor}`,
         borderRadius: 5,
         padding: '7px 9px',
         display: 'flex',
         flexDirection: 'column',
-        gap: 3,
+        gap: 4,
       }}
     >
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 5,
-        }}
-      >
-        <BookOpen size={10} strokeWidth={1.8} style={{ color: '#5CB8F0', flexShrink: 0 }} />
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <span
           style={{
-            fontSize: '0.68rem',
-            fontWeight: 600,
-            color: '#5CB8F0',
+            fontSize: '0.7rem',
+            fontWeight: 700,
+            color: type === 'signal' ? '#22C55E' : '#5CB8F0',
             fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
           }}
         >
           {title}
         </span>
+        {action && (
+          <span
+            style={{
+              fontSize: '0.55rem',
+              fontWeight: 700,
+              color: actionColor,
+              background: `${actionColor}15`,
+              border: `1px solid ${actionColor}40`,
+              borderRadius: 3,
+              padding: '1px 5px',
+              letterSpacing: '0.05em',
+              fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+            }}
+          >
+            {action.split('—')[0].trim()}
+          </span>
+        )}
       </div>
-      <p
+      <pre
         style={{
           margin: 0,
-          fontSize: '0.65rem',
+          fontSize: '0.62rem',
           color: 'var(--color-text-secondary)',
-          lineHeight: 1.45,
-          fontFamily: 'ui-sans-serif, system-ui, sans-serif',
+          lineHeight: 1.55,
+          fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+          whiteSpace: 'pre-wrap',
+          wordBreak: 'break-word',
         }}
       >
         {content}
-      </p>
+      </pre>
     </div>
   )
 }
