@@ -1,8 +1,11 @@
 """Analysis API endpoints."""
 
+import logging
 import time
 
 from fastapi import APIRouter, HTTPException, Query
+
+logger = logging.getLogger(__name__)
 
 from arctis.analysis.confluence import calculate_confluence
 from arctis.analysis.discipline import DisciplineContext, generate_warnings
@@ -25,20 +28,29 @@ def _get_sim():
 
 
 def _load_bars(market: Market, timeframe: Timeframe, days: int = 30):
-    """Load bars from simulation engine, ParquetStore, or TimescaleDB (in priority order)."""
+    """Load bars from simulation engine or TimescaleDB.
+
+    Source selection is explicit and logged:
+    - If a simulation is active for this market+timeframe → use sim bars.
+    - Otherwise → use TimescaleDB. No silent ParquetStore fallback.
+
+    The ParquetStore fallback was removed because stale parquet files silently
+    overrode live DB data, creating a second source of truth and data integrity
+    issues. If you need parquet for testing, do so explicitly at the call site.
+    """
     sim = _get_sim()
     if sim.active and sim.market == market and sim.timeframe == timeframe:
-        return sim.get_bars()
+        bars = sim.get_bars()
+        logger.debug(
+            "_load_bars: source=simulation market=%s timeframe=%s bars=%d",
+            market.value, timeframe.value, len(bars),
+        )
+        return bars
 
-    # Try ParquetStore first (populated via /api/import, used in tests)
-    try:
-        from arctis.main import store
-        bars = store.load(market, timeframe)
-        if bars:
-            return bars
-    except Exception:
-        pass
-
+    logger.debug(
+        "_load_bars: source=timescaledb market=%s timeframe=%s days=%d",
+        market.value, timeframe.value, days,
+    )
     bars = fetch_bars_as_models(market=market.value, days=days, timeframe=timeframe.value)
     if not bars:
         raise HTTPException(
@@ -220,6 +232,8 @@ async def get_indicators(
     session_lvls = calculate_session_levels(bars)
 
     return {
+        "market": market.value,
+        "timeframe": timeframe.value,
         "vwap": [
             {"timestamp": v.timestamp, "vwap": v.vwap, "upper_1": v.upper_1, "lower_1": v.lower_1, "upper_2": v.upper_2, "lower_2": v.lower_2}
             for v in vwap_list
@@ -322,6 +336,8 @@ async def get_confluence(
     )
 
     return {
+        "market": market.value,
+        "timeframe": timeframe.value,
         "score": result.score,
         "max_score": result.max_score,
         "direction": result.direction,
@@ -406,6 +422,8 @@ async def get_patterns(
                 "detail": a.detail,
                 "confidence": a.confidence,
                 "win_rate": a.win_rate,
+                "profit_factor": a.profit_factor,
+                "sample_size": a.sample_size,
                 "category": a.category,
                 "price": a.price,
                 "target": a.target,
