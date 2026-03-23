@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useMarketData } from '@/hooks/useMarketData'
+import { useAnalysis } from '@/hooks/useAnalysis'
 import { useReplay } from '@/hooks/useReplay'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
+import { useMarketStore } from '@/store/market'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { Topbar } from '@/components/layout/Topbar'
 import { HudStrip } from '@/components/layout/HudStrip'
@@ -27,8 +29,10 @@ import { SettingsPanel } from '@/components/settings/SettingsPanel'
 import type { ChartZone } from '@/components/charts/SimpleChart'
 import type { OverlayKey } from '@/components/charts/ChartToolbar'
 import { useDrawings } from '@/hooks/useDrawings'
-import type { Market, Timeframe, OHLCVBar } from '@/types/market'
+import type { OHLCVBar } from '@/types/market'
 import type { IndicatorData, VolumeData, TradingConfig } from '@/types/analysis'
+import { TF_DISPLAY, TIMEFRAMES } from '@/types/contracts'
+import type { Timeframe } from '@/types/contracts'
 import { PanelSkeleton } from '@/components/ui/Skeleton'
 import { cn } from '@/lib/utils'
 import type { IChartApi } from 'lightweight-charts'
@@ -37,29 +41,6 @@ import { ChartPage } from '@/pages/ChartPage'
 import { PatternsPage } from '@/pages/PatternsPage'
 
 const ENGINE_URL = 'http://127.0.0.1:8001'
-const POLL_INTERVAL_MS = 5000
-
-// Timeframe display label mapping (internal value -> topbar display)
-const TF_TO_DISPLAY: Record<string, string> = {
-  '1min': '1m',
-  '5min': '5m',
-}
-
-// Topbar display -> internal Timeframe
-const DISPLAY_TO_TF: Record<string, string> = {
-  '1m': '1min',
-  '5m': '5min',
-}
-
-// Static fallback symbol map: market root -> front-month contract
-const SYMBOL_MAP: Record<string, string> = {
-  NQ: 'NQH6',
-  ES: 'ESZ5',
-  CL: 'CLJ6',
-  GC: 'GCJ6',
-  '6E': '6EH6',
-  '6J': '6JH6',
-}
 
 const SESSION_DISPLAY: Record<string, string> = {
   pre_market: 'Pre-Mkt',
@@ -119,14 +100,6 @@ function formatBarTimeET(timestampSeconds: number): string {
     timeZone: 'America/New_York',
     hour12: false,
   })
-}
-
-function resolveSymbol(root: string, markets: MarketInfo[]): string {
-  const found = markets.find(
-    (m) => m.root === root || m.symbol.startsWith(root),
-  )
-  if (found) return found.symbol
-  return SYMBOL_MAP[root] ?? `${root}H6`
 }
 
 function deriveVwapPosition(
@@ -237,32 +210,23 @@ function buildFeedItems(
 }
 
 export default function App() {
+  // ── Zustand store ──────────────────────────────────────────────────────────
+  const {
+    market,
+    symbol,
+    timeframe,
+    setMarket: storeSetMarket,
+    setTimeframe: storeSetTimeframe,
+  } = useMarketStore()
+
   // ── Page navigation ────────────────────────────────────────────────────────
   const [activePage, setActivePage] = useState<ActivePage>('chart')
 
   // ── Mode ───────────────────────────────────────────────────────────────────
   const [mode, setMode] = useState<AppMode>('live')
 
-  // ── Core selectors ─────────────────────────────────────────────────────────
-  const [market, setMarket] = useState<Market>('NQ')
-  const [symbol, setSymbol] = useState<string>('NQH6')
-  const [timeframe, setTimeframe] = useState<Timeframe>('1min')
-  const days = 30
-
   // ── Markets list from API ──────────────────────────────────────────────────
   const [markets, setMarkets] = useState<MarketInfo[]>([])
-
-  // ── Analysis slices ────────────────────────────────────────────────────────
-  const [sessionData, setSessionData] = useState<SessionAPIData | null>(null)
-  const [confluenceData, setConfluenceData] = useState<ConfluenceAPIData | null>(null)
-  const [patternsData, setPatternsData] = useState<PatternsAPIData | null>(null)
-  const [indicatorData, setIndicatorData] = useState<IndicatorData | null>(null)
-  const [volumeData, setVolumeData] = useState<VolumeData | null>(null)
-  const [tradingConfig, setTradingConfig] = useState<TradingConfig | null>(null)
-  const [structureData, setStructureData] = useState<StructureAPIData | null>(null)
-  const [biasData, setBiasData] = useState<BiasData | null>(null)
-  const [zonesData, setZonesData] = useState<{ zones: ChartZone[] } | null>(null)
-  const [signalsData, setSignalsData] = useState<SignalsAPIData | null>(null)
 
   // ── Replay bars state (sim-filtered bars during active replay) ─────────────
   const [replayBarsData, setReplayBarsData] = useState<OHLCVBar[]>([])
@@ -304,7 +268,40 @@ export default function App() {
   const [lastUpdate, setLastUpdate] = useState<string>('--:--:--')
 
   // ── Chart bars via hook (REST + WebSocket auto-reconnect) ──────────────────
-  const { bars, isLoading, isConnected, error, barsCount } = useMarketData(symbol, days)
+  const { bars, isLoading, error } = useMarketData()
+  const { wsStatus } = useMarketStore()
+  const isConnected = wsStatus === 'connected'
+  const barsCount = bars.length
+
+  // ── Analysis via hook (replaces 10 parallel fetches) ──────────────────────
+  const {
+    sessions: sessionData,
+    confluence: confluenceData,
+    patterns: patternsData,
+    indicators: indicatorData,
+    volume: volumeData,
+    structure: structureDataRaw,
+    config: tradingConfigRaw,
+    bias: biasData,
+    zones: zonesDataRaw,
+    signals: signalsData,
+  } = useAnalysis()
+
+  // Cast untyped analysis results to expected types
+  const structureData = structureDataRaw as StructureAPIData | null
+  const tradingConfig = tradingConfigRaw as TradingConfig | null
+  const zonesData = zonesDataRaw as { zones: ChartZone[] } | null
+
+  // ── Track latency + last update from analysis polling ─────────────────────
+  const lastBarTs = useMarketStore((s) => s.lastBarTs)
+  useEffect(() => {
+    if (lastBarTs == null) return
+    const n = new Date()
+    setLastUpdate(
+      `${n.getHours().toString().padStart(2, '0')}:${n.getMinutes().toString().padStart(2, '0')}:${n.getSeconds().toString().padStart(2, '0')}`,
+    )
+    setLatencyMs(0) // latency is not measured separately anymore
+  }, [lastBarTs])
 
   // ── Replay hook ────────────────────────────────────────────────────────────
   const replay = useReplay(market, timeframe)
@@ -335,9 +332,6 @@ export default function App() {
 
   // ── Last bar close ─────────────────────────────────────────────────────────
   const lastClose = bars.at(-1)?.close
-
-  // ── Poll interval ref ──────────────────────────────────────────────────────
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   // ── Overlay toggle state ───────────────────────────────────────────────────
   const [activeOverlays, setActiveOverlays] = useState<Set<OverlayKey>>(
@@ -370,91 +364,29 @@ export default function App() {
         if (list) setMarkets(list)
       })
       .catch(() => {
-        // Optional endpoint — fall back to SYMBOL_MAP
+        // Optional endpoint — fall back to store defaults
       })
   }, [])
 
-  // ── Analysis fetcher (memoised so useEffect dep is stable per market/tf) ──
-  const fetchAnalysis = useCallback(async () => {
-    const t0 = performance.now()
-    const base = `${ENGINE_URL}/api/analysis`
-    const qs = `market=${market}&timeframe=${timeframe}`
-
-    const [sessR, confR, patR, indR, volR, cfgR, strR, biasR, zonesR, sigR] = await Promise.allSettled([
-      fetch(`${base}/sessions?${qs}`).then((r) => (r.ok ? r.json() : null)),
-      fetch(`${base}/confluence?${qs}`).then((r) => (r.ok ? r.json() : null)),
-      fetch(`${base}/patterns?${qs}`).then((r) => (r.ok ? r.json() : null)),
-      fetch(`${base}/indicators?${qs}`).then((r) => (r.ok ? r.json() : null)),
-      fetch(`${base}/volume?${qs}`).then((r) => (r.ok ? r.json() : null)),
-      fetch(`${ENGINE_URL}/api/config`).then((r) => (r.ok ? r.json() : null)),
-      fetch(`${base}/structure?${qs}`).then((r) => (r.ok ? r.json() : null)),
-      fetch(`${ENGINE_URL}/api/analysis/bias?${qs}`).then((r) => (r.ok ? r.json() : null)),
-      fetch(`${base}/zones?${qs}`).then((r) => (r.ok ? r.json() : null)),
-      fetch(`${base}/signals?${qs}`).then((r) => (r.ok ? r.json() : null)),
-    ])
-
-    if (sessR.status === 'fulfilled' && sessR.value)
-      setSessionData(sessR.value as SessionAPIData)
-    if (confR.status === 'fulfilled' && confR.value)
-      setConfluenceData(confR.value as ConfluenceAPIData)
-    if (patR.status === 'fulfilled' && patR.value)
-      setPatternsData(patR.value as PatternsAPIData)
-    if (indR.status === 'fulfilled' && indR.value)
-      setIndicatorData(indR.value as IndicatorData)
-    if (volR.status === 'fulfilled' && volR.value)
-      setVolumeData(volR.value as VolumeData)
-    if (cfgR.status === 'fulfilled' && cfgR.value)
-      setTradingConfig(cfgR.value as TradingConfig)
-    if (strR.status === 'fulfilled' && strR.value)
-      setStructureData(strR.value as StructureAPIData)
-    if (biasR.status === 'fulfilled' && biasR.value)
-      setBiasData(biasR.value as BiasData)
-    if (zonesR.status === 'fulfilled' && zonesR.value)
-      setZonesData(zonesR.value as { zones: ChartZone[] })
-    if (sigR.status === 'fulfilled' && sigR.value)
-      setSignalsData(sigR.value as SignalsAPIData)
-
-    setLatencyMs(Math.round(performance.now() - t0))
-    const n = new Date()
-    setLastUpdate(
-      `${n.getHours().toString().padStart(2, '0')}:${n.getMinutes().toString().padStart(2, '0')}:${n.getSeconds().toString().padStart(2, '0')}`,
-    )
-  }, [market, timeframe])
-
-  // ── Start polling whenever market or timeframe change ──────────────────────
-  useEffect(() => {
-    void fetchAnalysis()
-    pollRef.current = setInterval(() => void fetchAnalysis(), POLL_INTERVAL_MS)
-    return () => {
-      if (pollRef.current !== null) {
-        clearInterval(pollRef.current)
-        pollRef.current = null
-      }
-    }
-  }, [fetchAnalysis])
-
   // ── Handlers ──────────────────────────────────────────────────────────────
   const handleMarketChange = useCallback(
-    (next: Market) => {
-      setMarket(next)
-      setSymbol(resolveSymbol(next, markets))
-      setSessionData(null)
-      setConfluenceData(null)
-      setPatternsData(null)
-      setIndicatorData(null)
-      setVolumeData(null)
-      setStructureData(null)
-      setBiasData(null)
-      setZonesData(null)
-      setSignalsData(null)
+    (next: string) => {
+      storeSetMarket(next)
     },
-    [markets],
+    [storeSetMarket],
   )
 
-  const handleTimeframeChange = useCallback((displayTf: string) => {
-    const internalTf = (DISPLAY_TO_TF[displayTf] ?? displayTf) as Timeframe
-    setTimeframe(internalTf)
-  }, [])
+  const handleTimeframeChange = useCallback(
+    (displayTf: string) => {
+      // Find internal timeframe key from display label
+      const entry = (Object.entries(TF_DISPLAY) as [Timeframe, string][]).find(
+        ([, label]) => label === displayTf,
+      )
+      const internalTf: Timeframe = entry ? entry[0] : (displayTf as Timeframe)
+      storeSetTimeframe(internalTf)
+    },
+    [storeSetTimeframe],
+  )
 
   // ── Sidebar navigation ─────────────────────────────────────────────────────
   const handleNavigate = useCallback(
@@ -477,20 +409,25 @@ export default function App() {
   )
 
   // ── Derived HUD values ────────────────────────────────────────────────────
-  const latestRvol = volumeData?.relative_volume?.at(-1)?.rvol ?? null
-  const latestRsi = indicatorData?.rsi?.at(-1)
-  const latestEmaAlignment = indicatorData?.ema?.at(-1)?.alignment ?? null
-  const vwapPosition = deriveVwapPosition(indicatorData, lastClose)
+  const latestRvol = (volumeData as VolumeData | null)?.relative_volume?.at(-1)?.rvol ?? null
+  const latestRsi = (indicatorData as IndicatorData | null)?.rsi?.at(-1)
+  const latestEmaAlignment = (indicatorData as IndicatorData | null)?.ema?.at(-1)?.alignment ?? null
+  const vwapPosition = deriveVwapPosition(indicatorData as IndicatorData | null, lastClose)
   const hudSessionName = sessionData
-    ? (SESSION_DISPLAY[sessionData.current_session] ?? sessionData.current_session)
+    ? (SESSION_DISPLAY[(sessionData as SessionAPIData).current_session] ?? (sessionData as SessionAPIData).current_session)
     : null
 
   // ── Feed ──────────────────────────────────────────────────────────────────
-  const feedItems = buildFeedItems(confluenceData, volumeData, patternsData, sessionData)
+  const feedItems = buildFeedItems(
+    confluenceData as ConfluenceAPIData | null,
+    volumeData as VolumeData | null,
+    patternsData as PatternsAPIData | null,
+    sessionData as SessionAPIData | null,
+  )
 
   // ── Travis context ────────────────────────────────────────────────────────
-  const travisPattern = patternsData?.annotations.at(-1)?.pattern ?? undefined
-  const travisBias = biasData?.bias_state?.state ?? undefined
+  const travisPattern = (patternsData as PatternsAPIData | null)?.annotations.at(-1)?.pattern ?? undefined
+  const travisBias = (biasData as BiasData | null)?.bias_state?.state ?? undefined
 
   // ── Price ─────────────────────────────────────────────────────────────────
   const price = lastClose ?? null
@@ -502,7 +439,6 @@ export default function App() {
   }, [symbol, price])
 
   // ── Keyboard shortcuts ─────────────────────────────────────────────────────
-  const timeframeKeys = ['1min', '5min', '15min', '30min', '1h'] as const
   useKeyboardShortcuts({
     onToggleReplay: () => {
       if (mode === 'replay') {
@@ -515,9 +451,9 @@ export default function App() {
     },
     isReplayActive: mode === 'replay',
     onSelectTimeframe: (idx) => {
-      const tf = timeframeKeys[idx - 1]
+      const tf = TIMEFRAMES[idx - 1]
       if (tf) {
-        handleTimeframeChange(TF_TO_DISPLAY[tf] ?? tf)
+        handleTimeframeChange(TF_DISPLAY[tf])
       }
     },
     onCloseSettings: () => setShowSettings(false),
@@ -525,10 +461,10 @@ export default function App() {
   })
 
   // ── Market pill list (from API or static fallback) ────────────────────────
-  const marketRoots: Market[] =
+  const marketRoots: string[] =
     markets.length > 0
-      ? (markets.map((m) => m.root).filter(Boolean) as Market[])
-      : (['ES', 'NQ', 'CL', 'GC', '6E'] as Market[])
+      ? (markets.map((m) => m.root).filter(Boolean))
+      : ['ES', 'NQ', 'CL', 'GC', '6E']
 
   // ── Mode toggle handler ────────────────────────────────────────────────────
   const handleModeChange = useCallback(
@@ -595,7 +531,7 @@ export default function App() {
           markets={marketRoots}
           activeMarket={market}
           onMarketChange={handleMarketChange}
-          activeTimeframe={TF_TO_DISPLAY[timeframe] ?? timeframe}
+          activeTimeframe={TF_DISPLAY[timeframe] ?? timeframe}
           onTimeframeChange={handleTimeframeChange}
           currentPrice={price}
           isConnected={isConnected}
@@ -653,10 +589,10 @@ export default function App() {
             nqChange={null}
             esPrice={market === 'ES' ? price : null}
             esChange={null}
-            biasData={biasData}
-            confluenceData={confluenceData}
-            sessionData={sessionData}
-            patternsData={patternsData}
+            biasData={biasData as BiasData | null}
+            confluenceData={confluenceData as ConfluenceAPIData | null}
+            sessionData={sessionData as SessionAPIData | null}
+            patternsData={patternsData as PatternsAPIData | null}
           />
         )}
 
@@ -669,9 +605,9 @@ export default function App() {
             error={error}
             activeOverlays={activeOverlays}
             onToggleOverlay={handleToggleOverlay}
-            indicatorData={indicatorData}
+            indicatorData={indicatorData as IndicatorData | null}
             structureBreaks={structureData?.structure_breaks}
-            patternAnnotations={patternsData?.annotations}
+            patternAnnotations={(patternsData as PatternsAPIData | null)?.annotations}
             zones={zonesData?.zones}
             drawings={drawings}
             activeTool={activeTool}
@@ -688,7 +624,7 @@ export default function App() {
         )}
 
         {activePage === 'patterns' && (
-          <PatternsPage data={patternsData} />
+          <PatternsPage data={patternsData as PatternsAPIData | null} />
         )}
       </div>
 
@@ -700,18 +636,18 @@ export default function App() {
         >
           <RightPanelSection
             title="Signals"
-            count={signalsData?.signals.length ?? undefined}
+            count={(signalsData as SignalsAPIData | null)?.signals.length ?? undefined}
           >
             <div className="px-3 pb-3">
-              {signalsData == null ? <PanelSkeleton /> : <SignalsPanel data={signalsData} />}
+              {signalsData == null ? <PanelSkeleton /> : <SignalsPanel data={signalsData as SignalsAPIData} />}
             </div>
           </RightPanelSection>
 
           <RightPanelDivider />
 
-          <RightPanelSection title="Session" count={sessionData?.bar_count}>
+          <RightPanelSection title="Session" count={(sessionData as SessionAPIData | null)?.bar_count}>
             <div className="px-3 pb-3">
-              {sessionData == null ? <PanelSkeleton /> : <SessionPanel data={sessionData} />}
+              {sessionData == null ? <PanelSkeleton /> : <SessionPanel data={sessionData as SessionAPIData} />}
             </div>
           </RightPanelSection>
 
@@ -719,7 +655,7 @@ export default function App() {
 
           <RightPanelSection title="Confluence">
             <div className="px-3 pb-3">
-              {confluenceData == null ? <PanelSkeleton /> : <ConfluencePanel data={confluenceData} />}
+              {confluenceData == null ? <PanelSkeleton /> : <ConfluencePanel data={confluenceData as ConfluenceAPIData} />}
             </div>
           </RightPanelSection>
 
@@ -727,7 +663,7 @@ export default function App() {
 
           <RightPanelSection title="Bias" count={biasData ? 1 : undefined}>
             <div className="px-3 pb-3">
-              {biasData == null ? <PanelSkeleton /> : <BiasPanel data={biasData} />}
+              {biasData == null ? <PanelSkeleton /> : <BiasPanel data={biasData as BiasData} />}
             </div>
           </RightPanelSection>
 
@@ -735,10 +671,10 @@ export default function App() {
 
           <RightPanelSection
             title="Patterns"
-            count={patternsData?.annotations.length ?? undefined}
+            count={(patternsData as PatternsAPIData | null)?.annotations.length ?? undefined}
           >
             <div className="px-3 pb-3">
-              {patternsData == null ? <PanelSkeleton /> : <PatternsPanel data={patternsData} />}
+              {patternsData == null ? <PanelSkeleton /> : <PatternsPanel data={patternsData as PatternsAPIData} />}
             </div>
           </RightPanelSection>
 
@@ -800,7 +736,7 @@ export default function App() {
         }}
         tradingConfig={tradingConfig}
         onConfigSaved={(saved) => {
-          setTradingConfig(saved as TradingConfig)
+          void saved
           setShowSettings(false)
         }}
       />
