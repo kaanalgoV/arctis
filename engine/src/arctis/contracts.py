@@ -24,3 +24,18 @@ class HealthResponse(BaseModel):
 class AnalysisError(BaseModel):
     error: str
     detail: str | None = None
+
+
+class ProbabilityZone(BaseModel):
+    target_high: float
+    target_low: float
+    probability: float
+    horizon_bars: int = 5
+    method: str = "rolling_quantile"
+
+
+class ProbabilityResponse(BaseModel):
+    zones: list[ProbabilityZone] = []
+    current_price: float | None = None
+    sample_size: int = 0
+    regime: str = "unknown"
