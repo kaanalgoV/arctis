@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Check, Sparkles, Building2, Zap } from 'lucide-react'
+import { Check, Sparkles, Building2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
   fadeInUp,
@@ -29,35 +29,23 @@ interface PricingTier {
 
 const tiers: PricingTier[] = [
   {
-    id: 'free',
-    icon: Zap,
-    name: 'Free',
-    price: '$0',
-    priceNote: 'No time limit',
-    features: [
-      'ES & NQ markets',
-      'Real-time charts',
-      'Basic session analytics',
-      'Community support',
-    ],
-    cta: 'Get Started',
-  },
-  {
     id: 'pro',
     icon: Sparkles,
     name: 'Pro',
     price: { monthly: '$49/mo', annual: '$39/mo' },
     priceNote: { annual: 'billed annually' },
     features: [
-      'ES & NQ with full depth',
-      'BIAS analysis module',
-      'Confluence scoring',
-      'Pattern detection',
-      'Risk framework',
-      'Priority support',
-      'Desktop app (macOS/Windows)',
+      'ES & NQ — Live-Daten via Rithmic',
+      'Arctis AI Marktanalyse mit Entry/Stop/Target',
+      'BIAS-Modul (5 Zustaende, Switch Level, Fakes)',
+      'Confluence Scoring (7 Signaldimensionen)',
+      'Automatische Setup-Erkennung (ORB, IB, POC, VA)',
+      'Volumenprofil tagesbasiert (POC, VAH, VAL)',
+      'Replay mit Proberun-Modus',
+      'Desktop App (macOS)',
+      'Priority Support',
     ],
-    cta: 'Start Pro Trial',
+    cta: 'Jetzt starten',
     highlighted: true,
   },
   {
@@ -65,15 +53,16 @@ const tiers: PricingTier[] = [
     icon: Building2,
     name: 'Enterprise',
     price: 'Custom',
-    priceNote: 'For firms and teams',
+    priceNote: 'Fuer Prop-Firms und Teams',
     features: [
-      'Unlimited team seats',
-      'Custom integrations',
-      'Dedicated support engineer',
-      'SLA guarantees',
-      'On-premise deployment',
+      'Alles aus Pro',
+      'Unbegrenzte Team-Seats',
+      'Custom Integrationen (API, Webhooks)',
+      'Dedizierter Support-Ingenieur',
+      'SLA Garantien (99.9% Uptime)',
+      'On-Premise Deployment moeglich',
     ],
-    cta: 'Contact Sales',
+    cta: 'Kontakt aufnehmen',
   },
 ]
 
@@ -441,7 +430,7 @@ export function Pricing() {
             }}
           />
         <motion.div
-          className="grid grid-cols-1 gap-6 md:grid-cols-3 lg:gap-8"
+          className="grid grid-cols-1 gap-6 md:grid-cols-2 max-w-3xl mx-auto lg:gap-8"
           variants={staggerContainer}
           initial="hidden"
           whileInView="visible"
@@ -453,17 +442,12 @@ export function Pricing() {
                 <ProTierCard key={tier.id} tier={tier} isAnnual={isAnnual} />
               )
             }
-            if (tier.id === 'enterprise') {
-              return (
-                <EnterpriseTierCard
-                  key={tier.id}
-                  tier={tier}
-                  isAnnual={isAnnual}
-                />
-              )
-            }
             return (
-              <FreeTierCard key={tier.id} tier={tier} isAnnual={isAnnual} />
+              <EnterpriseTierCard
+                key={tier.id}
+                tier={tier}
+                isAnnual={isAnnual}
+              />
             )
           })}
         </motion.div>
