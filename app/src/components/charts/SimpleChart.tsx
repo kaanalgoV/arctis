@@ -16,6 +16,7 @@ import {
 } from 'lightweight-charts'
 import type { OHLCVBar } from '@/types/market'
 import type { Drawing } from '@/hooks/useDrawings'
+import type { TradeSignal } from '../../hooks/useSignals'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -121,6 +122,8 @@ export interface SimpleChartProps {
   zones?: ChartZone[]
   /** Whether to render zone overlays. */
   showZones?: boolean
+  /** Trade signals from the proberun engine — renders entry/stop/target price lines. */
+  signals?: TradeSignal[]
 }
 
 // ─── Refs state for overlay series ───────────────────────────────────────────
@@ -157,6 +160,7 @@ export function SimpleChart({
   onChartClick,
   zones,
   showZones = false,
+  signals,
 }: SimpleChartProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const chartRef = useRef<IChartApi | null>(null)
@@ -181,6 +185,8 @@ export function SimpleChart({
   const zoneLinesRef = useRef<IPriceLine[]>([])
   // Opening Range Box price line refs (OR High + OR Low)
   const orLinesRef = useRef<IPriceLine[]>([])
+  // Signal level price line refs (entry/stop/target per signal, rebuilt on signals change)
+  const signalLinesRef = useRef<IPriceLine[]>([])
 
   // ── Build chart on first mount (bars change re-creates chart) ──────────────
   useEffect(() => {
@@ -313,6 +319,7 @@ export function SimpleChart({
       levelLinesRef.current = []
       zoneLinesRef.current = []
       orLinesRef.current = []
+      signalLinesRef.current = []
       markersPluginRef.current = null
       drawingLineRefs.current.clear()
       overlayRef.current = {
@@ -775,6 +782,74 @@ export function SimpleChart({
       // rectangle / trendline / text are P2 — skipped for now
     }
   }, [drawings])
+
+  // ── Signal entry / stop / target price lines + direction markers ─────────
+  useEffect(() => {
+    const candle = candleRef.current
+    if (!candle) return
+
+    // Remove previous signal lines
+    signalLinesRef.current.forEach((pl) => {
+      try { candle.removePriceLine(pl) } catch { /* already removed */ }
+    })
+    signalLinesRef.current = []
+
+    if (!signals || signals.length === 0) return
+
+    // Render last 3 signals to avoid visual noise
+    const recent = signals.slice(-3)
+    const newLines: IPriceLine[] = []
+
+    for (const sig of recent) {
+      newLines.push(
+        candle.createPriceLine({
+          price: sig.entry_price,
+          color: 'rgba(255,255,255,0.6)',
+          lineWidth: 1,
+          lineStyle: LineStyle.Dashed,
+          axisLabelVisible: true,
+          title: 'Entry',
+        }),
+        candle.createPriceLine({
+          price: sig.stop_price,
+          color: 'rgba(239,68,68,0.4)',
+          lineWidth: 1,
+          lineStyle: LineStyle.Dotted,
+          axisLabelVisible: true,
+          title: 'Stop',
+        }),
+        candle.createPriceLine({
+          price: sig.target_price,
+          color: 'rgba(34,197,94,0.4)',
+          lineWidth: 1,
+          lineStyle: LineStyle.Dotted,
+          axisLabelVisible: true,
+          title: 'Target',
+        }),
+      )
+    }
+
+    signalLinesRef.current = newLines
+
+    // Signal direction markers (arrow up/down at signal timestamp)
+    const plugin = markersPluginRef.current
+    if (!plugin) return
+
+    // Merge with existing markers is not straightforward since setMarkers replaces all.
+    // Retrieve current markers then append signal markers.
+    const sigMarkers: SeriesMarker<import('lightweight-charts').Time>[] = recent.map((sig) => ({
+      time: sig.timestamp as import('lightweight-charts').Time,
+      position: sig.direction === 'long' ? 'belowBar' : 'aboveBar',
+      color: sig.direction === 'long' ? '#22C55E' : '#EF4444',
+      shape: sig.direction === 'long' ? 'arrowUp' : 'arrowDown',
+      text: sig.signal_type,
+      size: 1,
+    }))
+
+    // Sort ascending as required by LWC
+    sigMarkers.sort((a, b) => (a.time as number) - (b.time as number))
+    plugin.setMarkers(sigMarkers)
+  }, [signals])
 
   return <div ref={containerRef} className={className} />
 }
