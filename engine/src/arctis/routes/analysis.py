@@ -11,7 +11,7 @@ from arctis.analysis.patterns import detect_patterns
 from arctis.analysis.sessions import classify_session, get_session_stats
 from arctis.analysis.structure import classify_trend, detect_structure_breaks, detect_swings
 from arctis.analysis.volume import detect_volume_spikes, relative_volume
-from arctis.analysis.volume_profile import build_volume_profile, calculate_session_levels
+from arctis.analysis.volume_profile import build_daily_volume_profiles, build_volume_profile, calculate_session_levels
 from arctis.analysis.vwap import calculate_vwap
 from arctis.db import fetch_bars_as_models
 from arctis.models import Market, Timeframe
@@ -216,6 +216,7 @@ async def get_indicators(
     ema_list = calculate_ema_ribbon(bars)
     rsi_list = calculate_rsi(bars)
     vol_profile = build_volume_profile(bars)
+    daily_profiles = build_daily_volume_profiles(bars)
     session_lvls = calculate_session_levels(bars)
 
     return {
@@ -237,6 +238,10 @@ async def get_indicators(
             "val": vol_profile.val,
             "total_volume": vol_profile.total_volume,
         } if vol_profile else None,
+        "daily_volume_profiles": [
+            {"date": dp.date, "poc": dp.poc, "vah": dp.vah, "val": dp.val, "total_volume": dp.total_volume}
+            for dp in daily_profiles
+        ],
         "session_levels": {
             "prev_high": session_lvls.prev_high,
             "prev_low": session_lvls.prev_low,

@@ -153,6 +153,7 @@ export function ChartPage({
               vwapData={indicatorData?.vwap}
               emaData={indicatorData?.ema}
               volumeProfile={indicatorData?.volume_profile}
+              dailyVolumeProfiles={indicatorData?.daily_volume_profiles}
               sessionLevels={sessionLevels}
               structureBreaks={structureBreaks}
               patternAnnotations={patternAnnotations}

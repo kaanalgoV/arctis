@@ -1,6 +1,7 @@
 """Volume Profile with POC (Point of Control) and Value Area."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
 
 from arctis.models import OHLCVBar
 
@@ -12,6 +13,15 @@ class VolumeProfileData:
     val: float  # Value Area Low (lower 70% boundary)
     total_volume: int
     profile: dict[float, int]  # price_level -> volume
+
+
+@dataclass
+class DailyVolumeProfile:
+    date: str  # ISO date string, e.g. "2026-03-20"
+    poc: float
+    vah: float
+    val: float
+    total_volume: int
 
 
 @dataclass
@@ -100,6 +110,41 @@ def build_volume_profile(
         total_volume=total_vol,
         profile=profile,
     )
+
+
+def build_daily_volume_profiles(
+    bars: list[OHLCVBar], tick_size: float = 0.25, bin_ticks: int = 4
+) -> list[DailyVolumeProfile]:
+    """Build per-day volume profiles from bars.
+
+    Groups bars by calendar date (UTC), then computes POC/VAH/VAL for each day.
+    Returns the list sorted ascending by date.
+    """
+    if not bars:
+        return []
+
+    # Group bars by ISO date string (UTC)
+    days: dict[str, list[OHLCVBar]] = {}
+    for bar in bars:
+        date_str = datetime.fromtimestamp(bar.timestamp, tz=timezone.utc).strftime("%Y-%m-%d")
+        days.setdefault(date_str, []).append(bar)
+
+    result: list[DailyVolumeProfile] = []
+    for date_str in sorted(days.keys()):
+        day_bars = days[date_str]
+        vp = build_volume_profile(day_bars, tick_size=tick_size, bin_ticks=bin_ticks)
+        if vp is not None:
+            result.append(
+                DailyVolumeProfile(
+                    date=date_str,
+                    poc=vp.poc,
+                    vah=vp.vah,
+                    val=vp.val,
+                    total_volume=vp.total_volume,
+                )
+            )
+
+    return result
 
 
 def calculate_session_levels(

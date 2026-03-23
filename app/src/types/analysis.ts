@@ -76,11 +76,21 @@ export interface VolumeData {
   bar_count: number
 }
 
+export interface DailyVolumeProfile {
+  date: string  // "2026-03-20"
+  poc: number
+  vah: number
+  val: number
+  total_volume: number
+}
+
 export interface IndicatorData {
   vwap: Array<{ timestamp: number; vwap: number; upper_1: number; lower_1: number; upper_2: number; lower_2: number }>
   ema: Array<{ timestamp: number; ema9: number; ema21: number; ema50: number; alignment: string }>
   rsi: Array<{ timestamp: number; rsi: number; divergence: boolean }>
   volume_profile: { poc: number; vah: number; val: number; total_volume: number } | null
+  /** Per-day volume profiles sorted ascending by date. */
+  daily_volume_profiles?: DailyVolumeProfile[]
   session_levels: Record<string, number | null>
 }
 

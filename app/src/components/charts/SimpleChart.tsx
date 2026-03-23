@@ -55,6 +55,13 @@ interface VolumeProfile {
   val: number
 }
 
+interface DailyVolumeProfile {
+  date: string
+  poc: number
+  vah: number
+  val: number
+}
+
 interface SessionLevels {
   prev_high: number
   prev_low: number
@@ -86,6 +93,8 @@ export interface SimpleChartProps {
   vwapData?: VwapPoint[]
   emaData?: EmaPoint[]
   volumeProfile?: VolumeProfile | null
+  /** Per-day volume profiles: yesterday shown as dashed, today as solid lines. */
+  dailyVolumeProfiles?: DailyVolumeProfile[]
   sessionLevels?: SessionLevels | null
   structureBreaks?: StructureBreak[]
   patternAnnotations?: PatternAnnotation[]
@@ -131,6 +140,7 @@ export function SimpleChart({
   vwapData,
   emaData,
   volumeProfile,
+  dailyVolumeProfiles,
   sessionLevels,
   structureBreaks,
   patternAnnotations,
@@ -159,8 +169,10 @@ export function SimpleChart({
     ema21: null,
     ema50: null,
   })
-  // Price line refs so we can remove them on data change
-  const priceLineRefs = useRef<IPriceLine[]>([])
+  // VP price line refs (rebuilt on VP data change)
+  const vpLinesRef = useRef<IPriceLine[]>([])
+  // Session / previous-day level price line refs
+  const levelLinesRef = useRef<IPriceLine[]>([])
   // Markers plugin ref (LWC v5 uses createSeriesMarkers plugin)
   const markersPluginRef = useRef<ISeriesMarkersPluginApi<import('lightweight-charts').Time> | null>(null)
   // Drawing price line refs keyed by drawing id
@@ -297,7 +309,8 @@ export function SimpleChart({
       chart.remove()
       chartRef.current = null
       candleRef.current = null
-      priceLineRefs.current = []
+      vpLinesRef.current = []
+      levelLinesRef.current = []
       zoneLinesRef.current = []
       orLinesRef.current = []
       markersPluginRef.current = null
@@ -343,62 +356,127 @@ export function SimpleChart({
     ov.ema50!.applyOptions({ visible })
   }, [showEma, emaData])
 
-  // ── Volume Profile price lines ────────────────────────────────────────────
+  // ── Volume Profile price lines (per-day: yesterday dashed, today solid) ────
   useEffect(() => {
     const candle = candleRef.current
     if (!candle) return
 
-    // Remove existing VP price lines
-    priceLineRefs.current
-      .filter((_, i) => i < 3)
-      .forEach((pl) => {
-        try { candle.removePriceLine(pl) } catch (_) { /* already removed */ }
-      })
-    priceLineRefs.current = priceLineRefs.current.slice(3)
+    // Remove all previous VP price lines
+    vpLinesRef.current.forEach((pl) => {
+      try { candle.removePriceLine(pl) } catch (_) { /* already removed */ }
+    })
+    vpLinesRef.current = []
 
-    if (showVp && volumeProfile) {
-      const poc = candle.createPriceLine({
-        price: volumeProfile.poc,
-        color: '#FBBF24',
-        lineWidth: 1,
-        lineStyle: LineStyle.Solid,
-        axisLabelVisible: true,
-        title: 'POC',
-      })
-      const vah = candle.createPriceLine({
-        price: volumeProfile.vah,
-        color: '#5CB8F0',
-        lineWidth: 1,
-        lineStyle: LineStyle.Dashed,
-        axisLabelVisible: true,
-        title: 'VAH',
-      })
-      const val = candle.createPriceLine({
-        price: volumeProfile.val,
-        color: '#5CB8F0',
-        lineWidth: 1,
-        lineStyle: LineStyle.Dashed,
-        axisLabelVisible: true,
-        title: 'VAL',
-      })
-      priceLineRefs.current = [poc, vah, val, ...priceLineRefs.current]
+    if (!showVp) return
+
+    // Prefer daily profiles if available; fall back to aggregate volumeProfile
+    if (dailyVolumeProfiles && dailyVolumeProfiles.length > 0) {
+      const sorted = [...dailyVolumeProfiles].sort((a, b) => a.date.localeCompare(b.date))
+      const todayProfile = sorted[sorted.length - 1]
+      const yesterdayProfile = sorted.length >= 2 ? sorted[sorted.length - 2] : null
+
+      const newLines: IPriceLine[] = []
+
+      // Yesterday's VP — dashed lines
+      if (yesterdayProfile) {
+        newLines.push(
+          candle.createPriceLine({
+            price: yesterdayProfile.poc,
+            color: '#FBBF24',
+            lineWidth: 1,
+            lineStyle: LineStyle.Dashed,
+            axisLabelVisible: true,
+            title: 'ydPOC',
+          }),
+          candle.createPriceLine({
+            price: yesterdayProfile.vah,
+            color: '#5CB8F0',
+            lineWidth: 1,
+            lineStyle: LineStyle.Dashed,
+            axisLabelVisible: true,
+            title: 'ydVAH',
+          }),
+          candle.createPriceLine({
+            price: yesterdayProfile.val,
+            color: '#5CB8F0',
+            lineWidth: 1,
+            lineStyle: LineStyle.Dashed,
+            axisLabelVisible: true,
+            title: 'ydVAL',
+          }),
+        )
+      }
+
+      // Today's developing VP — solid lines
+      newLines.push(
+        candle.createPriceLine({
+          price: todayProfile.poc,
+          color: '#FBBF24',
+          lineWidth: 1,
+          lineStyle: LineStyle.Solid,
+          axisLabelVisible: true,
+          title: 'POC',
+        }),
+        candle.createPriceLine({
+          price: todayProfile.vah,
+          color: '#5CB8F0',
+          lineWidth: 1,
+          lineStyle: LineStyle.Solid,
+          axisLabelVisible: true,
+          title: 'VAH',
+        }),
+        candle.createPriceLine({
+          price: todayProfile.val,
+          color: '#5CB8F0',
+          lineWidth: 1,
+          lineStyle: LineStyle.Solid,
+          axisLabelVisible: true,
+          title: 'VAL',
+        }),
+      )
+
+      vpLinesRef.current = newLines
+    } else if (volumeProfile) {
+      // Fallback: aggregate VP as solid lines
+      vpLinesRef.current = [
+        candle.createPriceLine({
+          price: volumeProfile.poc,
+          color: '#FBBF24',
+          lineWidth: 1,
+          lineStyle: LineStyle.Solid,
+          axisLabelVisible: true,
+          title: 'POC',
+        }),
+        candle.createPriceLine({
+          price: volumeProfile.vah,
+          color: '#5CB8F0',
+          lineWidth: 1,
+          lineStyle: LineStyle.Dashed,
+          axisLabelVisible: true,
+          title: 'VAH',
+        }),
+        candle.createPriceLine({
+          price: volumeProfile.val,
+          color: '#5CB8F0',
+          lineWidth: 1,
+          lineStyle: LineStyle.Dashed,
+          axisLabelVisible: true,
+          title: 'VAL',
+        }),
+      ]
     }
-  }, [showVp, volumeProfile])
+  }, [showVp, volumeProfile, dailyVolumeProfiles])
 
   // ── Session / Previous Day Levels price lines ─────────────────────────────
   useEffect(() => {
     const candle = candleRef.current
     if (!candle) return
 
-    // Remove existing level price lines (stored after VP lines, i.e. index 3+)
-    // We keep a separate ref slice for levels
-    const vpCount = showVp && volumeProfile ? 3 : 0
-    priceLineRefs.current
-      .slice(vpCount)
-      .forEach((pl) => {
-        try { candle.removePriceLine(pl) } catch (_) { /* already removed */ }
-      })
-    priceLineRefs.current = priceLineRefs.current.slice(0, vpCount)
+    // Remove all previous level lines (independent of VP lines)
+    levelLinesRef.current.forEach((pl) => {
+      try { candle.removePriceLine(pl) } catch (_) { /* already removed */ }
+    })
+    levelLinesRef.current = []
 
     if (showLevels && sessionLevels) {
       const sl = sessionLevels
@@ -455,9 +533,9 @@ export function SimpleChart({
         }))
       }
 
-      priceLineRefs.current = [...priceLineRefs.current, ...lines]
+      levelLinesRef.current = lines
     }
-  }, [showLevels, sessionLevels, showVp, volumeProfile])
+  }, [showLevels, sessionLevels])
 
   // ── Markers: BOS/CHoCH + Pattern annotations ───────────────────────────────
   useEffect(() => {
