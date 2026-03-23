@@ -1,3 +1,7 @@
+/**
+ * @deprecated Superseded by HudStrip in components/layout/HudStrip.tsx.
+ * Kept for reference until Phase 4 cleanup.
+ */
 import type { HudData, ConfluenceData } from "./Dashboard";
 
 const SESSION_LABELS: Record<string, string> = {

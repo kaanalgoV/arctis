@@ -1,3 +1,7 @@
+/**
+ * @deprecated Superseded by FeedPanel in components/panels/FeedPanel.tsx.
+ * Kept for reference until Phase 4 cleanup.
+ */
 import { useEffect, useRef } from "react";
 import type { FeedItem } from "./Dashboard";
 

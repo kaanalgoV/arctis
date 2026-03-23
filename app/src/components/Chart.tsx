@@ -1,3 +1,7 @@
+/**
+ * @deprecated Superseded by SimpleChart / charts/ components.
+ * Kept for reference until Phase 4 cleanup.
+ */
 import { useEffect, useRef } from "react";
 import { createChart, CandlestickSeries, LineSeries, createSeriesMarkers } from "lightweight-charts";
 import type { IChartApi, ISeriesApi, ISeriesMarkersPluginApi, CandlestickData, Time, LineData, SeriesType, SeriesMarker } from "lightweight-charts";

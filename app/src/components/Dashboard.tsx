@@ -1,3 +1,8 @@
+/**
+ * @deprecated This component is superseded by the page-based layout in App.tsx
+ * (DashboardPage, ChartPage, PatternsPage) with Zustand store state management.
+ * Do not use in new code. Kept for reference until Phase 4 cleanup.
+ */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Chart } from "./Chart";
 import { HudBar } from "./HudBar";
