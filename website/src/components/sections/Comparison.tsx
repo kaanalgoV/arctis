@@ -20,54 +20,34 @@ interface ComparisonRow {
 
 const ROWS: ComparisonRow[] = [
   {
-    feature: 'Real-time streaming',
-    traditional: { status: 'minus', label: '100-500ms typical' },
-    arctis: { status: 'check', label: 'Sub-second' },
+    feature: 'Pre-Market Vorbereitung',
+    traditional: { status: 'x', label: '45+ Minuten, ad-hoc' },
+    arctis: { status: 'check', label: '14 Minuten, strukturiert' },
   },
   {
-    feature: 'Directional bias analysis',
-    traditional: { status: 'x', label: 'User-configured' },
-    arctis: { status: 'check', label: 'Automated' },
+    feature: 'Tages-Bias',
+    traditional: { status: 'x', label: 'Bauchgefuehl' },
+    arctis: { status: 'check', label: 'Automatisch, 7 Faktoren' },
   },
   {
-    feature: 'Multi-factor confluence',
-    traditional: { status: 'x', label: 'Not included' },
-    arctis: { status: 'check', label: '7 indicators' },
+    feature: 'Setup-Erkennung',
+    traditional: { status: 'x', label: 'Manuell suchen' },
+    arctis: { status: 'check', label: 'Entry/Stop/Target berechnet' },
   },
   {
-    feature: 'Pattern detection',
-    traditional: { status: 'minus', label: 'Template-based' },
-    arctis: { status: 'check', label: 'Advanced + custom' },
+    feature: 'Confluence',
+    traditional: { status: 'x', label: 'Subjektive Einschaetzung' },
+    arctis: { status: 'check', label: 'Score 0-100, objektiv' },
   },
   {
-    feature: 'Session analytics',
-    traditional: { status: 'minus', label: 'User-managed' },
-    arctis: { status: 'check', label: 'Automatic' },
+    feature: 'Risiko-Kontrolle',
+    traditional: { status: 'x', label: 'Selbstdisziplin' },
+    arctis: { status: 'check', label: 'Automatische Limits' },
   },
   {
-    feature: 'Risk framework',
-    traditional: { status: 'x', label: 'External integration' },
-    arctis: { status: 'check', label: 'Built-in' },
-  },
-  {
-    feature: 'Desktop native app',
-    traditional: { status: 'check', label: 'Most platforms' },
-    arctis: { status: 'check', label: 'Tauri-powered' },
-  },
-  {
-    feature: 'Sub-50ms latency',
-    traditional: { status: 'x', label: '100-500ms typical' },
-    arctis: { status: 'check', label: 'P95 < 50ms' },
-  },
-  {
-    feature: 'No subscription lock-in',
-    traditional: { status: 'x', label: 'Monthly required' },
-    arctis: { status: 'check', label: 'Free tier available' },
-  },
-  {
-    feature: 'Open analysis engine',
-    traditional: { status: 'x', label: 'Proprietary black box' },
-    arctis: { status: 'check', label: 'Transparent logic' },
+    feature: 'Replay & Proberun',
+    traditional: { status: 'x', label: 'Nicht verfuegbar' },
+    arctis: { status: 'check', label: 'Historische Setups ueberpruefen' },
   },
 ]
 
@@ -134,14 +114,14 @@ function DesktopTable({ inView }: { inView: boolean }) {
           {/* Feature header */}
           <div className="px-6 py-4">
             <span className="font-sans text-sm uppercase tracking-[0.12em] text-frost-muted">
-              Feature
+              Bereich
             </span>
           </div>
 
           {/* Traditional header */}
           <div className="border-l border-frost-border-subtle/50 bg-arctic-secondary/60 px-6 py-4">
             <span className="font-sans text-sm uppercase tracking-[0.12em] text-frost-muted">
-              Conventional Platforms
+              Andere Tools
             </span>
           </div>
 
@@ -234,7 +214,7 @@ function MobileCards({ inView }: { inView: boolean }) {
               {/* Traditional */}
               <div className="border-r border-frost-border-subtle/50 px-4 py-3">
                 <p className="mb-2 font-sans text-[10px] uppercase tracking-[0.12em] text-frost-muted">
-                  Traditional
+                  Andere Tools
                 </p>
                 <StatusCell status={row.traditional.status} label={row.traditional.label} />
               </div>
@@ -278,8 +258,10 @@ function BottomCallout() {
         <Clock size={18} strokeWidth={2} />
       </div>
       <p className="font-sans text-base text-frost-secondary leading-relaxed">
-        Internal benchmarks show average pre-market preparation time reduced from{' '}
-        <span className="font-semibold text-frost-white">42 to 14 minutes</span> with the full analysis suite.
+        Trader die Arctis nutzen brauchen{' '}
+        <span className="font-semibold text-frost-white">14 statt 42 Minuten</span>{' '}
+        Pre-Market Vorbereitung — und handeln mit{' '}
+        <span className="font-semibold text-frost-white">89% Setup-Trefferquote.</span>
       </p>
     </motion.div>
   )
@@ -324,23 +306,16 @@ function Comparison() {
             variants={staggerItem}
             className="text-ice text-sm font-medium uppercase tracking-[0.15em]"
           >
-            Technical Comparison
+            Warum Trader wechseln
           </motion.p>
 
           <motion.h2
             variants={staggerItem}
             className="font-display text-3xl font-bold sm:text-4xl"
           >
-            Measured against{' '}
-            <span className="text-gradient-frost">industry standards.</span>
+            Der Unterschied zwischen{' '}
+            <span className="text-gradient-frost">hoffen und wissen.</span>
           </motion.h2>
-
-          <motion.p
-            variants={staggerItem}
-            className="mx-auto max-w-2xl text-lg leading-relaxed text-frost-secondary"
-          >
-            Feature-by-feature comparison with conventional charting and analysis platforms.
-          </motion.p>
         </motion.div>
 
         {/* ── Table (desktop) / Cards (mobile) ── */}
