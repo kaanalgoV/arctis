@@ -16,6 +16,7 @@ import {
 } from 'lightweight-charts'
 import type { OHLCVBar } from '@/types/market'
 import type { Drawing } from '@/hooks/useDrawings'
+import type { SetupData } from '@/hooks/useSetups'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -106,6 +107,10 @@ export interface SimpleChartProps {
   zones?: ChartZone[]
   /** Whether to render zone overlays. */
   showZones?: boolean
+  /** Setup lifecycle objects — renders entry/stop/target price lines and markers. */
+  setups?: SetupData[]
+  /** Whether to render setup overlays. */
+  showSetups?: boolean
 }
 
 // ─── Refs state for overlay series ───────────────────────────────────────────
@@ -142,6 +147,8 @@ export function SimpleChart({
   onChartClick,
   zones,
   showZones = false,
+  setups,
+  showSetups = false,
 }: SimpleChartProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const chartRef = useRef<IChartApi | null>(null)
@@ -166,6 +173,8 @@ export function SimpleChart({
   const drawingLineRefs = useRef<Map<string, IPriceLine>>(new Map())
   // Zone price line refs (cleared and rebuilt whenever zones or showZones changes)
   const zoneLinesRef = useRef<IPriceLine[]>([])
+  // Setup price line refs: entry + stop + target per setup_id
+  const setupLinesRef = useRef<Map<string, IPriceLine[]>>(new Map())
 
   // ── Build chart on first mount (bars change re-creates chart) ──────────────
   useEffect(() => {
@@ -332,6 +341,7 @@ export function SimpleChart({
       candleRef.current = null
       priceLineRefs.current = []
       zoneLinesRef.current = []
+      setupLinesRef.current.clear()
       markersPluginRef.current = null
       drawingLineRefs.current.clear()
       overlayRef.current = {
@@ -671,6 +681,140 @@ export function SimpleChart({
       // rectangle / trendline / text are P2 — skipped for now
     }
   }, [drawings])
+
+  // ── Setup price lines + entry markers ─────────────────────────────────────
+  //
+  // For each setup we render:
+  //   - CANDIDATE:  dashed entry-zone lines (low + high)
+  //   - ARMED:      solid entry trigger price line (thicker)
+  //   - TRIGGERED:  entry marker arrow (via markers plugin)
+  //   - All active: stop line (red dashed) + TP1 line (green dashed)
+  //   - STOPPED / COMPLETED / terminal: dimmed / omitted lines
+  //
+  useEffect(() => {
+    const candle = candleRef.current
+    const plugin = markersPluginRef.current
+    if (!candle) return
+
+    // Remove all previous setup lines
+    for (const lines of setupLinesRef.current.values()) {
+      for (const pl of lines) {
+        try { candle.removePriceLine(pl) } catch { /* already removed */ }
+      }
+    }
+    setupLinesRef.current.clear()
+
+    if (!showSetups || !setups || setups.length === 0) {
+      // Clear setup markers (keep pattern markers if any by re-applying empty)
+      plugin?.setMarkers([])
+      return
+    }
+
+    const TERMINAL = new Set(['stopped', 'invalidated', 'expired', 'completed'])
+    const setupMarkers: SeriesMarker<number>[] = []
+
+    for (const s of setups) {
+      const isTerminal = TERMINAL.has(s.status)
+      const isLong = s.direction === 'long'
+      const lines: IPriceLine[] = []
+
+      // Entry zone lines (CANDIDATE) — dashed, very subtle
+      if (s.status === 'candidate' && s.entry_zone_low > 0 && s.entry_zone_high > 0) {
+        lines.push(
+          candle.createPriceLine({
+            price: s.entry_zone_low,
+            color: isLong ? 'rgba(0,135,87,0.35)' : 'rgba(239,65,54,0.35)',
+            lineWidth: 1,
+            lineStyle: LineStyle.Dashed,
+            axisLabelVisible: false,
+            title: '',
+          }),
+          candle.createPriceLine({
+            price: s.entry_zone_high,
+            color: isLong ? 'rgba(0,135,87,0.35)' : 'rgba(239,65,54,0.35)',
+            lineWidth: 1,
+            lineStyle: LineStyle.Dashed,
+            axisLabelVisible: false,
+            title: '',
+          }),
+        )
+      }
+
+      // Entry trigger line (ARMED+) — solid, more prominent
+      if (
+        s.entry_trigger_price > 0 &&
+        (s.status === 'armed' || s.status === 'triggered' || s.status === 'partial_tp1')
+      ) {
+        lines.push(
+          candle.createPriceLine({
+            price: s.entry_trigger_price,
+            color: isLong ? 'rgba(0,135,87,0.7)' : 'rgba(239,65,54,0.7)',
+            lineWidth: 1,
+            lineStyle: LineStyle.Solid,
+            axisLabelVisible: true,
+            title: isLong ? 'Entry L' : 'Entry S',
+          }),
+        )
+      }
+
+      // Stop line — red dashed (skip if terminal to avoid clutter)
+      if (s.stop_price > 0 && !isTerminal) {
+        lines.push(
+          candle.createPriceLine({
+            price: s.stop_price,
+            color: 'rgba(239,65,54,0.6)',
+            lineWidth: 1,
+            lineStyle: LineStyle.Dashed,
+            axisLabelVisible: true,
+            title: 'SL',
+          }),
+        )
+      }
+
+      // TP1 line — green dashed (skip if terminal)
+      if (s.tp1_price > 0 && !isTerminal) {
+        lines.push(
+          candle.createPriceLine({
+            price: s.tp1_price,
+            color: 'rgba(0,135,87,0.6)',
+            lineWidth: 1,
+            lineStyle: LineStyle.Dashed,
+            axisLabelVisible: true,
+            title: 'TP1',
+          }),
+        )
+      }
+
+      setupLinesRef.current.set(s.setup_id, lines)
+
+      // Entry marker arrow when TRIGGERED
+      if (s.status === 'triggered' && s.entry_ts > 0 && s.entry_trigger_price > 0) {
+        setupMarkers.push({
+          time: s.entry_ts as any,
+          position: isLong ? 'belowBar' : 'aboveBar',
+          color: isLong ? '#008757' : '#EF4136',
+          shape: isLong ? 'arrowUp' : 'arrowDown',
+          text: isLong ? 'L' : 'S',
+        })
+      }
+
+      // Exit marker for terminal setups
+      if (isTerminal && s.exit_ts > 0) {
+        const isWin = s.status === 'completed' || s.status === 'partial_tp1'
+        setupMarkers.push({
+          time: s.exit_ts as any,
+          position: isLong ? 'aboveBar' : 'belowBar',
+          color: isWin ? 'rgba(0,135,87,0.6)' : 'rgba(239,65,54,0.6)',
+          shape: 'circle',
+          text: isWin ? 'TP' : 'SL',
+        })
+      }
+    }
+
+    // Sort and apply markers
+    setupMarkers.sort((a, b) => (a.time as number) - (b.time as number))
+    plugin?.setMarkers(setupMarkers)
+  }, [showSetups, setups])
 
   return <div ref={containerRef} className={className} />
 }
