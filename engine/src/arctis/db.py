@@ -4,6 +4,7 @@ import os
 from datetime import datetime, timedelta, timezone
 
 import pandas as pd
+from sqlalchemy import create_engine
 
 from arctis.models import OHLCVBar
 
@@ -11,6 +12,17 @@ DB_URL = os.getenv(
     "DATABASE_URL",
     "postgresql://algorivo:algorivo_dev@localhost:5532/algorivo",
 )
+
+_engine = None
+
+
+def get_engine():
+    """Return a lazily-created SQLAlchemy engine with connection pooling."""
+    global _engine
+    if _engine is None:
+        _engine = create_engine(DB_URL, pool_size=5, max_overflow=10)
+    return _engine
+
 
 # Map Market enum values to DB symbols (front-month contracts)
 # Updated dynamically by _build_symbol_map() on first call
@@ -30,7 +42,7 @@ def _build_symbol_map() -> dict[str, str]:
         ORDER BY latest DESC
     """
     try:
-        df = pd.read_sql(query, DB_URL)
+        df = pd.read_sql(query, get_engine())
     except Exception:
         _SYMBOL_MAP = {"ES": "ESZ5", "NQ": "NQH6"}
         return _SYMBOL_MAP
@@ -72,7 +84,7 @@ def fetch_bars(
         ORDER BY timestamp ASC
     """
 
-    df = pd.read_sql(query, DB_URL, params=(symbol, start, end))
+    df = pd.read_sql(query, get_engine(), params=(symbol, start, end))
 
     if df.empty:
         return []
@@ -147,7 +159,7 @@ def fetch_available_symbols() -> list[dict]:
         GROUP BY symbol
         ORDER BY bar_count DESC
     """
-    df = pd.read_sql(query, DB_URL)
+    df = pd.read_sql(query, get_engine())
 
     if df.empty:
         return []
