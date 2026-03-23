@@ -26,14 +26,14 @@ interface RiskPanelProps {
 // ---------------------------------------------------------------------------
 function RiskSkeleton() {
   return (
-    <div className="grid grid-cols-2 gap-1.5">
+    <div className="grid grid-cols-2 gap-1">
       {Array.from({ length: 4 }).map((_, i) => (
         <div
           key={i}
-          className="bg-white/[0.02] border border-[var(--color-border-subtle)] rounded-[var(--radius-md)] p-2.5 flex flex-col items-center gap-1"
+          className="bg-[#161B22] border border-[#21262D] rounded-md p-2 flex flex-col items-center gap-1"
         >
-          <Skeleton className="h-5 w-12" />
-          <Skeleton className="h-2 w-10" />
+          <Skeleton className="h-4 w-10" />
+          <Skeleton className="h-2 w-8" />
         </div>
       ))}
     </div>
@@ -53,7 +53,7 @@ export function RiskPanel({ trades = 0, contracts = 0, config, loading, error }:
   if (error && config == null) {
     return (
       <div className="flex items-center justify-center py-3">
-        <span className="text-[10px] text-[var(--color-loss)]">{error}</span>
+        <span className="text-[10px] text-[#EF4444]">{error}</span>
       </div>
     )
   }
@@ -62,7 +62,7 @@ export function RiskPanel({ trades = 0, contracts = 0, config, loading, error }:
   if (config == null) {
     return (
       <div className="flex items-center justify-center py-3">
-        <span className="text-[10px] text-[var(--color-text-muted)]">Waiting for data...</span>
+        <span className="text-[10px] text-[#8B949E]">Waiting for data...</span>
       </div>
     )
   }
@@ -74,16 +74,16 @@ export function RiskPanel({ trades = 0, contracts = 0, config, loading, error }:
   const tradesExceeded = trades >= maxTrades
 
   return (
-    <div className="grid grid-cols-2 gap-1.5">
+    <div className="grid grid-cols-2 gap-1">
       <RiskCell
         value={
           <>
             {trades}
-            <span className="text-[11px] text-[var(--color-text-muted)]">/{maxTrades}</span>
+            <span className="text-[10px] text-[#484F58]">/{maxTrades}</span>
           </>
         }
         label="Trades"
-        color={tradesExceeded ? 'var(--color-loss)' : 'var(--color-text-primary)'}
+        color={tradesExceeded ? '#EF4444' : '#E6EDF3'}
       />
       <RiskCell
         value={`$${riskAmount.toLocaleString('en-US', { maximumFractionDigits: 0 })}`}
@@ -105,14 +105,14 @@ function RiskCell({
   color?: string
 }) {
   return (
-    <div className="bg-white/[0.02] border border-[var(--color-border-subtle)] rounded-[var(--radius-md)] p-2.5 text-center hover:border-[var(--color-border)] transition-colors">
+    <div className="bg-[#161B22] border border-[#21262D] rounded-md p-2 text-center hover:border-[#30363D] transition-colors">
       <div
-        className="font-mono text-[16px] font-bold tabular-nums"
-        style={{ color: color || 'var(--color-text-primary)' }}
+        className="font-mono text-[15px] font-bold tabular-nums"
+        style={{ color: color ?? '#E6EDF3' }}
       >
         {value}
       </div>
-      <div className="text-[9px] text-[var(--color-text-muted)] mt-0.5">{label}</div>
+      <div className="text-[9px] text-[#8B949E] uppercase tracking-wider mt-0.5">{label}</div>
     </div>
   )
 }

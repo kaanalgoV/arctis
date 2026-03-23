@@ -38,9 +38,9 @@ interface PatternsPanelProps {
 }
 
 const typeColors = {
-  long: { border: 'var(--color-profit)', text: 'var(--color-profit)' },
-  short: { border: 'var(--color-loss)', text: 'var(--color-loss)' },
-  info: { border: 'var(--color-accent)', text: 'var(--color-accent)' },
+  long: { border: '#22C55E', text: '#22C55E' },
+  short: { border: '#EF4444', text: '#EF4444' },
+  info: { border: '#5CB8F0', text: '#5CB8F0' },
 }
 
 function directionToType(direction: string): 'long' | 'short' | 'info' {
@@ -68,13 +68,10 @@ function mapAnnotationToPattern(annotation: Annotation): Pattern {
 // ---------------------------------------------------------------------------
 function PatternsSkeleton() {
   return (
-    <div className="flex flex-col gap-1.5">
+    <div className="flex flex-col gap-px bg-[#161B22] rounded-md border border-[#21262D] overflow-hidden">
       {Array.from({ length: 3 }).map((_, i) => (
-        <div
-          key={i}
-          className="flex items-center gap-2.5 p-2 rounded-[var(--radius-md)] bg-[var(--color-surface-raised)]/50 border border-[var(--color-border-subtle)]"
-        >
-          <Skeleton className="w-[3px] h-6 rounded-full flex-shrink-0" />
+        <div key={i} className="flex items-center gap-2 px-2 py-1.5">
+          <Skeleton className="w-[2px] h-5 rounded-full flex-shrink-0" />
           <div className="flex-1 flex flex-col gap-1 min-w-0">
             <Skeleton className="h-2.5 w-20" />
             <Skeleton className="h-2 w-28" />
@@ -99,7 +96,7 @@ export function PatternsPanel({ data, loading, error }: PatternsPanelProps) {
   if (error && data == null) {
     return (
       <div className="flex items-center justify-center py-4">
-        <span className="text-[10px] text-[var(--color-loss)]">{error}</span>
+        <span className="text-[10px] text-[#EF4444]">{error}</span>
       </div>
     )
   }
@@ -108,7 +105,7 @@ export function PatternsPanel({ data, loading, error }: PatternsPanelProps) {
   if (data == null) {
     return (
       <div className="flex items-center justify-center py-4">
-        <span className="text-[11px] text-[var(--color-text-muted)]">Waiting for data...</span>
+        <span className="text-[11px] text-[#8B949E]">Waiting for data...</span>
       </div>
     )
   }
@@ -118,29 +115,26 @@ export function PatternsPanel({ data, loading, error }: PatternsPanelProps) {
   if (items.length === 0) {
     return (
       <div className="flex items-center justify-center py-4">
-        <span className="text-[11px] text-[var(--color-text-muted)]">No active patterns</span>
+        <span className="text-[11px] text-[#8B949E]">No active patterns</span>
       </div>
     )
   }
 
   return (
-    <div className="flex flex-col gap-1.5">
+    <div className="flex flex-col gap-px bg-[#161B22] rounded-md border border-[#21262D] overflow-hidden">
       {items.map((p, index) => {
         const colors = typeColors[p.type]
         return (
           <div
             key={`${p.name}-${index}`}
-            className="flex items-center gap-2.5 p-2 rounded-[var(--radius-md)] bg-[var(--color-surface-raised)]/50 border border-[var(--color-border-subtle)] hover:border-[var(--color-border)] transition-colors"
+            className="flex items-center gap-2 px-2 py-1.5 hover:bg-[#21262D]/40 transition-colors"
+            style={{ borderLeft: `2px solid ${colors.border}` }}
           >
-            <div
-              className="w-[3px] h-6 rounded-full flex-shrink-0"
-              style={{ background: colors.border }}
-            />
             <div className="flex-1 min-w-0">
-              <div className="text-[11px] font-medium text-[var(--color-text-primary)]">
+              <div className="text-[11px] font-medium text-[#E6EDF3] truncate">
                 {p.name}
               </div>
-              <div className="text-[9px] text-[var(--color-text-muted)]">
+              <div className="text-[9px] text-[#484F58] truncate">
                 {p.description}
               </div>
             </div>

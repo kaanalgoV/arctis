@@ -118,11 +118,12 @@ interface SessionPanelProps {
 // ---------------------------------------------------------------------------
 function SessionSkeleton() {
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-1.5">
       {SESSION_ORDER.map((key) => (
-        <div key={key} className="flex items-center gap-2 px-1.5 py-1">
+        <div key={key} className="flex items-center gap-2">
           <Skeleton className="h-2.5 w-[52px]" />
-          <Skeleton className="flex-1 h-[3px]" />
+          <Skeleton className="flex-1 h-[2px]" />
+          <Skeleton className="h-2.5 w-[28px]" />
         </div>
       ))}
     </div>
@@ -142,7 +143,7 @@ export function SessionPanel({ data, loading, error }: SessionPanelProps) {
   if (error && data == null) {
     return (
       <div className="flex items-center justify-center py-3">
-        <span className="text-[10px] text-[var(--color-loss)]">{error}</span>
+        <span className="text-[10px] text-[#EF4444]">{error}</span>
       </div>
     )
   }
@@ -151,7 +152,7 @@ export function SessionPanel({ data, loading, error }: SessionPanelProps) {
   if (data == null) {
     return (
       <div className="flex items-center justify-center py-3">
-        <span className="text-[10px] text-[var(--color-text-muted)]">Waiting for data...</span>
+        <span className="text-[10px] text-[#8B949E]">Waiting for data...</span>
       </div>
     )
   }
@@ -159,45 +160,45 @@ export function SessionPanel({ data, loading, error }: SessionPanelProps) {
   const sessions: Session[] = mapApiDataToSessions(data)
 
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex flex-col gap-1.5">
       {sessions.map((s) => (
-        <div
-          key={s.key}
-          className={cn(
-            'flex items-center gap-2 px-1.5 py-1 rounded-[var(--radius-sm)] transition-colors',
-            s.active && 'bg-[var(--color-accent-muted)]',
-          )}
-        >
+        <div key={s.key} className="flex items-center gap-2">
+          {/* Label */}
           <span
             className={cn(
-              'text-[10px] min-w-[52px]',
+              'text-[10px] min-w-[52px] shrink-0',
               s.active
-                ? 'text-[var(--color-accent)] font-medium'
-                : 'text-[var(--color-text-muted)]',
+                ? 'text-[#5CB8F0] font-semibold'
+                : 'text-[#484F58]',
             )}
           >
             {s.name}
           </span>
 
-          <div className="flex-1 h-[3px] bg-white/[0.04] rounded-full overflow-hidden">
+          {/* 2px thin progress track */}
+          <div className="flex-1 h-[2px] bg-[#21262D] rounded-full overflow-hidden">
             <div
               className={cn(
                 'h-full rounded-full transition-all duration-500',
                 s.active
-                  ? 'bg-gradient-to-r from-[var(--color-accent-dark)] to-[var(--color-accent)] shadow-[0_0_4px_rgba(92,184,240,0.2)]'
+                  ? 'bg-[#5CB8F0]'
                   : s.progress === 100
-                    ? 'bg-[var(--color-accent-dark)] opacity-40'
+                    ? 'bg-[#5CB8F0] opacity-25'
                     : '',
               )}
               style={{ width: `${s.progress}%` }}
             />
           </div>
 
-          {s.active && s.progress > 0 && (
-            <span className="font-mono text-[9px] min-w-[28px] text-right tabular-nums text-[var(--color-accent)]">
-              {s.progress}%
-            </span>
-          )}
+          {/* Percentage — always reserve space */}
+          <span
+            className={cn(
+              'font-mono text-[9px] min-w-[28px] text-right tabular-nums',
+              s.active ? 'text-[#5CB8F0]' : 'text-[#484F58]',
+            )}
+          >
+            {s.progress > 0 ? `${s.progress}%` : ''}
+          </span>
         </div>
       ))}
     </div>

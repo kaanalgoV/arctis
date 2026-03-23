@@ -99,7 +99,7 @@ export function FeedPanel({ items, loading, error, onItemClick }: FeedPanelProps
           {FILTERS.map((f) => (
             <span
               key={f.key}
-              className="px-2 py-0.5 rounded-[var(--radius-sm)] text-[10px] font-medium text-[var(--color-text-muted)] bg-white/[0.02]"
+              className="px-1.5 py-0.5 rounded text-[10px] font-medium text-[#484F58] bg-[#161B22]"
             >
               {f.label}
             </span>
@@ -114,7 +114,7 @@ export function FeedPanel({ items, loading, error, onItemClick }: FeedPanelProps
   if (error && (items == null || items.length === 0)) {
     return (
       <div className="flex items-center justify-center py-3">
-        <span className="text-[10px] text-[var(--color-loss)]">{error}</span>
+        <span className="text-[10px] text-[#EF4444]">{error}</span>
       </div>
     )
   }
@@ -123,7 +123,7 @@ export function FeedPanel({ items, loading, error, onItemClick }: FeedPanelProps
   if (items == null || items.length === 0) {
     return (
       <div className="flex items-center justify-center py-3">
-        <span className="text-[11px] text-[var(--color-text-muted)]">No events yet</span>
+        <span className="text-[11px] text-[#8B949E]">No events yet</span>
       </div>
     )
   }
@@ -148,7 +148,7 @@ export function FeedPanel({ items, loading, error, onItemClick }: FeedPanelProps
 
   return (
     <div className="flex flex-col gap-1.5">
-      {/* Filter pills */}
+      {/* Filter pills — compact */}
       <div className="flex flex-wrap gap-1">
         {FILTERS.map((filter) => {
           const count = countByFilter(filter)
@@ -158,19 +158,19 @@ export function FeedPanel({ items, loading, error, onItemClick }: FeedPanelProps
               key={filter.key}
               onClick={() => setActiveFilter(filter.key)}
               className={cn(
-                'flex items-center gap-1 px-2 py-0.5 rounded-[var(--radius-sm)]',
+                'flex items-center gap-1 px-1.5 py-0.5 rounded',
                 'text-[10px] font-medium transition-colors leading-none',
                 isActive
-                  ? 'bg-[var(--color-accent-muted)] text-[var(--color-accent)]'
-                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] hover:bg-white/[0.03]',
+                  ? 'bg-[#21262D] text-[#5CB8F0]'
+                  : 'text-[#484F58] hover:text-[#8B949E] hover:bg-[#161B22]',
               )}
             >
               {filter.label}
               {count > 0 && (
                 <span
                   className={cn(
-                    'tabular-nums',
-                    isActive ? 'text-[var(--color-accent)]' : 'text-[var(--color-text-muted)]',
+                    'font-mono tabular-nums',
+                    isActive ? 'text-[#5CB8F0]' : 'text-[#484F58]',
                   )}
                 >
                   {count}
@@ -181,12 +181,10 @@ export function FeedPanel({ items, loading, error, onItemClick }: FeedPanelProps
         })}
       </div>
 
-      {/* Event list — reverse-chronological */}
-      <div className="flex flex-col gap-px max-h-[200px] overflow-y-auto">
+      {/* Event list — compact, reverse-chronological */}
+      <div className="flex flex-col gap-px max-h-[180px] overflow-y-auto scrollbar-thin scrollbar-thumb-[#21262D]">
         {displayItems.length === 0 ? (
-          <p className="py-2 px-1 text-[11px] text-[var(--color-text-muted)]">
-            No events
-          </p>
+          <p className="py-2 text-[11px] text-[#8B949E]">No events</p>
         ) : (
           displayItems.map((item, i) => (
             <div
@@ -197,20 +195,20 @@ export function FeedPanel({ items, loading, error, onItemClick }: FeedPanelProps
                 }
               }}
               className={cn(
-                'flex items-start gap-1.5 py-1 px-1 rounded-[var(--radius-sm)]',
-                'hover:bg-white/[0.02] transition-colors',
+                'flex items-start gap-1.5 py-0.5 px-0.5 rounded',
+                'hover:bg-[#161B22] transition-colors',
                 item.timestamp != null && onItemClick ? 'cursor-pointer' : 'cursor-default',
               )}
             >
-              <span className="font-mono text-[9px] text-[var(--color-text-muted)] min-w-[32px] pt-[1px] tabular-nums">
+              <span className="font-mono text-[9px] text-[#484F58] min-w-[30px] pt-[2px] tabular-nums shrink-0">
                 {item.time}
               </span>
               <span
-                className="w-1 h-1 rounded-full flex-shrink-0 mt-[5px]"
+                className="w-1 h-1 rounded-full flex-shrink-0 mt-[4px]"
                 style={{ background: dotColor[item.type] }}
               />
               <span
-                className="text-[11px] leading-snug"
+                className="text-[10px] leading-snug"
                 style={{ color: messageColor[item.type] }}
               >
                 {item.message}

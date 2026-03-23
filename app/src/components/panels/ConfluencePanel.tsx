@@ -31,22 +31,22 @@ interface ConfluencePanelProps {
 }
 
 function scoreColor(score: number) {
-  if (score >= 8) return 'var(--color-profit)'
-  if (score >= 5) return 'var(--color-accent)'
-  if (score <= -5) return 'var(--color-loss)'
-  return 'var(--color-text-secondary)'
+  if (score >= 8) return '#22C55E'
+  if (score >= 5) return '#5CB8F0'
+  if (score <= -5) return '#EF4444'
+  return '#8B949E'
 }
 
 function valueColor(v: number) {
-  if (v > 0) return 'var(--color-profit)'
-  if (v < 0) return 'var(--color-loss)'
-  return 'var(--color-text-muted)'
+  if (v > 0) return '#22C55E'
+  if (v < 0) return '#EF4444'
+  return '#8B949E'
 }
 
 function directionColor(dir: string) {
-  if (dir === 'LONG') return 'var(--color-profit)'
-  if (dir === 'SHORT') return 'var(--color-loss)'
-  return 'var(--color-text-secondary)'
+  if (dir === 'LONG') return '#22C55E'
+  if (dir === 'SHORT') return '#EF4444'
+  return '#8B949E'
 }
 
 // ---------------------------------------------------------------------------
@@ -84,7 +84,7 @@ export function ConfluencePanel({ data, loading, error }: ConfluencePanelProps) 
   if (error && data == null) {
     return (
       <div className="flex items-center justify-center py-3">
-        <span className="text-[10px] text-[var(--color-loss)]">{error}</span>
+        <span className="text-[10px] text-[#EF4444]">{error}</span>
       </div>
     )
   }
@@ -93,7 +93,7 @@ export function ConfluencePanel({ data, loading, error }: ConfluencePanelProps) 
   if (data == null) {
     return (
       <div className="flex items-center justify-center py-3">
-        <span className="text-[10px] text-[var(--color-text-muted)]">Waiting for data...</span>
+        <span className="text-[10px] text-[#8B949E]">Waiting for data...</span>
       </div>
     )
   }
@@ -108,27 +108,40 @@ export function ConfluencePanel({ data, loading, error }: ConfluencePanelProps) 
   const dirColor = directionColor(direction)
 
   return (
-    <div>
-      <div className="flex items-baseline gap-2 mb-1">
+    <div className="flex flex-col gap-0">
+      {/* Score + verdict on one line */}
+      <div className="flex items-baseline gap-2 mb-2">
         <span
-          className="font-mono text-[28px] font-extrabold leading-none tabular-nums"
+          className="font-mono text-[28px] font-bold leading-none tabular-nums"
           style={{ color }}
         >
           {score > 0 ? '+' : ''}{score}
         </span>
         <span
-          className="font-mono text-[10px] font-semibold tracking-wide uppercase"
+          className="text-[9px] font-semibold tracking-[0.12em] uppercase px-1.5 py-0.5 rounded bg-[#161B22] border border-[#21262D]"
           style={{ color }}
         >
           {verdict}
         </span>
       </div>
 
+      {/* Direction indicator */}
+      <div className="flex items-center gap-1.5 mb-2">
+        <span
+          className="w-1.5 h-1.5 rounded-full shrink-0"
+          style={{ background: dirColor }}
+        />
+        <span className="text-[10px] font-semibold" style={{ color: dirColor }}>
+          {direction}
+        </span>
+      </div>
+
+      {/* Signal rows */}
       {rows.length > 0 && (
-        <div className="flex flex-col gap-0.5 mt-3">
+        <div className="flex flex-col gap-px bg-[#161B22] rounded-md border border-[#21262D] overflow-hidden">
           {rows.map((r) => (
-            <div key={r.label} className="flex justify-between items-center text-[10px] py-[2px]">
-              <span className="text-[var(--color-text-muted)]">{r.label}</span>
+            <div key={r.label} className="flex justify-between items-center px-2 py-1 text-[11px] hover:bg-[#21262D]/40 transition-colors">
+              <span className="text-[#8B949E]">{r.label}</span>
               <span
                 className="font-mono font-semibold tabular-nums"
                 style={{ color: valueColor(r.value) }}
@@ -139,16 +152,6 @@ export function ConfluencePanel({ data, loading, error }: ConfluencePanelProps) 
           ))}
         </div>
       )}
-
-      <div
-        className={cn('pt-2 flex justify-between items-center text-[10px]', rows.length > 0 ? 'mt-2' : 'mt-0')}
-        style={{ borderTop: rows.length > 0 ? '1px solid rgba(255,255,255,0.04)' : undefined }}
-      >
-        <span className="text-[var(--color-text-muted)]">Direction</span>
-        <span className="font-mono font-bold text-[11px]" style={{ color: dirColor }}>
-          {direction}
-        </span>
-      </div>
     </div>
   )
 }
