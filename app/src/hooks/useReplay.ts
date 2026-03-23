@@ -80,7 +80,8 @@ export function useReplay(market: string, timeframe: string) {
     }
   }
 
-  // Poll status every 500ms while playing
+  // Poll status while playing — interval adapts to speed so bars stream smoothly.
+  // At speed N bars/s we want at most ~2 bars per poll cycle, so interval = max(100, 1000/speed) ms.
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
@@ -91,6 +92,8 @@ export function useReplay(market: string, timeframe: string) {
       }
       return
     }
+
+    const intervalMs = Math.max(100, Math.round(1000 / speed))
 
     pollRef.current = setInterval(async () => {
       try {
@@ -106,7 +109,7 @@ export function useReplay(market: string, timeframe: string) {
       } catch {
         // Silently fail
       }
-    }, 500)
+    }, intervalMs)
 
     return () => {
       if (pollRef.current !== null) {
@@ -114,7 +117,7 @@ export function useReplay(market: string, timeframe: string) {
         pollRef.current = null
       }
     }
-  }, [isPlaying])
+  }, [isPlaying, speed])
 
   return {
     isPlaying,
