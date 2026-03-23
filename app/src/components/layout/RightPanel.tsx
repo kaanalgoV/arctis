@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils'
 
 interface RightPanelSectionProps {
   title: string
-  count?: number
+  count?: string | number
   children: ReactNode
   className?: string
   /** Animate entry of the section */
