@@ -1,4 +1,4 @@
-import { cn } from '@/lib/utils'
+import { Skeleton } from '@/components/ui/Skeleton'
 
 interface Annotation {
   timestamp: number
@@ -30,15 +30,12 @@ interface Pattern {
 }
 
 interface PatternsPanelProps {
-  data?: PatternsAPIData
-  patterns?: Pattern[]
+  data?: PatternsAPIData | null
+  /** Whether data is currently being fetched. */
+  loading?: boolean
+  /** Error message when the last fetch failed. */
+  error?: string | null
 }
-
-const defaultPatterns: Pattern[] = [
-  { name: 'ORB Long', description: 'Opening Range Break', winRate: '84%', type: 'long' },
-  { name: 'IB Break', description: 'Initial Balance', winRate: '89%', type: 'long' },
-  { name: 'Trend Day', description: 'HH + HL confirmed', winRate: 'info', type: 'info' },
-]
 
 const typeColors = {
   long: { border: 'var(--color-profit)', text: 'var(--color-profit)' },
@@ -66,16 +63,57 @@ function mapAnnotationToPattern(annotation: Annotation): Pattern {
   }
 }
 
-export function PatternsPanel({ data, patterns }: PatternsPanelProps) {
-  let items: Pattern[]
+// ---------------------------------------------------------------------------
+// Loading skeleton
+// ---------------------------------------------------------------------------
+function PatternsSkeleton() {
+  return (
+    <div className="flex flex-col gap-1.5">
+      {Array.from({ length: 3 }).map((_, i) => (
+        <div
+          key={i}
+          className="flex items-center gap-2.5 p-2 rounded-[var(--radius-md)] bg-[var(--color-surface-raised)]/50 border border-[var(--color-border-subtle)]"
+        >
+          <Skeleton className="w-[3px] h-6 rounded-full flex-shrink-0" />
+          <div className="flex-1 flex flex-col gap-1 min-w-0">
+            <Skeleton className="h-2.5 w-20" />
+            <Skeleton className="h-2 w-28" />
+          </div>
+          <Skeleton className="h-3 w-8 flex-shrink-0" />
+        </div>
+      ))}
+    </div>
+  )
+}
 
-  if (data !== undefined) {
-    items = data.annotations.map(mapAnnotationToPattern)
-  } else if (patterns !== undefined) {
-    items = patterns
-  } else {
-    items = defaultPatterns
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
+export function PatternsPanel({ data, loading, error }: PatternsPanelProps) {
+  // Loading state
+  if (loading && data == null) {
+    return <PatternsSkeleton />
   }
+
+  // Error state
+  if (error && data == null) {
+    return (
+      <div className="flex items-center justify-center py-4">
+        <span className="text-[10px] text-[var(--color-loss)]">{error}</span>
+      </div>
+    )
+  }
+
+  // No data state
+  if (data == null) {
+    return (
+      <div className="flex items-center justify-center py-4">
+        <span className="text-[11px] text-[var(--color-text-muted)]">Waiting for data...</span>
+      </div>
+    )
+  }
+
+  const items: Pattern[] = data.annotations.map(mapAnnotationToPattern)
 
   if (items.length === 0) {
     return (
