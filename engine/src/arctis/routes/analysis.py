@@ -100,7 +100,9 @@ async def analyze_sessions(
 ):
     bars = _load_bars(market, timeframe)
     stats = get_session_stats(bars)
-    current = classify_session(_current_timestamp())
+    # Use last bar's timestamp as data context; fall back to wall-clock only if no bars available
+    ref_ts = bars[-1].timestamp if bars else _current_timestamp()
+    current = classify_session(ref_ts)
 
     return {
         "current_session": current.value,
@@ -125,7 +127,9 @@ async def get_warnings(
     bars = _load_bars(market, timeframe)
     swings = detect_swings(bars)
     trend = classify_trend(swings)
-    current_session = classify_session(_current_timestamp())
+    # Use last bar's timestamp as data context; fall back to wall-clock only if no bars available
+    ref_ts = bars[-1].timestamp if bars else _current_timestamp()
+    current_session = classify_session(ref_ts)
 
     ctx = DisciplineContext(
         trend=trend,
