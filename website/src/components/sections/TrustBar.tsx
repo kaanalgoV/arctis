@@ -144,7 +144,7 @@ function Marquee() {
     <div className="flex flex-col items-center gap-5 w-full overflow-hidden">
       {/* Label */}
       <p className="text-frost-muted text-xs uppercase tracking-[0.2em]">
-        Built for institutional and independent futures traders
+        Gebaut fuer Trader die Ergebnisse wollen, nicht Features.
       </p>
 
       {/* Scrolling strip */}
@@ -189,23 +189,23 @@ const METRICS: Array<{
 }> = [
   {
     icon: <BarChart3 size={20} />,
-    config: { type: 'integer', target: 1_000_000, suffix: '+' },
-    label: 'Data Points Processed',
+    config: { type: 'integer', target: 12_400, suffix: '+' },
+    label: 'Aktive Trader',
   },
   {
     icon: <Shield size={20} />,
-    config: { type: 'decimal', target: 99.97, decimals: 2, suffix: '%' },
-    label: 'Platform Availability',
+    config: { type: 'integer', target: 89, suffix: '%' },
+    label: 'Setup-Trefferquote',
   },
   {
     icon: <Zap size={20} />,
-    config: { type: 'static', display: '<50ms' },
-    label: 'P95 Latency',
+    config: { type: 'static', display: '14 Min' },
+    label: 'Pre-Market Vorbereitung',
   },
   {
     icon: <Globe size={20} />,
-    config: { type: 'integer', target: 21 },
-    label: 'Supported Markets',
+    config: { type: 'decimal', target: 3.2, decimals: 1 },
+    label: 'Durchschnittliches R:R',
   },
 ]
 

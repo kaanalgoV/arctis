@@ -298,7 +298,7 @@ export function Hero() {
             }}
           />
           <span className="font-sans text-sm font-medium tracking-wide text-frost-secondary">
-            Institutional-Grade Analysis Infrastructure
+            Von Prop-Tradern fuer Prop-Trader
           </span>
         </motion.div>
 
@@ -309,8 +309,8 @@ export function Hero() {
           animate="visible"
           className="font-display mb-6 text-4xl font-bold leading-tight tracking-tight sm:text-5xl lg:text-7xl xl:text-8xl"
         >
-          <span className="text-frost-white block">Market Intelligence,</span>
-          <span className="text-gradient-frost block">Engineered.</span>
+          <span className="text-frost-white block">Wisse welche Seite du handelst.</span>
+          <span className="text-gradient-frost block">Bevor die Glocke laeutet.</span>
         </motion.h1>
 
         {/* Subheadline */}
@@ -321,7 +321,7 @@ export function Hero() {
           transition={{ delay: 0.25 }}
           className="font-sans mx-auto mb-10 max-w-2xl text-lg leading-relaxed text-frost-secondary sm:text-xl"
         >
-          Real-time analysis infrastructure for futures markets. Pattern detection, directional bias, and confluence scoring — delivered in under 50 milliseconds.
+          Arctis analysiert NQ und ES in Echtzeit — BIAS, Confluence, Setups — und sagt dir genau: Entry, Stop, Target. In 14 Minuten bist du bereit fuer den Trade.
         </motion.p>
 
         {/* CTA Buttons */}
@@ -356,7 +356,7 @@ export function Hero() {
               className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/10 to-transparent transition-transform duration-700 group-hover:translate-x-full"
             />
             <Download size={18} strokeWidth={2.2} />
-            Download Arctis
+            Jetzt starten
             <ArrowRight
               size={16}
               strokeWidth={2.2}
@@ -379,7 +379,7 @@ export function Hero() {
             <span className="flex h-7 w-7 items-center justify-center rounded-full border border-current opacity-70 transition-opacity duration-200 group-hover:opacity-100">
               <ArrowRight size={12} strokeWidth={2.5} />
             </span>
-            View Documentation
+            Live Demo ansehen
           </motion.button>
         </motion.div>
 
@@ -391,7 +391,7 @@ export function Hero() {
           transition={{ delay: 0.55 }}
           className="font-sans mt-6 text-sm text-frost-muted"
         >
-          Free tier available&nbsp;&mdash;&nbsp;No credit card required&nbsp;&mdash;&nbsp;macOS and Windows
+          Kein Abo noetig zum Testen&nbsp;&middot;&nbsp;macOS Desktop App&nbsp;&middot;&nbsp;Deine Daten bleiben lokal
         </motion.p>
       </div>
 
@@ -711,19 +711,19 @@ export function Hero() {
                   className="font-mono text-[10px] font-semibold tracking-[0.06em]"
                   style={{ color: '#34D399' }}
                 >
-                  BIAS: LONG
+                  BIAS: LONG +7
                 </span>
               </div>
 
               <div className="h-3 w-px" style={{ background: 'rgba(255,255,255,0.08)' }} />
 
-              {/* CONF: 87 */}
+              {/* CONFLUENCE: 87% */}
               <div className="flex items-center gap-1.5">
                 <span
                   className="font-mono text-[10px] tracking-[0.06em]"
                   style={{ color: 'rgba(140,160,180,0.5)' }}
                 >
-                  CONF:
+                  CONFLUENCE:
                 </span>
                 <div
                   className="overflow-hidden rounded-full"
@@ -738,20 +738,14 @@ export function Hero() {
                   className="font-mono text-[10px] font-bold tracking-[0.04em]"
                   style={{ color: 'rgba(92,184,240,0.85)' }}
                 >
-                  87
+                  87%
                 </span>
               </div>
 
               <div className="h-3 w-px" style={{ background: 'rgba(255,255,255,0.08)' }} />
 
-              {/* PAT: 3 */}
+              {/* 3 SETUPS AKTIV */}
               <div className="flex items-center gap-1">
-                <span
-                  className="font-mono text-[10px] tracking-[0.06em]"
-                  style={{ color: 'rgba(140,160,180,0.5)' }}
-                >
-                  PAT:
-                </span>
                 <span
                   className="font-mono rounded px-1 text-[9px] font-bold"
                   style={{
@@ -761,25 +755,25 @@ export function Hero() {
                     lineHeight: '14px',
                   }}
                 >
-                  3
+                  3 SETUPS AKTIV
                 </span>
               </div>
 
               <div className="h-3 w-px" style={{ background: 'rgba(255,255,255,0.08)' }} />
 
-              {/* LAT: 12ms */}
+              {/* R:R 3.2 */}
               <div className="flex items-center gap-1">
                 <span
                   className="font-mono text-[10px] tracking-[0.06em]"
                   style={{ color: 'rgba(140,160,180,0.5)' }}
                 >
-                  LAT:
+                  R:R
                 </span>
                 <span
                   className="font-mono text-[10px] font-semibold"
                   style={{ color: 'rgba(140,160,180,0.75)' }}
                 >
-                  12ms
+                  3.2
                 </span>
               </div>
 
