@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react'
 import { Search, BookOpen, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useMarketStore } from '@/store/market'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -119,11 +120,11 @@ function buildSuggestions(
 
 const ENGINE_URL = 'http://127.0.0.1:8001'
 
-async function askTravis(question: string): Promise<TravisResponse> {
+async function askTravis(question: string, market = 'NQ', timeframe = '1min'): Promise<TravisResponse> {
   const res = await fetch(`${ENGINE_URL}/api/travis/ask`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ question }),
+    body: JSON.stringify({ question, market, timeframe }),
   })
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   return res.json() as Promise<TravisResponse>
@@ -136,6 +137,7 @@ export function TravisPanel({
   currentBias,
   className,
 }: TravisPanelProps) {
+  const { market, timeframe } = useMarketStore()
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<TravisResult[] | null>(null)
   const [isLoading, setIsLoading] = useState(false)
@@ -149,14 +151,14 @@ export function TravisPanel({
     setError(null)
     setResults(null)
     try {
-      const resp = await askTravis(question.trim())
+      const resp = await askTravis(question.trim(), market, timeframe)
       setResults(resp.results)
     } catch {
       setError('Travis is unavailable right now.')
     } finally {
       setIsLoading(false)
     }
-  }, [])
+  }, [market, timeframe])
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
