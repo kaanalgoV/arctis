@@ -41,7 +41,7 @@ class Simulation:
         self.market: str | None = None
         self.timeframe: str | None = None
 
-    def start(self, market: str, timeframe: str, date: str | None = None, speed: int = 10):
+    def start(self, market: str, timeframe: str, date: str | None = None, speed: float = 10):
         """Start replay. If date given, replay that specific day. Otherwise use last available day."""
         from arctis.db import fetch_bars_as_models
         self.all_bars = fetch_bars_as_models(market=market, days=30, timeframe=timeframe)
@@ -132,6 +132,7 @@ from arctis.routes.feed import router as feed_router
 from arctis.routes.arctis_ai import router as arctis_ai_router
 from arctis.routes.zones import router as zones_router
 from arctis.routes.signals import router as signals_router
+from arctis.routes.strategies import router as strategies_router
 app.include_router(analysis_router)
 app.include_router(probability_router)
 app.include_router(risk_router)
@@ -140,6 +141,7 @@ app.include_router(feed_router)
 app.include_router(arctis_ai_router)
 app.include_router(zones_router)
 app.include_router(signals_router)
+app.include_router(strategies_router)
 
 
 @app.get("/health")
@@ -301,7 +303,7 @@ async def get_bars(
 async def sim_start(
     market: str = Query(...),
     timeframe: str = Query(default="1min"),
-    speed: int = Query(default=10, ge=1, le=100),
+    speed: float = Query(default=10, ge=0.1, le=100),
     date: str | None = Query(default=None),
 ):
     """Start simulation. Speed = bars per real second. Optional date (YYYY-MM-DD) filters to that day."""
@@ -390,6 +392,13 @@ async def websocket_bars(websocket: WebSocket, symbol: str):
     """Stream new bars for a symbol via WebSocket."""
     await manager.connect(websocket, symbol)
     try:
+        # Confirm subscription
+        await websocket.send_json({
+            "type": "subscribed",
+            "symbol": symbol,
+            "ts": int(_time.time()),
+        })
+
         # Send initial snapshot (last 10 bars)
         from arctis.db import fetch_bars
         initial = fetch_bars(symbol=symbol, days=1)
@@ -409,7 +418,7 @@ async def websocket_bars(websocket: WebSocket, symbol: str):
                     await websocket.send_json({"type": "pong"})
             except asyncio.TimeoutError:
                 # Send heartbeat on timeout
-                await websocket.send_json({"type": "heartbeat"})
+                await websocket.send_json({"type": "heartbeat", "ts": int(_time.time())})
     except WebSocketDisconnect:
         pass
     finally:

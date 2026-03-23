@@ -43,7 +43,8 @@ class ConnectionManager:
 
     async def send_heartbeat(self, symbol: str):
         """Send heartbeat to all clients for a symbol."""
-        await self.broadcast(symbol, {"type": "heartbeat"})
+        import time
+        await self.broadcast(symbol, {"type": "heartbeat", "ts": int(time.time())})
 
     @property
     def active_symbols(self) -> list[str]:
