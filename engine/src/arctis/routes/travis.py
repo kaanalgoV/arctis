@@ -10,10 +10,10 @@ import json
 import logging
 from fastapi import APIRouter
 from arctis.db import fetch_bars_as_models
-from arctis.analysis.sessions import analyze_sessions
-from arctis.analysis.confluence import analyze as analyze_confluence
-from arctis.analysis.bias_state import analyze_bias_state
-from arctis.analysis.structure import analyze_structure
+from arctis.analysis.sessions import classify_session, get_session_stats
+from arctis.analysis.confluence import calculate_confluence
+from arctis.analysis.bias_state import calculate_bias_state
+from arctis.analysis.structure import detect_swings, classify_trend
 
 logger = logging.getLogger(__name__)
 
@@ -32,32 +32,31 @@ def _build_market_context(market: str = "NQ", timeframe: str = "1min") -> dict:
 
         # Session
         try:
-            sessions = analyze_sessions(bars, current_time=ref_ts)
-            current_session = sessions.get("current_session", "unknown")
+            current_session = classify_session(ref_ts).value
         except Exception:
             current_session = "unknown"
-            sessions = {}
 
         # Confluence
         try:
-            confluence = analyze_confluence(bars)
-            score = confluence.get("score", 0)
-            direction = confluence.get("direction", "neutral")
-            confidence = confluence.get("confidence", "unknown")
+            confluence = calculate_confluence(bars)
+            score = confluence.score
+            direction = confluence.direction
+            confidence = confluence.confidence
         except Exception:
             score, direction, confidence = 0, "neutral", "unknown"
 
         # Bias
         try:
-            bias = analyze_bias_state(bars)
-            bias_state = bias.get("state", "neutral")
+            bias = calculate_bias_state(bars)
+            bias_state = bias.get("state", "neutral") if isinstance(bias, dict) else str(bias)
         except Exception:
             bias_state = "neutral"
 
         # Structure
         try:
-            structure = analyze_structure(bars)
-            trend = structure.get("trend", "unknown")
+            swings = detect_swings(bars)
+            trend_state = classify_trend(swings)
+            trend = trend_state.value if hasattr(trend_state, 'value') else str(trend_state)
         except Exception:
             trend = "unknown"
 

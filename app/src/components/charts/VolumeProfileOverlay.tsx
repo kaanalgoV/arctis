@@ -64,8 +64,7 @@ export function VolumeProfileOverlay({
       {bins.map((bin, i) => {
         const y = priceToY(bin.price)
         const widthPct = maxVol > 0 ? (bin.volume / maxVol) * 100 : 0
-        const isPOC = Math.abs(bin.price - (poc - /* half binSize inferred */ 0)) < 2
-        // More reliable: compare bin midpoint to poc
+        // Compare bin midpoint to poc for reliable POC detection
         const binMid = bin.price + binHeight / 2
         const isPOCBin = Math.abs(binMid - poc) < binHeight * 1.5
         const isVA = bin.price <= vah && bin.price >= val

@@ -1,4 +1,4 @@
-import { ChevronRight, Settings, WifiOff } from 'lucide-react'
+import { Settings, WifiOff } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { useMarketStore } from '@/store/market'
@@ -33,37 +33,6 @@ function Pill({ label, isActive, onClick }: PillProps) {
   )
 }
 
-interface BreadcrumbProps {
-  segments: string[]
-}
-
-function Breadcrumb({ segments }: BreadcrumbProps) {
-  return (
-    <div className="flex items-center gap-1">
-      {segments.map((segment, index) => (
-        <span key={segment} className="flex items-center gap-1">
-          {index > 0 && (
-            <ChevronRight
-              size={12}
-              strokeWidth={1.5}
-              className="text-[var(--color-text-muted)] shrink-0"
-            />
-          )}
-          <span
-            className={cn(
-              'font-mono text-[11px] leading-none',
-              index === segments.length - 1
-                ? 'text-[var(--color-text-secondary)]'
-                : 'text-[var(--color-text-muted)]',
-            )}
-          >
-            {segment}
-          </span>
-        </span>
-      ))}
-    </div>
-  )
-}
 
 // ── Connection Badge ──────────────────────────────────────────────────────────
 

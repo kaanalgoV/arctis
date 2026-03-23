@@ -1,4 +1,3 @@
-import { cn } from '@/lib/utils'
 import { Skeleton } from '@/components/ui/Skeleton'
 
 interface ConfluenceSignal {
