@@ -388,116 +388,16 @@ export function SimpleChart({
     ov.ema50!.applyOptions({ visible })
   }, [showEma, emaData])
 
-  // ── Volume Profile price lines (per-day: yesterday dashed, today solid) ────
+  // ── Volume Profile — sidebar histogram renders VP, cleanup old price lines ──
   useEffect(() => {
     const candle = candleRef.current
     if (!candle) return
-
-    // Remove all previous VP price lines
+    // Remove any leftover VP price lines (sidebar histogram handles rendering now)
     vpLinesRef.current.forEach((pl) => {
       try { candle.removePriceLine(pl) } catch (_) { /* already removed */ }
     })
     vpLinesRef.current = []
-
-    if (!showVp) return
-
-    // Prefer daily profiles if available; fall back to aggregate volumeProfile
-    if (dailyVolumeProfiles && dailyVolumeProfiles.length > 0) {
-      const sorted = [...dailyVolumeProfiles].sort((a, b) => a.date.localeCompare(b.date))
-      const todayProfile = sorted[sorted.length - 1]
-      const yesterdayProfile = sorted.length >= 2 ? sorted[sorted.length - 2] : null
-
-      const newLines: IPriceLine[] = []
-
-      // Yesterday's VP — dashed lines
-      if (yesterdayProfile) {
-        newLines.push(
-          candle.createPriceLine({
-            price: yesterdayProfile.poc,
-            color: '#FBBF24',
-            lineWidth: 1,
-            lineStyle: LineStyle.Dashed,
-            axisLabelVisible: true,
-            title: 'ydPOC',
-          }),
-          candle.createPriceLine({
-            price: yesterdayProfile.vah,
-            color: '#5CB8F0',
-            lineWidth: 1,
-            lineStyle: LineStyle.Dashed,
-            axisLabelVisible: true,
-            title: 'ydVAH',
-          }),
-          candle.createPriceLine({
-            price: yesterdayProfile.val,
-            color: '#5CB8F0',
-            lineWidth: 1,
-            lineStyle: LineStyle.Dashed,
-            axisLabelVisible: true,
-            title: 'ydVAL',
-          }),
-        )
-      }
-
-      // Today's developing VP — solid lines
-      newLines.push(
-        candle.createPriceLine({
-          price: todayProfile.poc,
-          color: '#FBBF24',
-          lineWidth: 1,
-          lineStyle: LineStyle.Solid,
-          axisLabelVisible: true,
-          title: 'POC',
-        }),
-        candle.createPriceLine({
-          price: todayProfile.vah,
-          color: '#5CB8F0',
-          lineWidth: 1,
-          lineStyle: LineStyle.Solid,
-          axisLabelVisible: true,
-          title: 'VAH',
-        }),
-        candle.createPriceLine({
-          price: todayProfile.val,
-          color: '#5CB8F0',
-          lineWidth: 1,
-          lineStyle: LineStyle.Solid,
-          axisLabelVisible: true,
-          title: 'VAL',
-        }),
-      )
-
-      vpLinesRef.current = newLines
-    } else if (volumeProfile) {
-      // Fallback: aggregate VP as solid lines
-      vpLinesRef.current = [
-        candle.createPriceLine({
-          price: volumeProfile.poc,
-          color: '#FBBF24',
-          lineWidth: 1,
-          lineStyle: LineStyle.Solid,
-          axisLabelVisible: true,
-          title: 'POC',
-        }),
-        candle.createPriceLine({
-          price: volumeProfile.vah,
-          color: '#5CB8F0',
-          lineWidth: 1,
-          lineStyle: LineStyle.Dashed,
-          axisLabelVisible: true,
-          title: 'VAH',
-        }),
-        candle.createPriceLine({
-          price: volumeProfile.val,
-          color: '#5CB8F0',
-          lineWidth: 1,
-          lineStyle: LineStyle.Dashed,
-          axisLabelVisible: true,
-          title: 'VAL',
-        }),
-      ]
-    }
-  }, [showVp, volumeProfile, dailyVolumeProfiles])
+  }, [showVp])
 
   // ── Session / Previous Day Levels price lines ─────────────────────────────
   useEffect(() => {
@@ -877,8 +777,8 @@ export function SimpleChart({
   }, [signals])
 
   return (
-    <div className={className} style={{ position: 'relative' }}>
-      <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
+    <div className={className} style={{ position: 'relative', width: '100%', height: '100%' }}>
+      <div ref={containerRef} style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }} />
       {computedVP && chartSize.height > 0 && (
         <VolumeProfileOverlay
           bins={computedVP.bins}
