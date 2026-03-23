@@ -30,8 +30,15 @@ def parse_csv(
     else:
         df[ts_col] = pd.to_datetime(df[ts_col])
 
-    # datetime64[us] -> seconds: divide by 10^6
-    df["_ts_unix"] = df[ts_col].values.astype("int64") // 10**6
+    # Convert to Unix seconds regardless of pandas datetime resolution.
+    # pandas uses ns (nanoseconds, 10^9) by default; older versions or explicit
+    # parsing may produce us (microseconds, 10^6). Detect and divide correctly.
+    ts_values = df[ts_col].values.astype("int64")
+    resolution = df[ts_col].dtype  # e.g. datetime64[ns] or datetime64[us]
+    if "ns" in str(resolution):
+        df["_ts_unix"] = ts_values // 10**9
+    else:
+        df["_ts_unix"] = ts_values // 10**6
 
     df = df.sort_values("_ts_unix").reset_index(drop=True)
 
