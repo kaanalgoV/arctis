@@ -132,19 +132,15 @@ export function useMarketData(options?: { pauseWs?: boolean }) {
     loadBars()
     const pollId = setInterval(async () => {
       try {
-        // Always fetch 1min bars for the last candle — gives real-time close price
-        // even when display timeframe is 15min (which only updates every 15 min)
-        const url1m = `${engineUrl}/api/db/bars?symbol=${symbol}&days=1&timeframe=1min`
-        const res1m = await fetch(url1m)
-        if (!res1m.ok) return
-        const data1m = await res1m.json()
-        const bars1m: Bar[] = data1m.bars || []
-        if (bars1m.length === 0) return
+        // 1. Get real-time tick price (sub-second fresh)
+        const priceRes = await fetch(`${engineUrl}/api/live/price?symbol=${symbol}`)
+        let tickPrice: number | null = null
+        if (priceRes.ok) {
+          const priceData = await priceRes.json()
+          if (priceData.price) tickPrice = priceData.price
+        }
 
-        const latestTick = bars1m[bars1m.length - 1]
-        setLastBarTs(latestTick.timestamp)
-
-        // Also fetch in display timeframe to get properly aggregated bars
+        // 2. Fetch bars in display timeframe
         const url = `${engineUrl}/api/db/bars?symbol=${symbol}&days=1&timeframe=${timeframe}`
         const res = await fetch(url)
         if (!res.ok) return
@@ -152,12 +148,18 @@ export function useMarketData(options?: { pauseWs?: boolean }) {
         const freshBars: Bar[] = data.bars || []
         if (freshBars.length === 0) return
 
-        // Override the last bar's close with the real 1min close (most current price)
-        const latest = { ...freshBars[freshBars.length - 1] }
-        latest.close = latestTick.close
-        latest.high = Math.max(latest.high, latestTick.high)
-        latest.low = Math.min(latest.low, latestTick.low)
-        freshBars[freshBars.length - 1] = latest
+        // 3. Override last bar's close with live tick price (if available)
+        if (tickPrice) {
+          const latest = { ...freshBars[freshBars.length - 1] }
+          latest.close = tickPrice
+          latest.high = Math.max(latest.high, tickPrice)
+          latest.low = Math.min(latest.low, tickPrice)
+          freshBars[freshBars.length - 1] = latest
+          setLastBarTs(latest.timestamp)
+        } else {
+          const latest = freshBars[freshBars.length - 1]
+          setLastBarTs(latest.timestamp)
+        }
 
         // MERGE: keep the full dataset, only update/append bars from the poll
         setBars(prev => {

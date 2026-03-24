@@ -45,6 +45,9 @@ _SERVER_SYSTEM_NAMES: dict[str, str] = {
     "Rithmic 08": "Rithmic 08",
 }
 
+# Last tick prices — updated on every trade tick, available via /api/live/price
+_last_prices: dict[str, dict] = {}
+
 # Instruments to subscribe to (symbol, exchange)
 # Must use specific contract symbols, not root symbols
 _INSTRUMENTS = [
@@ -123,6 +126,9 @@ async def _stream_ticks_to_bars(client) -> None:
                 continue
 
             price = float(price)
+
+            # Cache last tick price for /api/live/price endpoint
+            _last_prices[symbol] = {"price": price, "size": size, "ts": tick_ts}
             # Round down to minute boundary
             minute_ts = (tick_ts // 60) * 60
             key = (symbol, minute_ts)
@@ -154,6 +160,26 @@ async def _stream_ticks_to_bars(client) -> None:
 # ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
+
+@router.get("/price")
+async def live_price(symbol: str = Query(default="NQM6")):
+    """Get the last tick price for a symbol (sub-second freshness)."""
+    p = _last_prices.get(symbol)
+    if not p:
+        return {"symbol": symbol, "price": None, "stale": True}
+    age = time.time() - p["ts"]
+    return {"symbol": symbol, "price": p["price"], "size": p["size"], "ts": p["ts"], "age_s": round(age, 1)}
+
+
+@router.get("/prices")
+async def live_prices():
+    """Get all last tick prices."""
+    now = time.time()
+    return {
+        sym: {"price": p["price"], "ts": p["ts"], "age_s": round(now - p["ts"], 1)}
+        for sym, p in _last_prices.items()
+    }
+
 
 @router.get("/status")
 async def live_status():
