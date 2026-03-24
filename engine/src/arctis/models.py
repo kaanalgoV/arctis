@@ -55,12 +55,12 @@ class MarketInfo(BaseModel):
 # ---------------------------------------------------------------------------
 
 FRONT_MONTH: dict[MarketRoot, str] = {
-    MarketRoot.NQ: "NQH6",
-    MarketRoot.ES: "ESZ5",
-    MarketRoot.CL: "CLJ6",
-    MarketRoot.GC: "GCJ6",
-    MarketRoot.E6: "6EH6",
-    MarketRoot.J6: "6JH6",
+    MarketRoot.NQ: "NQM6",
+    MarketRoot.ES: "ESM6",
+    MarketRoot.CL: "CLK6",
+    MarketRoot.GC: "GCM6",
+    MarketRoot.E6: "6EM6",
+    MarketRoot.J6: "6JM6",
 }
 
 MARKET_NAMES: dict[MarketRoot, str] = {

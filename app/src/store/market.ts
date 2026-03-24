@@ -3,12 +3,12 @@ import type { Timeframe, WsStatus, MarketInfo } from '../types/contracts'
 
 // Front-month fallback map (updated when /api/markets is unavailable)
 const SYMBOL_MAP_FALLBACK: Record<string, string> = {
-  NQ: 'NQH6',
-  ES: 'ESZ5',
-  CL: 'CLJ6',
-  GC: 'GCJ6',
-  '6E': '6EH6',
-  '6J': '6JH6',
+  NQ: 'NQM6',
+  ES: 'ESM6',
+  CL: 'CLK6',
+  GC: 'GCM6',
+  '6E': '6EM6',
+  '6J': '6JM6',
 }
 
 export interface MarketState {
@@ -40,7 +40,7 @@ export interface MarketState {
 
 export const useMarketStore = create<MarketState>((set, get) => ({
   market: 'NQ',
-  symbol: 'NQH6',
+  symbol: 'NQM6',
   timeframe: '15min',
   days: 30,
   wsStatus: 'disconnected',
