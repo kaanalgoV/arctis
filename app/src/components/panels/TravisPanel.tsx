@@ -1,5 +1,5 @@
-import { useState, useCallback } from 'react'
-import { Search, Loader2 } from 'lucide-react'
+import { useState, useCallback, useRef, useEffect } from 'react'
+import { Send, Loader2, Bot, User } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useMarketStore } from '@/store/market'
 import { config } from '@/lib/config'
@@ -12,6 +12,14 @@ export interface ArctisPanelProps {
   className?: string
 }
 
+interface ChatMessage {
+  id: string
+  role: 'user' | 'ai'
+  content: string
+  timestamp: number
+  results?: ArctisResult[]
+}
+
 interface ArctisResult {
   title: string
   content: string
@@ -22,109 +30,22 @@ interface ArctisResult {
 interface ArctisResponse {
   question: string
   results: ArctisResult[]
+  context?: Record<string, unknown>
 }
 
-// ─── Static context suggestions ──────────────────────────────────────────────
+// ─── Quick Actions ────────────────────────────────────────────────────────────
 
-interface Suggestion {
-  question: string
-  label: string
-  description: string
-}
-
-function buildSuggestions(
-  currentPattern?: string,
-  currentBias?: string,
-): Suggestion[] {
-  const suggestions: Suggestion[] = []
-
-  if (currentPattern) {
-    const p = currentPattern.toLowerCase()
-    if (p.includes('orb') || p.includes('opening range')) {
-      suggestions.push({
-        question: 'Opening Range Breakout',
-        label: 'ORB Breakout',
-        description: 'Learn how to trade the Opening Range Breakout setup.',
-      })
-    }
-    if (p.includes('ib') || p.includes('initial balance')) {
-      suggestions.push({
-        question: 'Initial Balance',
-        label: 'Initial Balance',
-        description: 'Understand the Initial Balance and its key levels.',
-      })
-    }
-    if (p.includes('vwap')) {
-      suggestions.push({
-        question: 'VWAP',
-        label: 'VWAP Reclaim',
-        description: 'How VWAP acts as dynamic support and resistance.',
-      })
-    }
-  }
-
-  if (currentBias) {
-    const b = currentBias.toLowerCase()
-    if (b.includes('range_long') || b.includes('long')) {
-      suggestions.push({
-        question: 'bias long setup',
-        label: 'Range-Long Setup',
-        description: 'Understanding range-long market conditions.',
-      })
-    }
-    if (b.includes('range_short') || b.includes('short')) {
-      suggestions.push({
-        question: 'bias short setup',
-        label: 'Range-Short Setup',
-        description: 'Trading in range-short market environments.',
-      })
-    }
-    if (b.includes('trending')) {
-      suggestions.push({
-        question: 'trending bias',
-        label: 'Trending Day',
-        description: 'How to identify and trade a trending day.',
-      })
-    }
-    if (b.includes('velocity')) {
-      suggestions.push({
-        question: 'velocity auction speed',
-        label: 'Auction Velocity',
-        description: 'What velocity tells us about conviction in price movement.',
-      })
-    }
-  }
-
-  // Fallback defaults when no context is available
-  if (suggestions.length === 0) {
-    suggestions.push(
-      {
-        question: 'bias',
-        label: 'Market Bias',
-        description: 'Understanding how market bias guides trade direction.',
-      },
-      {
-        question: 'VWAP',
-        label: 'VWAP Levels',
-        description: 'Using VWAP as a dynamic anchor for price action.',
-      },
-      {
-        question: 'velocity auction speed',
-        label: 'Auction Speed',
-        description: 'Why pace of trade reveals market conviction.',
-      },
-    )
-  }
-
-  return suggestions.slice(0, 3)
-}
+const QUICK_ACTIONS = [
+  'Was macht der Markt?',
+  'Soll ich einsteigen?',
+  'Was war gestern?',
+  'Welche Setups gibt es?',
+]
 
 // ─── API call ────────────────────────────────────────────────────────────────
 
-const ENGINE_URL = config.apiBase
-
-async function askArctis(question: string, market = 'NQ', timeframe = '1min'): Promise<ArctisResponse> {
-  const res = await fetch(`${ENGINE_URL}/api/arctis/ask`, {
+async function askArctis(question: string, market: string, timeframe: string): Promise<ArctisResponse> {
+  const res = await fetch(`${config.apiBase}/api/arctis/ask`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ question, market, timeframe }),
@@ -133,293 +54,253 @@ async function askArctis(question: string, market = 'NQ', timeframe = '1min'): P
   return res.json() as Promise<ArctisResponse>
 }
 
+// ─── Message Bubble ──────────────────────────────────────────────────────────
+
+function UserBubble({ content }: { content: string }) {
+  return (
+    <div className="flex justify-end gap-1.5">
+      <div
+        className="rounded-lg px-2.5 py-1.5 max-w-[85%]"
+        style={{
+          background: 'rgba(92,184,240,0.12)',
+          border: '1px solid rgba(92,184,240,0.2)',
+        }}
+      >
+        <span className="text-[11px] text-[#E6EDF3] leading-relaxed">{content}</span>
+      </div>
+      <User size={14} className="text-[#484F58] shrink-0 mt-0.5" />
+    </div>
+  )
+}
+
+function AiBubble({ results }: { results: ArctisResult[] }) {
+  return (
+    <div className="flex gap-1.5">
+      <Bot size={14} className="text-[#5CB8F0] shrink-0 mt-0.5" />
+      <div className="flex flex-col gap-1.5 max-w-[90%]">
+        {results.map((r, i) => {
+          const actionColor = r.action?.startsWith('EINSTEIGEN') ? '#22C55E'
+            : r.action?.startsWith('BEREIT') ? '#F0A500'
+            : r.action?.startsWith('VERPASST') ? '#EF4444'
+            : '#8B949E'
+
+          const borderColor = r.type === 'signal' ? 'rgba(34,197,94,0.2)'
+            : r.type === 'no_signal' ? 'rgba(139,148,158,0.12)'
+            : 'rgba(92,184,240,0.12)'
+
+          return (
+            <div
+              key={i}
+              className="rounded-lg px-2.5 py-2"
+              style={{
+                background: 'var(--color-surface-secondary, #161B22)',
+                border: `1px solid ${borderColor}`,
+              }}
+            >
+              <div className="flex items-center justify-between mb-1">
+                <span
+                  className="text-[10px] font-bold"
+                  style={{ color: r.type === 'signal' ? '#22C55E' : '#5CB8F0' }}
+                >
+                  {r.title}
+                </span>
+                {r.action && (
+                  <span
+                    className="text-[8px] font-bold px-1.5 py-0.5 rounded"
+                    style={{
+                      color: actionColor,
+                      background: `${actionColor}12`,
+                      border: `1px solid ${actionColor}30`,
+                    }}
+                  >
+                    {r.action.split('—')[0].trim()}
+                  </span>
+                )}
+              </div>
+              <pre className="text-[10px] text-[#8B949E] leading-relaxed whitespace-pre-wrap m-0 font-mono">
+                {r.content}
+              </pre>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+function TypingIndicator() {
+  return (
+    <div className="flex gap-1.5 items-center">
+      <Bot size={14} className="text-[#5CB8F0] shrink-0" />
+      <div className="flex gap-1 px-3 py-2">
+        {[0, 1, 2].map((i) => (
+          <div
+            key={i}
+            className="w-1.5 h-1.5 rounded-full bg-[#5CB8F0]"
+            style={{
+              animation: `pulse 1.2s ease-in-out ${i * 0.2}s infinite`,
+              opacity: 0.4,
+            }}
+          />
+        ))}
+      </div>
+    </div>
+  )
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function ArctisPanel({
-  currentPattern,
-  currentBias,
   className,
 }: ArctisPanelProps) {
   const { market, timeframe } = useMarketStore()
-  const [query, setQuery] = useState('')
-  const [results, setResults] = useState<ArctisResult[] | null>(null)
+  const [input, setInput] = useState('')
+  const [messages, setMessages] = useState<ChatMessage[]>([])
   const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
 
-  const suggestions = buildSuggestions(currentPattern, currentBias)
+  // Auto-scroll to bottom on new messages
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+    }
+  }, [messages, isLoading])
 
-  const handleAsk = useCallback(async (question: string) => {
-    if (!question.trim()) return
+  const handleSend = useCallback(async (question: string) => {
+    if (!question.trim() || isLoading) return
+
+    const userMsg: ChatMessage = {
+      id: `user-${Date.now()}`,
+      role: 'user',
+      content: question.trim(),
+      timestamp: Date.now(),
+    }
+    setMessages((prev) => [...prev, userMsg])
+    setInput('')
     setIsLoading(true)
-    setError(null)
-    setResults(null)
+
     try {
       const resp = await askArctis(question.trim(), market, timeframe)
-      setResults(resp.results)
+      const aiMsg: ChatMessage = {
+        id: `ai-${Date.now()}`,
+        role: 'ai',
+        content: '',
+        timestamp: Date.now(),
+        results: resp.results,
+      }
+      setMessages((prev) => [...prev, aiMsg])
     } catch {
-      setError('Arctis is unavailable right now.')
+      const errMsg: ChatMessage = {
+        id: `err-${Date.now()}`,
+        role: 'ai',
+        content: 'Verbindung fehlgeschlagen. Backend erreichbar?',
+        timestamp: Date.now(),
+        results: [{ title: 'Fehler', content: 'Arctis Engine nicht erreichbar.', type: 'no_signal' }],
+      }
+      setMessages((prev) => [...prev, errMsg])
     } finally {
       setIsLoading(false)
     }
-  }, [market, timeframe])
-
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLInputElement>) => {
-      if (e.key === 'Enter') {
-        void handleAsk(query)
-      }
-    },
-    [query, handleAsk],
-  )
+  }, [market, timeframe, isLoading])
 
   return (
-    <div className={cn('flex flex-col gap-2', className)}>
-      {/* Search input */}
+    <div className={cn('flex flex-col', className)} style={{ height: '100%', minHeight: 200 }}>
+      {/* Chat messages area */}
       <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 6,
-          height: 28,
-          background: 'rgba(255,255,255,0.03)',
-          border: '1px solid var(--color-border-subtle)',
-          borderRadius: 5,
-          paddingLeft: 8,
-          paddingRight: 6,
-        }}
+        ref={scrollRef}
+        className="flex-1 overflow-y-auto px-1 py-1"
+        style={{ maxHeight: 300, minHeight: 80 }}
       >
-        <Search size={11} strokeWidth={1.8} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />
-        <input
-          type="text"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="Frag Arctis..."
-          style={{
-            flex: 1,
-            background: 'transparent',
-            border: 'none',
-            outline: 'none',
-            fontSize: '0.68rem',
-            fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
-            color: 'var(--color-text-secondary)',
-            caretColor: '#5CB8F0',
-          }}
-        />
-        <button
-          type="button"
-          onClick={() => void handleAsk(query)}
-          disabled={isLoading || !query.trim()}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            height: 20,
-            paddingLeft: 7,
-            paddingRight: 7,
-            borderRadius: 4,
-            border: 'none',
-            background: query.trim() && !isLoading ? 'rgba(92,184,240,0.14)' : 'transparent',
-            color: query.trim() && !isLoading ? '#5CB8F0' : 'var(--color-text-muted)',
-            cursor: query.trim() && !isLoading ? 'pointer' : 'default',
-            fontSize: '0.6rem',
-            fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
-            fontWeight: 500,
-            letterSpacing: '0.04em',
-            transition: 'background 0.12s, color 0.12s',
-            flexShrink: 0,
-          }}
-        >
-          {isLoading ? (
-            <Loader2 size={10} strokeWidth={2} style={{ animation: 'spin 0.8s linear infinite' }} />
-          ) : (
-            'ASK'
-          )}
-        </button>
+        {messages.length === 0 && !isLoading ? (
+          <div className="flex flex-col items-center justify-center py-4 gap-2">
+            <Bot size={20} className="text-[#484F58]" />
+            <span className="text-[10px] text-[#484F58] text-center">
+              Frag mich was zum Markt.
+            </span>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {messages.map((msg) =>
+              msg.role === 'user' ? (
+                <UserBubble key={msg.id} content={msg.content} />
+              ) : (
+                <AiBubble key={msg.id} results={msg.results || []} />
+              )
+            )}
+            {isLoading && <TypingIndicator />}
+          </div>
+        )}
       </div>
 
-      {/* Results */}
-      {results !== null && !isLoading && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          {results.map((r, i) => (
-            <ResultCard key={i} title={r.title} content={r.content} action={r.action} type={r.type} />
+      {/* Quick actions — only when no messages yet */}
+      {messages.length === 0 && (
+        <div className="flex flex-wrap gap-1 px-1 pb-1.5">
+          {QUICK_ACTIONS.map((q) => (
+            <button
+              key={q}
+              onClick={() => void handleSend(q)}
+              className="text-[9px] px-2 py-1 rounded-full cursor-pointer transition-colors"
+              style={{
+                background: 'rgba(92,184,240,0.06)',
+                border: '1px solid rgba(92,184,240,0.15)',
+                color: '#8B949E',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(92,184,240,0.12)'
+                e.currentTarget.style.color = '#E6EDF3'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(92,184,240,0.06)'
+                e.currentTarget.style.color = '#8B949E'
+              }}
+            >
+              {q}
+            </button>
           ))}
         </div>
       )}
 
-      {/* Error */}
-      {error && (
-        <span
+      {/* Input bar */}
+      <div
+        className="flex items-center gap-1.5 px-1 pb-1"
+        style={{
+          borderTop: '1px solid var(--color-border-subtle, #21262D)',
+          paddingTop: 6,
+        }}
+      >
+        <input
+          type="text"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') void handleSend(input) }}
+          placeholder="Frag Arctis..."
+          className="flex-1 bg-transparent border-none outline-none text-[11px] text-[#E6EDF3] placeholder-[#484F58]"
+          style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', caretColor: '#5CB8F0' }}
+        />
+        <button
+          onClick={() => void handleSend(input)}
+          disabled={isLoading || !input.trim()}
+          className="flex items-center justify-center w-6 h-6 rounded cursor-pointer transition-colors"
           style={{
-            fontSize: '0.65rem',
-            color: 'var(--color-loss)',
-            fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+            background: input.trim() && !isLoading ? 'rgba(92,184,240,0.15)' : 'transparent',
+            color: input.trim() && !isLoading ? '#5CB8F0' : '#484F58',
           }}
         >
-          {error}
-        </span>
-      )}
-
-      {/* Context-aware suggestions — only when no results shown */}
-      {results === null && !isLoading && (
-        <>
-          <div
-            style={{
-              fontSize: '0.6rem',
-              color: 'var(--color-text-muted)',
-              fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
-              letterSpacing: '0.06em',
-              textTransform: 'uppercase',
-              paddingTop: 2,
-            }}
-          >
-            Suggested
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-            {suggestions.map((s, i) => (
-              <SuggestionCard
-                key={i}
-                label={s.label}
-                description={s.description}
-                onClick={() => void handleAsk(s.question)}
-              />
-            ))}
-          </div>
-        </>
-      )}
-    </div>
-  )
-}
-
-// ─── Sub-components ───────────────────────────────────────────────────────────
-
-function ResultCard({ title, content, action, type }: ArctisResult) {
-  const actionColor = action?.startsWith('EINSTEIGEN') ? '#22C55E'
-    : action?.startsWith('BEREIT') ? '#F0A500'
-    : action?.startsWith('VERPASST') ? '#EF4444'
-    : '#8B949E'
-
-  const borderColor = type === 'signal' ? 'rgba(34,197,94,0.25)'
-    : type === 'no_signal' ? 'rgba(139,148,158,0.15)'
-    : 'rgba(92,184,240,0.15)'
-
-  const bgColor = type === 'signal' ? 'rgba(34,197,94,0.04)'
-    : type === 'no_signal' ? 'rgba(139,148,158,0.04)'
-    : 'rgba(92,184,240,0.04)'
-
-  return (
-    <div
-      style={{
-        background: bgColor,
-        border: `1px solid ${borderColor}`,
-        borderRadius: 5,
-        padding: '7px 9px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 4,
-      }}
-    >
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <span
-          style={{
-            fontSize: '0.7rem',
-            fontWeight: 700,
-            color: type === 'signal' ? '#22C55E' : '#5CB8F0',
-            fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
-          }}
-        >
-          {title}
-        </span>
-        {action && (
-          <span
-            style={{
-              fontSize: '0.55rem',
-              fontWeight: 700,
-              color: actionColor,
-              background: `${actionColor}15`,
-              border: `1px solid ${actionColor}40`,
-              borderRadius: 3,
-              padding: '1px 5px',
-              letterSpacing: '0.05em',
-              fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
-            }}
-          >
-            {action.split('—')[0].trim()}
-          </span>
-        )}
+          {isLoading ? (
+            <Loader2 size={12} className="animate-spin" />
+          ) : (
+            <Send size={12} />
+          )}
+        </button>
       </div>
-      <pre
-        style={{
-          margin: 0,
-          fontSize: '0.62rem',
-          color: 'var(--color-text-secondary)',
-          lineHeight: 1.55,
-          fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
-          whiteSpace: 'pre-wrap',
-          wordBreak: 'break-word',
-        }}
-      >
-        {content}
-      </pre>
+
+      {/* Typing animation keyframes */}
+      <style>{`
+        @keyframes pulse {
+          0%, 100% { opacity: 0.2; transform: scale(0.8); }
+          50% { opacity: 0.8; transform: scale(1.2); }
+        }
+      `}</style>
     </div>
-  )
-}
-
-interface SuggestionCardProps {
-  label: string
-  description: string
-  onClick: () => void
-}
-
-function SuggestionCard({ label, description, onClick }: SuggestionCardProps) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      style={{
-        width: '100%',
-        textAlign: 'left',
-        background: 'rgba(255,255,255,0.02)',
-        border: '1px solid var(--color-border-subtle)',
-        borderRadius: 5,
-        padding: '6px 8px',
-        cursor: 'pointer',
-        transition: 'border-color 0.12s, background 0.12s',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 2,
-      }}
-      onMouseEnter={(e) => {
-        const btn = e.currentTarget as HTMLButtonElement
-        btn.style.background = 'rgba(92,184,240,0.06)'
-        btn.style.borderColor = 'rgba(92,184,240,0.25)'
-      }}
-      onMouseLeave={(e) => {
-        const btn = e.currentTarget as HTMLButtonElement
-        btn.style.background = 'rgba(255,255,255,0.02)'
-        btn.style.borderColor = 'var(--color-border-subtle)'
-      }}
-    >
-      <span
-        style={{
-          fontSize: '0.65rem',
-          fontWeight: 600,
-          color: 'var(--color-text-primary)',
-          fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
-        }}
-      >
-        {label}
-      </span>
-      <span
-        style={{
-          fontSize: '0.62rem',
-          color: 'var(--color-text-muted)',
-          lineHeight: 1.4,
-          fontFamily: 'ui-sans-serif, system-ui, sans-serif',
-        }}
-      >
-        {description}
-      </span>
-    </button>
   )
 }

@@ -17,7 +17,6 @@ import {
   BiasPanel,
   ArctisPanel,
   SignalsPanel,
-  StrategyLibrary,
 } from '@/components/panels'
 import type { ConfluenceAPIData } from '@/components/panels/ConfluencePanel'
 import type { PatternsAPIData } from '@/components/panels/PatternsPanel'
@@ -231,7 +230,7 @@ export default function App() {
   const [showSettings, setShowSettings] = useState(false)
 
   // ── Strategy Library active count (for RightPanelSection badge) ──────────
-  const [activeStrategyCount, setActiveStrategyCount] = useState<number | undefined>(undefined)
+  const [_activeStrategyCount] = useState<number | undefined>(undefined)
 
   // ── Drawing state ─────────────────────────────────────────────────────────
   const { drawings, activeTool, setActiveTool, addDrawing, clearDrawings } =
@@ -674,15 +673,7 @@ export default function App() {
 
           <RightPanelDivider />
 
-          <RightPanelSection
-            title="Strategies"
-            accent="warning"
-            count={activeStrategyCount}
-          >
-            <StrategyLibrary onActiveCountChange={setActiveStrategyCount} />
-          </RightPanelSection>
-
-          <RightPanelDivider />
+          {/* Strategies work in background — no visible panel needed */}
 
           <RightPanelSection
             title="Feed"
