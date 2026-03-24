@@ -125,27 +125,20 @@ export function useMarketData(options?: { pauseWs?: boolean }) {
     loadBars()
     const pollId = setInterval(async () => {
       try {
+        // Fetch with requested timeframe for proper aggregation
         const url = `${engineUrl}/api/db/bars?symbol=${symbol}&days=1&timeframe=${timeframe}`
         const res = await fetch(url)
         if (!res.ok) return
         const data = await res.json()
         const freshBars: Bar[] = data.bars || []
         if (freshBars.length === 0) return
-        setBars(prev => {
-          if (prev.length === 0) return freshBars
-          const lastPrev = prev[prev.length - 1]
-          const latest = freshBars[freshBars.length - 1]
-          // Update last bar if same timestamp
-          if (latest.timestamp === lastPrev.timestamp) {
-            if (latest.close !== lastPrev.close) return [...prev.slice(0, -1), latest]
-            return prev
-          }
-          // Append new bars
-          const newBars = freshBars.filter(b => b.timestamp > lastPrev.timestamp)
-          return newBars.length > 0 ? [...prev, ...newBars] : prev
-        })
+
         const latest = freshBars[freshBars.length - 1]
         setLastBarTs(latest.timestamp)
+
+        // ALWAYS replace bars — let React+Chart detect actual changes
+        // This ensures the developing candle's OHLC is always current
+        setBars(freshBars)
       } catch { /* silent */ }
     }, 5_000)
     return () => clearInterval(pollId)
