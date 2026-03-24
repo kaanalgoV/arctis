@@ -150,9 +150,25 @@ export function useMarketData(options?: { pauseWs?: boolean }) {
   // Falls back to DB bars when live is not available.
   // ---------------------------------------------------------------------------
 
-  // Live store integration disabled — causes render loop.
-  // When live service (port 28081) is properly running, re-enable.
-  // For now, always use DB bars.
+  // Silent poll-refresh: reload bars every 5s to pick up new Rithmic bars from DB
+  // Does NOT set isLoading (avoids skeleton flash on every poll)
+  useEffect(() => {
+    if (options?.pauseWs) return
+    const interval = setInterval(async () => {
+      try {
+        const url = `${engineUrl}/api/db/bars?symbol=${symbol}&days=${days}&timeframe=${timeframe}`
+        const res = await fetch(url)
+        if (!res.ok) return
+        const data = await res.json()
+        const freshBars: Bar[] = data.bars || []
+        if (freshBars.length > 0) {
+          setBars(freshBars)
+          setLastBarTs(freshBars[freshBars.length - 1].timestamp)
+        }
+      } catch { /* silent fail */ }
+    }, 5_000)
+    return () => clearInterval(interval)
+  }, [symbol, timeframe, days, engineUrl, setLastBarTs, options?.pauseWs])
 
   return { bars, isLoading, error, lastHeartbeat, reload: loadBars }
 }
