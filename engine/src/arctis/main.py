@@ -9,7 +9,7 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-from fastapi import FastAPI, File, Form, Query, UploadFile, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, File, Form, HTTPException, Query, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
@@ -90,13 +90,34 @@ class Simulation:
             return bars[-1].timestamp
         return int(_time.time())
 
+    def seek(self, position_pct: float) -> bool:
+        """Seek to a position (0.0 to 1.0) in the replay."""
+        if not self.active or not self.all_bars:
+            return False
+        target_idx = int(position_pct * len(self.all_bars))
+        target_idx = max(0, min(target_idx, len(self.all_bars) - 1))
+        # Adjust start time so visible_bar_count() returns target_idx
+        self.start_bar_index = target_idx
+        self.start_real_time = _time.time()
+        return True
+
     def status(self):
+        n = self.visible_bar_count()
+        bars = self.all_bars
+        current_date: str | None = None
+        if bars and n > 0:
+            from datetime import datetime, timezone
+            bar = bars[min(n - 1, len(bars) - 1)]
+            current_date = datetime.fromtimestamp(bar.timestamp, tz=timezone.utc).strftime("%Y-%m-%d")
         return {
             "active": self.active,
             "speed": self.speed,
-            "visible_bars": self.visible_bar_count(),
+            "visible_bars": n,
             "total_bars": self.total_bars,
-            "progress_pct": round(self.visible_bar_count() / max(self.total_bars, 1) * 100, 1),
+            "progress_pct": round(n / max(self.total_bars, 1) * 100, 1),
+            "current_date": current_date,
+            "market": self.market,
+            "timeframe": self.timeframe,
         }
 
 
@@ -133,6 +154,7 @@ from arctis.routes.arctis_ai import router as arctis_ai_router
 from arctis.routes.zones import router as zones_router
 from arctis.routes.signals import router as signals_router
 from arctis.routes.strategies import router as strategies_router
+from arctis.routes.radar import router as radar_router
 app.include_router(analysis_router)
 app.include_router(probability_router)
 app.include_router(risk_router)
@@ -142,6 +164,7 @@ app.include_router(arctis_ai_router)
 app.include_router(zones_router)
 app.include_router(signals_router)
 app.include_router(strategies_router)
+app.include_router(radar_router)
 
 
 @app.get("/health")
@@ -358,6 +381,15 @@ async def sim_step(direction: str = Query(default="forward")):
     elif direction == "backward":
         sim._manual_offset = max(getattr(sim, '_manual_offset', 0) - 1, 0)
     return {"status": "ok", "offset": getattr(sim, '_manual_offset', 0)}
+
+
+@app.post("/api/sim/seek")
+async def sim_seek(position: float = Query(..., ge=0.0, le=1.0)):
+    """Seek replay to position (0.0 = start, 1.0 = end)."""
+    if not sim.active:
+        return JSONResponse(status_code=404, content={"error": "No active simulation"})
+    ok = sim.seek(position)
+    return {"status": "ok" if ok else "error", "position": position, **sim.status()}
 
 
 @app.on_event("startup")

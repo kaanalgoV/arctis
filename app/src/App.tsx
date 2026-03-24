@@ -600,14 +600,10 @@ export default function App() {
         {activePage === 'dashboard' && (
           <DashboardPage
             onNavigateToChart={() => setActivePage('chart')}
-            nqPrice={market === 'NQ' ? price : null}
-            nqChange={null}
-            esPrice={market === 'ES' ? price : null}
-            esChange={null}
-            biasData={biasData as BiasData | null}
-            confluenceData={confluenceData as ConfluenceAPIData | null}
-            sessionData={sessionData as SessionAPIData | null}
-            patternsData={patternsData as PatternsAPIData | null}
+            onOpenInWorkspace={(root) => {
+              storeSetMarket(root)
+              setActivePage('chart')
+            }}
           />
         )}
 
@@ -723,6 +719,15 @@ export default function App() {
           latencyMs={latencyMs}
           barsLoaded={barsCount}
           lastUpdate={lastUpdate}
+          replay={
+            mode === 'replay' && replay.simStatus
+              ? {
+                  active: replay.simStatus.active,
+                  progress_pct: replay.simStatus.progress_pct,
+                  current_date: replay.simStatus.current_date,
+                }
+              : null
+          }
         />
       </div>
 

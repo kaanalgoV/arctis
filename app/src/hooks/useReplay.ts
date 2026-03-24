@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useSettingsStore } from '../store/settings'
 
 interface SimStatus {
@@ -7,6 +7,9 @@ interface SimStatus {
   visible_bars: number
   total_bars: number
   progress_pct: number
+  current_date?: string | null
+  market?: string | null
+  timeframe?: string | null
 }
 
 export function useReplay(market: string, timeframe: string) {
@@ -53,6 +56,23 @@ export function useReplay(market: string, timeframe: string) {
     }
   }
 
+  const pollStatus = useCallback(async () => {
+    try {
+      const r = await fetch(`${engineUrl}/api/sim/status`)
+      if (!r.ok) return
+      const data = (await r.json()) as SimStatus | null | undefined
+      if (!data) return
+      setSimStatus(data)
+      setProgress(data.progress_pct ?? 0)
+      if (!data.active) {
+        setIsPlaying(false)
+        setProgress(100)
+      }
+    } catch {
+      // Silently fail
+    }
+  }, [engineUrl])
+
   const stop = async () => {
     try {
       await fetch(`${engineUrl}/api/sim/stop`, { method: 'POST' })
@@ -75,11 +95,17 @@ export function useReplay(market: string, timeframe: string) {
     setIsPlaying(true)
   }
 
-  const seek = async (progressPct: number) => {
-    // Stop current sim and restart at approximate bar index
-    // For now: restart from beginning (full seek not yet supported by backend)
-    setProgress(progressPct)
-  }
+  const seek = useCallback(async (position: number) => {
+    // position is 0–100 (from ProgressTrack) — convert to 0.0–1.0 for backend
+    const pct = position / 100
+    try {
+      await fetch(`${engineUrl}/api/sim/seek?position=${pct.toFixed(6)}`, { method: 'POST' })
+      await pollStatus()
+    } catch {
+      // Silently fail — update local progress optimistically so UI stays responsive
+      setProgress(position)
+    }
+  }, [engineUrl, pollStatus])
 
   const changeDate = (direction: 'prev' | 'next') => {
     if (availableDates.length === 0 || !replayDate) return
@@ -106,22 +132,7 @@ export function useReplay(market: string, timeframe: string) {
 
     const intervalMs = Math.max(100, Math.round(1000 / speed))
 
-    pollRef.current = setInterval(async () => {
-      try {
-        const r = await fetch(`${engineUrl}/api/sim/status`)
-        if (!r.ok) return
-        const data = (await r.json()) as SimStatus | null | undefined
-        if (!data) return
-        setSimStatus(data)
-        setProgress(data.progress_pct ?? 0)
-        if (!data.active) {
-          setIsPlaying(false)
-          setProgress(100)
-        }
-      } catch {
-        // Silently fail
-      }
-    }, intervalMs)
+    pollRef.current = setInterval(() => void pollStatus(), intervalMs)
 
     return () => {
       if (pollRef.current !== null) {
@@ -129,7 +140,7 @@ export function useReplay(market: string, timeframe: string) {
         pollRef.current = null
       }
     }
-  }, [isPlaying, speed])
+  }, [isPlaying, speed, pollStatus])
 
   return {
     isPlaying,
