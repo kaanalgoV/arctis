@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { AnimatePresence, motion } from 'framer-motion'
 import { useMarketData } from '@/hooks/useMarketData'
 import { useAnalysis } from '@/hooks/useAnalysis'
 import { useReplay } from '@/hooks/useReplay'
@@ -268,7 +269,7 @@ export default function App() {
   // ── Chart bars via hook (REST + WebSocket auto-reconnect) ──────────────────
   const { bars, isLoading, error } = useMarketData({ pauseWs: mode === 'replay' })
   const { wsStatus } = useMarketStore()
-  const isConnected = wsStatus === 'connected'
+  const isConnected = wsStatus === 'connected' || bars.length > 0
   const barsCount = bars.length
 
   // ── Analysis via hook (replaces 10 parallel fetches) ──────────────────────
@@ -351,10 +352,18 @@ export default function App() {
   })()
   const currentPrice = livePrice ?? lastClose ?? null
 
+  // ── Right panel toggle ────────────────────────────────────────────────────
+  const [rightPanelOpen, setRightPanelOpen] = useState(true)
+  const [hudVisible, setHudVisible] = useState(true)
+
   // ── Overlay toggle state ───────────────────────────────────────────────────
-  const [activeOverlays, setActiveOverlays] = useState<Set<OverlayKey>>(
-    () => new Set<OverlayKey>(['vwap', 'ema', 'volume', 'vp'])
-  )
+  const [activeOverlays, setActiveOverlays] = useState<Set<OverlayKey>>(() => {
+    const stored = useSettingsStore.getState().overlays
+    const keys = Object.entries(stored)
+      .filter(([, v]) => v)
+      .map(([k]) => k as OverlayKey)
+    return keys.length > 0 ? new Set<OverlayKey>(keys) : new Set<OverlayKey>(['vwap', 'ema', 'volume', 'vp'])
+  })
 
   const handleToggleOverlay = useCallback((key: OverlayKey) => {
     setActiveOverlays((prev) => {
@@ -522,8 +531,8 @@ export default function App() {
   // ── Determine grid layout based on active page ────────────────────────────
   // Dashboard / Patterns: no right panel (52px sidebar + main area)
   // Chart / Replay: with right panel (52px sidebar + main + 280px right)
-  const showRightPanel = activePage === 'chart'
-  const gridCols = showRightPanel ? '52px 1fr 280px' : '52px 1fr'
+  const showRightPanel = activePage === 'chart' && rightPanelOpen
+  const gridCols = showRightPanel ? '52px 1fr 300px' : '52px 1fr'
 
   // Sidebar's active item: replay maps to 'replay', otherwise use activePage
   const sidebarActive: ActivePage = mode === 'replay' ? 'replay' : activePage
@@ -534,7 +543,7 @@ export default function App() {
       style={{
         display: 'grid',
         gridTemplateColumns: gridCols,
-        gridTemplateRows: '48px 28px 1fr 24px',
+        gridTemplateRows: hudVisible ? '44px 32px 1fr' : '44px 1fr',
       }}
     >
       {/* Sidebar — col 1, all rows */}
@@ -556,35 +565,41 @@ export default function App() {
           currentPrice={price}
           isConnected={isConnected}
           onSettingsClick={() => setShowSettings(true)}
+          rightPanelOpen={rightPanelOpen}
+          onToggleRightPanel={() => setRightPanelOpen((v) => !v)}
+          hudVisible={hudVisible}
+          onToggleHud={() => setHudVisible(v => !v)}
         />
       </div>
 
       {/* HUD strip — col 2, row 2 */}
-      <div style={{ gridColumn: '2', gridRow: '2' }}>
-        <HudStrip
-          rvol={latestRvol}
-          rsi={latestRsi?.rsi ?? null}
-          rsiDivergence={
-            latestRsi?.divergence
-              ? latestRsi.rsi < 30
-                ? 'bullish'
-                : latestRsi.rsi > 70
-                  ? 'bearish'
-                  : 'bullish'
-              : null
-          }
-          emaAlignment={latestEmaAlignment}
-          vwapPosition={vwapPosition}
-          sessionName={hudSessionName}
-          barCount={barsCount > 0 ? barsCount : null}
-        />
-      </div>
+      {hudVisible && (
+        <div style={{ gridColumn: '2', gridRow: '2' }}>
+          <HudStrip
+            rvol={latestRvol}
+            rsi={latestRsi?.rsi ?? null}
+            rsiDivergence={
+              latestRsi?.divergence
+                ? latestRsi.rsi < 30
+                  ? 'bullish'
+                  : latestRsi.rsi > 70
+                    ? 'bearish'
+                    : 'bullish'
+                : null
+            }
+            emaAlignment={latestEmaAlignment}
+            vwapPosition={vwapPosition}
+            sessionName={hudSessionName}
+            barCount={barsCount > 0 ? barsCount : null}
+          />
+        </div>
+      )}
 
       {/* Mode toggle — col 3, row 2 — only when right panel is visible */}
       {showRightPanel && (
         <div
           className="flex items-center justify-end px-3 gap-0.5 border-b border-[var(--color-border-subtle)] bg-[var(--color-surface-secondary)]/95"
-          style={{ gridColumn: '3', gridRow: '2' }}
+          style={{ gridColumn: '3', gridRow: hudVisible ? '2' : '1' }}
         >
           {(['live', 'replay'] as AppMode[]).map((m) => (
             <button
@@ -607,55 +622,66 @@ export default function App() {
       )}
 
       {/* Main content area — col 2, row 3 */}
-      <div style={{ gridColumn: '2', gridRow: '3' }} className="overflow-hidden">
-        {activePage === 'dashboard' && (
-          <DashboardPage
-            onNavigateToChart={() => setActivePage('chart')}
-            onOpenInWorkspace={(root) => {
-              storeSetMarket(root)
-              setActivePage('chart')
-            }}
-          />
-        )}
+      <div style={{ gridColumn: '2', gridRow: hudVisible ? '3' : '2' }} className="overflow-hidden">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activePage}
+            className="h-full"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.12 }}
+          >
+            {activePage === 'dashboard' && (
+              <DashboardPage
+                onNavigateToChart={() => setActivePage('chart')}
+                onOpenInWorkspace={(root) => {
+                  storeSetMarket(root)
+                  setActivePage('chart')
+                }}
+              />
+            )}
 
-        {activePage === 'chart' && (
-          <ChartPage
-            symbol={symbol}
-            chartBars={chartBars}
-            isLoading={isLoading}
-            isConnected={isConnected}
-            error={error}
-            activeOverlays={activeOverlays}
-            onToggleOverlay={handleToggleOverlay}
-            indicatorData={indicatorData as IndicatorData | null}
-            structureBreaks={structureData?.structure_breaks}
-            patternAnnotations={(patternsData as PatternsAPIData | null)?.annotations}
-            zones={zonesData?.zones}
-            drawings={drawings}
-            activeTool={activeTool}
-            onSelectTool={setActiveTool}
-            onClearDrawings={clearDrawings}
-            onChartClick={activeTool ? handleChartClick : undefined}
-            scrollToTimestamp={scrollToTimestamp}
-            onChartReady={handleChartReady}
-            signals={(signalsData as any)?.signals}
-            mode={mode}
-            replay={replay}
-            replayCurrentTime={replayCurrentTime}
-            replayTotalTime={replayTotalTime}
-          />
-        )}
+            {activePage === 'chart' && (
+              <ChartPage
+                symbol={symbol}
+                chartBars={chartBars}
+                isLoading={isLoading}
+                isConnected={isConnected}
+                error={error}
+                activeOverlays={activeOverlays}
+                onToggleOverlay={handleToggleOverlay}
+                indicatorData={indicatorData as IndicatorData | null}
+                structureBreaks={structureData?.structure_breaks}
+                patternAnnotations={(patternsData as PatternsAPIData | null)?.annotations}
+                zones={zonesData?.zones}
+                drawings={drawings}
+                activeTool={activeTool}
+                onSelectTool={setActiveTool}
+                onClearDrawings={clearDrawings}
+                onChartClick={activeTool ? handleChartClick : undefined}
+                scrollToTimestamp={scrollToTimestamp}
+                onChartReady={handleChartReady}
+                signals={(signalsData as any)?.signals}
+                mode={mode}
+                replay={replay}
+                replayCurrentTime={replayCurrentTime}
+                replayTotalTime={replayTotalTime}
+              />
+            )}
 
-        {activePage === 'patterns' && (
-          <PatternsPage data={patternsData as PatternsAPIData | null} />
-        )}
+            {activePage === 'patterns' && (
+              <PatternsPage data={patternsData as PatternsAPIData | null} />
+            )}
+          </motion.div>
+        </AnimatePresence>
       </div>
 
       {/* Right panel — col 3, rows 2-3 — only when chart page is active */}
       {showRightPanel && (
         <div
           className="border-l border-[var(--color-border-subtle)] bg-[var(--color-surface-secondary)]/95 overflow-y-auto"
-          style={{ gridColumn: '3', gridRow: '3' }}
+          style={{ gridColumn: '3', gridRow: hudVisible ? '3' : '2' }}
         >
           <RightPanelSection
             title="Signals"
@@ -715,25 +741,6 @@ export default function App() {
           </RightPanelSection>
         </div>
       )}
-
-      {/* StatusBar — col 1 to end, last row */}
-      <div style={{ gridColumn: '1 / -1', gridRow: '4' }}>
-        <StatusBar
-          connected={isConnected}
-          latencyMs={latencyMs}
-          barsLoaded={barsCount}
-          lastUpdate={lastUpdate}
-          replay={
-            mode === 'replay' && replay.simStatus
-              ? {
-                  active: replay.simStatus.active,
-                  progress_pct: replay.simStatus.progress_pct,
-                  current_date: replay.simStatus.current_date,
-                }
-              : null
-          }
-        />
-      </div>
 
       {/* Settings slide-over panel — fixed overlay, always available */}
       <SettingsPanel

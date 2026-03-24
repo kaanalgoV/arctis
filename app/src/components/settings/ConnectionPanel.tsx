@@ -109,17 +109,20 @@ function RithmicTab() {
     }
     setLoading(true)
     setError(null)
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 20000)
     try {
       saveRithmicCreds(username, password, server)
       const params = new URLSearchParams({
         username: username.trim(),
         password: password,
         server,
-        system: 'Rithmic Paper',
       })
       const r = await fetch(`${config.apiBase}/api/live/rithmic/login?${params.toString()}`, {
         method: 'POST',
+        signal: controller.signal,
       })
+      clearTimeout(timeoutId)
       const d = await r.json() as { connected?: boolean; username?: string; server?: string; error?: string }
       if (d.error) {
         setError(d.error)
@@ -130,7 +133,12 @@ function RithmicTab() {
         setConnectedServer(d.server ?? server)
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Verbindung fehlgeschlagen')
+      clearTimeout(timeoutId)
+      if (e instanceof DOMException && e.name === 'AbortError') {
+        setError('Verbindungs-Timeout (20s)')
+      } else {
+        setError(e instanceof Error ? e.message : 'Verbindung fehlgeschlagen')
+      }
     } finally {
       setLoading(false)
     }
@@ -306,7 +314,7 @@ function RithmicTab() {
             className={cn(
               'absolute right-2 flex items-center justify-center',
               'text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]',
-              'transition-colors duration-120 outline-none',
+              'transition-colors duration-150 outline-none',
             )}
             tabIndex={-1}
             aria-label={showPw ? 'Passwort verbergen' : 'Passwort anzeigen'}
@@ -315,7 +323,7 @@ function RithmicTab() {
           </button>
         </div>
         <span style={{ fontSize: 10, color: 'var(--color-text-muted)' }}>
-          Zugangsdaten werden lokal gespeichert — nie an externe Server gesendet
+          Im Browser gespeichert (unverschluesselt) — nie an externe Server uebertragen
         </span>
       </div>
 
@@ -411,12 +419,15 @@ function DatabentoTab() {
     }
     setLoading(true)
     setError(null)
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 20000)
     try {
       localStorage.setItem('arctis_api_key', apiKey)
       const r = await fetch(
         `${config.apiBase}/api/live/connect?api_key=${encodeURIComponent(apiKey)}`,
-        { method: 'POST' },
+        { method: 'POST', signal: controller.signal },
       )
+      clearTimeout(timeoutId)
       const d = await r.json() as { connected?: boolean; error?: string }
       if (d.error) {
         setError(d.error)
@@ -425,7 +436,12 @@ function DatabentoTab() {
         setConnected(!!d.connected)
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Verbindung fehlgeschlagen')
+      clearTimeout(timeoutId)
+      if (e instanceof DOMException && e.name === 'AbortError') {
+        setError('Verbindungs-Timeout (20s)')
+      } else {
+        setError(e instanceof Error ? e.message : 'Verbindung fehlgeschlagen')
+      }
     } finally {
       setLoading(false)
     }
@@ -525,7 +541,7 @@ function DatabentoTab() {
             className={cn(
               'absolute right-2 flex items-center justify-center',
               'text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]',
-              'transition-colors duration-120 outline-none',
+              'transition-colors duration-150 outline-none',
             )}
             tabIndex={-1}
             aria-label={showKey ? 'API Key verbergen' : 'API Key anzeigen'}
@@ -534,7 +550,7 @@ function DatabentoTab() {
           </button>
         </div>
         <span style={{ fontSize: 10, color: 'var(--color-text-muted)' }}>
-          Lokal gespeichert — nie an externe Server gesendet
+          Im Browser gespeichert (unverschluesselt) — nie an externe Server uebertragen
         </span>
       </div>
 
