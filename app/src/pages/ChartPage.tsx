@@ -9,7 +9,7 @@ import type { OHLCVBar } from '@/types/market'
 import type { IndicatorData } from '@/types/analysis'
 import type { PatternsAPIData } from '@/components/panels/PatternsPanel'
 import type { IChartApi } from 'lightweight-charts'
-import type { Drawing } from '@/hooks/useDrawings'
+import type { Drawing, DrawingTool } from '@/hooks/useDrawings'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -25,12 +25,16 @@ interface ReplayState {
   speed: number
   progress: number
   replayDate: string | null
+  availableDates: string[]
   simStatus: { visible_bars: number; total_bars: number } | null
-  start: () => Promise<void>
+  start: (date?: string) => Promise<void>
   stop: () => Promise<void>
+  pause: () => void
+  resume: () => void
   setSpeed: (s: number) => void
+  setReplayDate: (date: string) => void
   seek: (pct: number) => void
-  changeDate: (date: string) => void
+  changeDate: (direction: 'prev' | 'next') => void
 }
 
 export interface ChartPageProps {
@@ -50,12 +54,14 @@ export interface ChartPageProps {
   zones: ChartZone[] | undefined
   // Drawings
   drawings: Drawing[]
-  activeTool: string | null
-  onSelectTool: (tool: string | null) => void
+  activeTool: DrawingTool | null
+  onSelectTool: (tool: DrawingTool | null) => void
   onClearDrawings: () => void
   onChartClick?: (price: number, timestamp: number) => void
   scrollToTimestamp: number | null
   onChartReady: (chart: IChartApi) => void
+  // Signals (optional — rendered externally in right panel)
+  signals?: unknown
   // Mode
   mode: 'live' | 'replay'
   replay: ReplayState
@@ -191,14 +197,25 @@ export function ChartPage({
             currentTime={replayCurrentTime}
             totalTime={replayTotalTime}
             date={replay.replayDate ?? ''}
-            onPlay={() => void replay.start()}
-            onPause={() => void replay.stop()}
+            availableDates={replay.availableDates}
+            onPlay={() => {
+              if (replay.isPlaying) {
+                replay.resume()
+              } else {
+                void replay.start()
+              }
+            }}
+            onPause={() => replay.pause()}
             onSpeedChange={(s) => {
               replay.setSpeed(s)
               if (replay.isPlaying) void replay.start()
             }}
-            onSeek={replay.seek}
-            onDateChange={replay.changeDate}
+            onSeek={(pct) => replay.seek(pct)}
+            onDateChange={(dir) => replay.changeDate(dir)}
+            onSelectDate={(date) => {
+              replay.setReplayDate(date)
+              void replay.stop().then(() => replay.start(date))
+            }}
           />
         </div>
       )}

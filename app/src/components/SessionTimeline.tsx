@@ -1,4 +1,4 @@
-import type { SessionStats } from "./Dashboard";
+import type { SessionData } from "@/types/analysis";
 
 const SESSION_ORDER = ["premarket", "ny_open", "midday", "power_hour", "after_hours"];
 
@@ -18,7 +18,7 @@ const SESSION_COLORS: Record<string, string> = {
   after_hours: "#4a5568",
 };
 
-export function SessionTimeline({ data }: { data: SessionStats | null }) {
+export function SessionTimeline({ data }: { data: SessionData | null }) {
   if (!data) return null;
 
   const totalBars = SESSION_ORDER.reduce((sum, s) => sum + (data.session_stats[s]?.bar_count || 0), 0);
