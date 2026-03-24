@@ -150,25 +150,51 @@ export function useMarketData(options?: { pauseWs?: boolean }) {
   // Falls back to DB bars when live is not available.
   // ---------------------------------------------------------------------------
 
-  // Silent poll-refresh: reload bars every 5s to pick up new Rithmic bars from DB
-  // Does NOT set isLoading (avoids skeleton flash on every poll)
+  // Silent poll-refresh: check for new bars every 5s from DB
+  // Only appends/updates the LAST bar — doesn't replace entire array (avoids chart jump)
+  const lastBarTsRef = useRef<number>(0)
+
   useEffect(() => {
     if (options?.pauseWs) return
     const interval = setInterval(async () => {
       try {
-        const url = `${engineUrl}/api/db/bars?symbol=${symbol}&days=${days}&timeframe=${timeframe}`
+        // Only fetch last 1 day to get newest bars quickly
+        const url = `${engineUrl}/api/db/bars?symbol=${symbol}&days=1&timeframe=${timeframe}`
         const res = await fetch(url)
         if (!res.ok) return
         const data = await res.json()
         const freshBars: Bar[] = data.bars || []
-        if (freshBars.length > 0) {
-          setBars(freshBars)
-          setLastBarTs(freshBars[freshBars.length - 1].timestamp)
-        }
+        if (freshBars.length === 0) return
+
+        const latestBar = freshBars[freshBars.length - 1]
+        if (latestBar.timestamp <= lastBarTsRef.current) return // No new data
+
+        lastBarTsRef.current = latestBar.timestamp
+        setLastBarTs(latestBar.timestamp)
+
+        setBars(prev => {
+          if (prev.length === 0) return freshBars
+
+          const lastPrev = prev[prev.length - 1]
+          if (latestBar.timestamp === lastPrev.timestamp) {
+            // Update last bar (same candle, new close/high/low)
+            if (latestBar.close !== lastPrev.close || latestBar.high !== lastPrev.high || latestBar.low !== lastPrev.low) {
+              return [...prev.slice(0, -1), latestBar]
+            }
+            return prev // No change
+          }
+
+          // Find new bars to append (bars after our last known timestamp)
+          const newBars = freshBars.filter(b => b.timestamp > lastPrev.timestamp)
+          if (newBars.length > 0) {
+            return [...prev, ...newBars]
+          }
+          return prev
+        })
       } catch { /* silent fail */ }
     }, 5_000)
     return () => clearInterval(interval)
-  }, [symbol, timeframe, days, engineUrl, setLastBarTs, options?.pauseWs])
+  }, [symbol, timeframe, engineUrl, setLastBarTs, options?.pauseWs])
 
   return { bars, isLoading, error, lastHeartbeat, reload: loadBars }
 }
