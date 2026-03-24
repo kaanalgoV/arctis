@@ -242,7 +242,11 @@ export function SimpleChart({
         vertLine: { color: '#21262D', style: 3, width: 1, labelBackgroundColor: '#222830' },
         horzLine: { color: '#21262D', style: 3, width: 1, labelBackgroundColor: '#222830' },
       },
-      rightPriceScale: { borderColor: '#272F3A', autoScale: true },
+      rightPriceScale: {
+        borderColor: '#272F3A',
+        autoScale: true,
+        scaleMargins: { top: 0.1, bottom: 0.2 },
+      },
       timeScale: { borderColor: '#272F3A', timeVisible: true, secondsVisible: false },
     })
     chartRef.current = chart
@@ -354,6 +358,8 @@ export function SimpleChart({
   }, [])
 
   // ── Data update: runs when bars change, does NOT recreate chart ────────────
+  const prevBarCountRef = useRef(0)
+
   useEffect(() => {
     const candleSeries = candleRef.current
     const volumeSeries = volumeSeriesRef.current
@@ -377,9 +383,38 @@ export function SimpleChart({
       }))
     )
 
-    // Always fitContent after setData to ensure proper scaling
-    chartRef.current?.timeScale().fitContent()
-    isFirstLoadRef.current = false
+    const chart = chartRef.current
+    if (chart) {
+      const prevCount = prevBarCountRef.current
+      const newCount = bars.length
+
+      // Show last ~200 bars on initial load (± ~3000 ticks for NQ at 15min)
+      // User can then zoom/pan manually
+      const VISIBLE_BARS = 200
+
+      if (isFirstLoadRef.current || (prevCount === 0 && newCount > 0) || Math.abs(newCount - prevCount) > 50) {
+        // Initial load, mode switch, or big data change: show last N bars
+        if (newCount > VISIBLE_BARS) {
+          const from = bars[newCount - VISIBLE_BARS].timestamp
+          const to = bars[newCount - 1].timestamp
+          chart.timeScale().setVisibleRange({
+            from: from as any,
+            to: to as any,
+          })
+        } else {
+          chart.timeScale().fitContent()
+        }
+        isFirstLoadRef.current = false
+      } else if (newCount > prevCount && newCount <= 30) {
+        // During early replay (few bars): fit
+        chart.timeScale().fitContent()
+      } else {
+        // Normal incremental update: scroll to show latest bar, keep zoom
+        chart.timeScale().scrollToRealTime()
+      }
+
+      prevBarCountRef.current = newCount
+    }
   }, [bars])
 
   // ── VWAP data + visibility ─────────────────────────────────────────────────
