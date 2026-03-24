@@ -143,7 +143,9 @@ app.add_middleware(
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request, exc):
-    return JSONResponse(status_code=500, content={"error": str(exc)})
+    import logging
+    logging.getLogger(__name__).exception("Unhandled exception: %s", exc)
+    return JSONResponse(status_code=500, content={"error": "Internal server error"})
 
 from arctis.routes.analysis import router as analysis_router
 from arctis.routes.probability import router as probability_router
@@ -156,6 +158,7 @@ from arctis.routes.signals import router as signals_router
 from arctis.routes.strategies import router as strategies_router
 from arctis.routes.radar import router as radar_router
 from arctis.routes.live import router as live_router
+from arctis.routes.backfill import router as backfill_router
 app.include_router(analysis_router)
 app.include_router(probability_router)
 app.include_router(risk_router)
@@ -167,6 +170,7 @@ app.include_router(signals_router)
 app.include_router(strategies_router)
 app.include_router(radar_router)
 app.include_router(live_router)
+app.include_router(backfill_router)
 
 
 @app.get("/health")
@@ -422,6 +426,55 @@ async def start_bar_poller():
                     logger.error("Bar poll error for %s: %s", symbol, e)
 
     asyncio.create_task(poll_bars())
+
+
+@app.on_event("startup")
+async def auto_backfill():
+    """Automatically backfill missing days on startup using Databento."""
+    import os
+    key = os.environ.get("DATABENTO_API_KEY")
+    if not key:
+        logger.info("No DATABENTO_API_KEY — skipping auto-backfill")
+        return
+
+    async def _do_backfill():
+        await asyncio.sleep(3)  # Wait for DB to be ready
+        try:
+            from arctis.routes.backfill import _find_missing_days, _fetch_databento_bars
+            from arctis.db import get_engine
+            engine = get_engine()
+
+            for symbol in ["NQM6", "ESM6"]:
+                missing = _find_missing_days(engine, symbol, lookback_days=7)
+                if not missing:
+                    logger.info("Backfill %s: no missing days", symbol)
+                    continue
+
+                logger.info("Backfill %s: %d missing days — %s", symbol, len(missing),
+                            [d.isoformat() for d in missing])
+
+                for target_date in missing:
+                    try:
+                        bars = await _fetch_databento_bars(symbol, target_date)
+                        count = 0
+                        for bar in bars:
+                            try:
+                                with engine.begin() as conn:
+                                    conn.execute(text("""
+                                        INSERT INTO candles (ts, symbol, timeframe, o, h, l, c, volume)
+                                        VALUES (:ts, :sym, '1m', :o, :h, :l, :c, :v)
+                                        ON CONFLICT (ts, symbol, timeframe) DO NOTHING
+                                    """), bar)
+                                count += 1
+                            except Exception:
+                                pass
+                        logger.info("Backfilled %s %s: %d bars", symbol, target_date, count)
+                    except Exception as e:
+                        logger.warning("Backfill %s %s failed: %s", symbol, target_date, e)
+        except Exception:
+            logger.exception("Auto-backfill failed")
+
+    asyncio.create_task(_do_backfill())
 
 
 @app.websocket("/ws/bars/{symbol}")
