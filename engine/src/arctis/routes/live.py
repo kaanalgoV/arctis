@@ -57,83 +57,97 @@ _INSTRUMENTS = [
 # Background streaming task
 # ---------------------------------------------------------------------------
 
-async def _stream_time_bars(client) -> None:
-    """Receives 1-minute time bar events and writes them to the DB."""
+async def _stream_ticks_to_bars(client) -> None:
+    """Aggregates last-trade ticks into 1-minute OHLCV bars and writes to DB.
+
+    Uses on_tick (LastTrade events) instead of on_time_bar because time bar
+    subscriptions don't fire reliably with async_rithmic on all servers.
+    """
     from arctis.db import get_engine
 
     queue: asyncio.Queue = asyncio.Queue()
 
-    async def _on_time_bar(data: dict) -> None:
+    async def _on_tick(data: dict) -> None:
         await queue.put(data)
 
-    client.on_time_bar += _on_time_bar
+    client.on_tick += _on_tick
 
     engine = get_engine()
 
-    logger.info("Rithmic streaming task started — waiting for time bars …")
+    # In-memory bar accumulators keyed by (symbol, minute_ts)
+    bars: dict[tuple[str, int], dict] = {}
+
+    logger.info("Rithmic tick→bar streaming task started")
+
+    def _flush_bar(key: tuple[str, int], bar: dict) -> None:
+        """Write completed bar to DB."""
+        symbol, minute_ts = key
+        bar_dt = datetime.fromtimestamp(minute_ts, tz=timezone.utc)
+        try:
+            # Insert into the real candles table (ohlcv_1m is a view)
+            upsert_sql = text("""
+                INSERT INTO candles (ts, symbol, timeframe, o, h, l, c, volume)
+                VALUES (:ts, :sym, '1m', :o, :h, :l, :c, :v)
+                ON CONFLICT (ts, symbol, timeframe) DO UPDATE
+                    SET h = GREATEST(candles.h, EXCLUDED.h),
+                        l = LEAST(candles.l, EXCLUDED.l),
+                        c = EXCLUDED.c,
+                        volume = EXCLUDED.volume
+            """)
+            with engine.begin() as conn:
+                conn.execute(upsert_sql, {
+                    "ts": bar_dt, "sym": symbol,
+                    "o": bar["open"], "h": bar["high"],
+                    "l": bar["low"], "c": bar["close"],
+                    "v": bar["volume"],
+                })
+            logger.info("Bar %s %s O=%.2f H=%.2f L=%.2f C=%.2f V=%d",
+                        symbol, bar_dt.strftime("%H:%M"), bar["open"], bar["high"],
+                        bar["low"], bar["close"], bar["volume"])
+        except Exception:
+            logger.exception("Error writing bar to DB")
 
     try:
         while True:
             try:
                 data = await asyncio.wait_for(queue.get(), timeout=30.0)
             except asyncio.TimeoutError:
-                # No bar received in 30 s — just keep looping (heartbeat handled by library)
                 continue
 
-            # data keys (from HistoryPlant._process_response template_id=250):
-            #   symbol, exchange, bar_end_datetime, open_price, high_price, low_price,
-            #   close_price, volume, marker, type, ...
-            try:
-                symbol: str = data.get("symbol", "")
-                bar_dt: datetime = data.get("bar_end_datetime")
+            price = data.get("trade_price")
+            symbol = data.get("symbol", "")
+            size = int(data.get("trade_size", 0) or 0)
+            tick_ts = data.get("ssboe", 0) or int(time.time())
 
-                if bar_dt is None:
-                    marker = data.get("marker")
-                    bar_dt = datetime.fromtimestamp(marker, tz=timezone.utc) if marker else datetime.now(timezone.utc)
-                elif bar_dt.tzinfo is None:
-                    bar_dt = bar_dt.replace(tzinfo=timezone.utc)
+            if not price or not symbol:
+                continue
 
-                open_price = float(data.get("open_price", 0) or data.get("open", 0))
-                high_price = float(data.get("high_price", 0) or data.get("high", 0))
-                low_price = float(data.get("low_price", 0) or data.get("low", 0))
-                close_price = float(data.get("close_price", 0) or data.get("close", 0))
-                volume = int(data.get("volume", 0) or 0)
+            price = float(price)
+            # Round down to minute boundary
+            minute_ts = (tick_ts // 60) * 60
+            key = (symbol, minute_ts)
 
-                if not symbol or close_price == 0:
-                    logger.debug("Skipping incomplete bar: %s", data)
-                    continue
+            # Flush any old bars (previous minutes)
+            stale_keys = [k for k in bars if k[1] < minute_ts]
+            for k in stale_keys:
+                _flush_bar(k, bars.pop(k))
 
-                upsert_sql = text("""
-                    INSERT INTO ohlcv_1m (timestamp, symbol, open, high, low, close, volume)
-                    VALUES (:ts, :sym, :o, :h, :l, :c, :v)
-                    ON CONFLICT (timestamp, symbol) DO UPDATE
-                        SET open   = EXCLUDED.open,
-                            high   = EXCLUDED.high,
-                            low    = EXCLUDED.low,
-                            close  = EXCLUDED.close,
-                            volume = EXCLUDED.volume
-                """)
-
-                with engine.begin() as conn:
-                    conn.execute(upsert_sql, {
-                        "ts": bar_dt,
-                        "sym": symbol,
-                        "o": open_price,
-                        "h": high_price,
-                        "l": low_price,
-                        "c": close_price,
-                        "v": volume,
-                    })
-
-                logger.debug("Wrote bar %s %s O=%.2f H=%.2f L=%.2f C=%.2f V=%d",
-                             symbol, bar_dt, open_price, high_price, low_price, close_price, volume)
-
-            except Exception:
-                logger.exception("Error writing time bar to DB: %s", data)
+            # Update current minute bar
+            if key not in bars:
+                bars[key] = {"open": price, "high": price, "low": price, "close": price, "volume": size}
+            else:
+                b = bars[key]
+                b["high"] = max(b["high"], price)
+                b["low"] = min(b["low"], price)
+                b["close"] = price
+                b["volume"] += size
 
     except asyncio.CancelledError:
-        logger.info("Rithmic streaming task cancelled")
-        client.on_time_bar -= _on_time_bar
+        # Flush remaining bars
+        for k, b in bars.items():
+            _flush_bar(k, b)
+        client.on_tick -= _on_tick
+        logger.info("Rithmic tick streaming task cancelled")
         raise
 
 
@@ -178,7 +192,7 @@ async def rithmic_login(
 
     try:
         from async_rithmic import RithmicClient
-        from async_rithmic.enums import SysInfraType, TimeBarType, DataType
+        from async_rithmic.enums import SysInfraType, DataType
 
         client = RithmicClient(
             user=username,
@@ -189,33 +203,20 @@ async def rithmic_login(
             url=url,
         )
 
-        # Connect only to ticker and history plants (no order/pnl needed for market data)
-        await client.connect(plants=[
-            SysInfraType.TICKER_PLANT,
-            SysInfraType.HISTORY_PLANT,
-        ])
+        # Connect to ticker plant only (last trade ticks → aggregate to bars)
+        await client.connect(plants=[SysInfraType.TICKER_PLANT])
 
-        # Subscribe to 1-minute time bars for NQ and ES
-        for symbol, exchange in _INSTRUMENTS:
-            await client.subscribe_to_time_bar_data(
-                symbol=symbol,
-                exchange=exchange,
-                bar_type=TimeBarType.MINUTE_BAR,
-                bar_type_periods=1,
-            )
-            logger.info("Subscribed to 1m time bars: %s/%s", symbol, exchange)
-
-        # Also subscribe to last trade ticks for real-time price updates
+        # Subscribe to last trade ticks for each instrument
         for symbol, exchange in _INSTRUMENTS:
             await client.subscribe_to_market_data(
                 symbol=symbol,
                 exchange=exchange,
                 data_type=DataType.LAST_TRADE,
             )
-            logger.info("Subscribed to last trade: %s/%s", symbol, exchange)
+            logger.info("Subscribed to last trade ticks: %s/%s", symbol, exchange)
 
-        # Start background task
-        task = asyncio.create_task(_stream_time_bars(client), name="rithmic_stream")
+        # Start background tick→bar aggregation task
+        task = asyncio.create_task(_stream_ticks_to_bars(client), name="rithmic_stream")
 
         _rithmic_client = client
         _rithmic_task = task
