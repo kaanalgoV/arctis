@@ -463,7 +463,7 @@ async def auto_backfill():
                                     conn.execute(text("""
                                         INSERT INTO candles (ts, symbol, timeframe, o, h, l, c, volume)
                                         VALUES (:ts, :sym, '1m', :o, :h, :l, :c, :v)
-                                        ON CONFLICT (ts, symbol, timeframe) DO NOTHING
+                                        ON CONFLICT (symbol, timeframe, ts) DO NOTHING
                                     """), bar)
                                 count += 1
                             except Exception:

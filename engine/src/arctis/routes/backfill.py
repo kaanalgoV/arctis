@@ -22,25 +22,32 @@ _DATABENTO_SYMBOLS = {
 }
 
 
-def _find_missing_days(engine, symbol: str, lookback_days: int = 7) -> list[date]:
-    """Find trading days with no data in the last N days."""
+def _find_missing_days(engine, symbol: str, lookback_days: int = 7, min_bars: int = 100) -> list[date]:
+    """Find trading days with insufficient data in the last N days.
+
+    Days with fewer than min_bars are considered incomplete and will be backfilled.
+    """
     with engine.connect() as conn:
         r = conn.execute(text("""
-            SELECT DISTINCT ts::date as day
+            SELECT ts::date as day, count(*) as bars
             FROM candles
             WHERE symbol = :sym AND timeframe = '1m' AND ts > NOW() - :days * INTERVAL '1 day'
+            GROUP BY day
         """), {"sym": symbol, "days": lookback_days})
-        existing_days = {row[0] for row in r}
+        day_bars = {row[0]: row[1] for row in r}
 
-    # Generate all weekdays in range
     today = date.today()
-    all_days = []
+    missing = []
     for i in range(lookback_days):
         d = today - timedelta(days=i)
-        if d.weekday() < 5:  # Mon-Fri
-            all_days.append(d)
+        if d >= today:
+            continue
+        if d.weekday() >= 5 and d.weekday() != 6:  # Skip Saturday (but include Sunday = Globex open)
+            continue
+        bars = day_bars.get(d, 0)
+        if bars < min_bars:
+            missing.append(d)
 
-    missing = [d for d in all_days if d not in existing_days and d < today]
     return sorted(missing)
 
 
@@ -52,7 +59,7 @@ async def _fetch_databento_bars(symbol: str, target_date: date) -> list[dict]:
     if not key:
         raise RuntimeError("DATABENTO_API_KEY not set")
 
-    db_symbol = _DATABENTO_SYMBOLS.get(symbol, f"{symbol[:2]}.FUT")
+    db_symbol = symbol  # Use contract symbol directly (e.g. NQM6, ESM6)
     client = db.Historical(key)
 
     start = datetime.combine(target_date, datetime.min.time()).replace(tzinfo=timezone.utc)
@@ -128,7 +135,7 @@ async def run_backfill(
                         conn.execute(text("""
                             INSERT INTO candles (ts, symbol, timeframe, o, h, l, c, volume)
                             VALUES (:ts, :sym, '1m', :o, :h, :l, :c, :v)
-                            ON CONFLICT (ts, symbol, timeframe) DO NOTHING
+                            ON CONFLICT (symbol, timeframe, ts) DO NOTHING
                         """), bar)
                     count += 1
                 except Exception:

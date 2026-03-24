@@ -88,7 +88,7 @@ async def _stream_ticks_to_bars(client) -> None:
             upsert_sql = text("""
                 INSERT INTO candles (ts, symbol, timeframe, o, h, l, c, volume)
                 VALUES (:ts, :sym, '1m', :o, :h, :l, :c, :v)
-                ON CONFLICT (ts, symbol, timeframe) DO UPDATE
+                ON CONFLICT (symbol, timeframe, ts) DO UPDATE
                     SET h = GREATEST(candles.h, EXCLUDED.h),
                         l = LEAST(candles.l, EXCLUDED.l),
                         c = EXCLUDED.c,
