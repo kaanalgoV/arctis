@@ -84,40 +84,32 @@ function AiBubble({ results }: { results: ArctisResult[] }) {
             : r.action?.startsWith('VERPASST') ? '#EF4444'
             : '#8B949E'
 
-          const borderColor = r.type === 'signal' ? 'rgba(34,197,94,0.2)'
-            : r.type === 'no_signal' ? 'rgba(139,148,158,0.12)'
-            : 'rgba(92,184,240,0.12)'
-
           return (
             <div
               key={i}
-              className="rounded-lg px-2.5 py-2"
+              className="rounded-md px-2 py-1.5"
               style={{
-                background: 'var(--color-surface-secondary, #161B22)',
-                border: `1px solid ${borderColor}`,
+                background: r.type === 'signal' ? 'rgba(34,197,94,0.04)' : 'rgba(255,255,255,0.02)',
+                borderLeft: `2px solid ${r.type === 'signal' ? '#22C55E' : r.type === 'no_signal' ? '#8B949E' : '#5CB8F0'}`,
               }}
             >
-              <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center justify-between">
                 <span
-                  className="text-[10px] font-bold"
-                  style={{ color: r.type === 'signal' ? '#22C55E' : '#5CB8F0' }}
+                  className="text-[10px] font-bold tracking-wide"
+                  style={{ color: r.type === 'signal' ? '#22C55E' : '#E6EDF3' }}
                 >
                   {r.title}
                 </span>
                 {r.action && (
                   <span
-                    className="text-[8px] font-bold px-1.5 py-0.5 rounded"
-                    style={{
-                      color: actionColor,
-                      background: `${actionColor}12`,
-                      border: `1px solid ${actionColor}30`,
-                    }}
+                    className="text-[7px] font-black px-1.5 py-0.5 rounded-sm uppercase tracking-wider"
+                    style={{ color: actionColor, background: `${actionColor}15` }}
                   >
                     {r.action.split('—')[0].trim()}
                   </span>
                 )}
               </div>
-              <pre className="text-[10px] text-[#8B949E] leading-relaxed whitespace-pre-wrap m-0 font-mono">
+              <pre className="text-[9px] text-[#8B949E] leading-snug whitespace-pre-wrap m-0 mt-0.5 font-mono">
                 {r.content}
               </pre>
             </div>

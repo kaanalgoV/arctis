@@ -174,48 +174,27 @@ def _answer_question(question: str, ctx: dict) -> list[dict]:
 
     if category == "yesterday":
         if ctx["yday_close"] == 0:
-            return [{"title": "Gestern", "content": "Keine Daten von gestern verfuegbar.", "type": "status"}]
-
-        yday_dir = "gestiegen" if ctx["yday_close"] > ctx["yday_open"] else "gefallen"
+            return [{"title": "Gestern", "content": "Keine Daten.", "type": "status"}]
+        yday_dir = "+" if ctx["yday_close"] > ctx["yday_open"] else ""
         yday_chg = ctx["yday_close"] - ctx["yday_open"]
         return [{
-            "title": f"Gestern — {m}",
+            "title": f"Gestern {m}",
             "content": (
-                f"Der Markt ist {yday_dir} ({yday_chg:+,.2f} pts).\n"
-                f"Open:   {ctx['yday_open']:,.2f}\n"
-                f"High:   {ctx['yday_high']:,.2f}\n"
-                f"Low:    {ctx['yday_low']:,.2f}\n"
-                f"Close:  {ctx['yday_close']:,.2f}\n"
-                f"Range:  {ctx['yday_range']:,.2f} pts\n"
-                f"Volume: {ctx['yday_volume']:,}"
-            ),
-            "type": "status",
-        }, {
-            "title": "Heute vs Gestern",
-            "content": (
-                f"Aktuell: {p:,.2f} ({'+' if p > ctx['yday_close'] else ''}{p - ctx['yday_close']:,.2f} vs gestern Close)\n"
-                f"{'Ueber' if p > ctx['yday_high'] else 'Unter'} dem gestrigen High ({ctx['yday_high']:,.2f})\n"
-                f"{'Ueber' if p > ctx['yday_low'] else 'Unter'} dem gestrigen Low ({ctx['yday_low']:,.2f})"
+                f"O {ctx['yday_open']:,.2f}  H {ctx['yday_high']:,.2f}\n"
+                f"L {ctx['yday_low']:,.2f}  C {ctx['yday_close']:,.2f}\n"
+                f"Range {ctx['yday_range']:,.0f} pts  {yday_dir}{yday_chg:,.0f}\n"
+                f"Heute vs PDC: {p - ctx['yday_close']:+,.0f} pts"
             ),
             "type": "status",
         }]
 
     elif category == "price":
-        pvw = "ueber" if p > ctx["vwap"] else "unter"
-        ppoc = "ueber" if p > ctx["poc"] else "unter"
         return [{
-            "title": f"{m} — {p:,.2f}",
+            "title": f"{p:,.2f}",
             "content": (
-                f"Preis:    {p:,.2f}\n"
-                f"Tages-H:  {ctx['today_high']:,.2f}\n"
-                f"Tages-L:  {ctx['today_low']:,.2f}\n"
-                f"Change:   {ctx['today_change']:+,.2f} ({ctx['today_change_pct']:+.2f}%)\n"
-                f"Range:    {ctx['today_range']:,.2f} pts\n"
-                f"\n"
-                f"Preis {pvw} VWAP ({ctx['vwap']:,.2f})\n"
-                f"Preis {ppoc} POC ({ctx['poc']:,.2f})\n"
-                f"VAH: {ctx['vah']:,.2f} | VAL: {ctx['val']:,.2f}\n"
-                f"EMA9: {ctx['ema9']:,.2f} | EMA21: {ctx['ema21']:,.2f}"
+                f"H {ctx['today_high']:,.2f}  L {ctx['today_low']:,.2f}  {ctx['today_change']:+,.0f} pts\n"
+                f"{'>' if p > ctx['vwap'] else '<'} VWAP {ctx['vwap']:,.2f}  {'>' if p > ctx['poc'] else '<'} POC {ctx['poc']:,.2f}\n"
+                f"VAH {ctx['vah']:,.2f}  VAL {ctx['val']:,.2f}"
             ),
             "type": "status",
         }]
@@ -223,18 +202,10 @@ def _answer_question(question: str, ctx: dict) -> list[dict]:
     elif category == "bias":
         bs = ctx["bias"]
         bsc = ctx["bias_score"]
-        strength = "stark" if abs(bsc) > 5 else "moderat" if abs(bsc) > 2 else "schwach"
+        advice = "Pullbacks long." if "long" in bs.lower() else "Rallyes short." if "short" in bs.lower() else "Range — Kanten handeln."
         return [{
-            "title": f"Bias: {bs}",
-            "content": (
-                f"Score: {bsc:+d}/10 — {strength}\n"
-                f"Trend: {ctx['trend']}\n"
-                f"Confluence: {ctx['score']:+d} ({ctx['direction']})\n"
-                f"\n"
-                f"{'Der Markt tendiert nach oben. Pullbacks zum VWAP als Long-Entries suchen.' if 'long' in bs.lower() else ''}"
-                f"{'Der Markt tendiert nach unten. Rallyes zum VWAP als Short-Entries suchen.' if 'short' in bs.lower() else ''}"
-                f"{'Markt in Balance. Range-Kanten (VAH/VAL) handeln oder auf Breakout warten.' if 'long' not in bs.lower() and 'short' not in bs.lower() else ''}"
-            ),
+            "title": f"{bs} {bsc:+d}/10",
+            "content": f"Trend: {ctx['trend']}  Confluence: {ctx['score']:+d}\n{advice}",
             "type": "status",
         }]
 
@@ -258,13 +229,10 @@ def _answer_question(question: str, ctx: dict) -> list[dict]:
                     else: act = "WARTEN"
 
                 results.append({
-                    "title": f"{'LONG' if is_long else 'SHORT'} — {sig['type'].replace('_', ' ').upper()}",
+                    "title": f"{'L' if is_long else 'S'} {sig['type'].replace('_', ' ').upper()}",
                     "content": (
-                        f"Entry:  {e:,.2f}\n"
-                        f"Stop:   {s:,.2f} ({risk:,.1f} pts)\n"
-                        f"Target: {t:,.2f} ({reward:,.1f} pts)\n"
-                        f"R:R:    {sig['rr']:.1f}\n"
-                        f"Grund:  {sig['reason']}"
+                        f"E {e:,.2f}  SL {s:,.2f}  TP {t:,.2f}\n"
+                        f"Risk {risk:,.0f}  Rew {reward:,.0f}  R:R {sig['rr']:.1f}"
                     ),
                     "action": act,
                     "type": "signal",
@@ -278,12 +246,8 @@ def _answer_question(question: str, ctx: dict) -> list[dict]:
             ], key=lambda x: x[2])
             near = levels[0]
             results.append({
-                "title": "Kein aktives Setup",
-                "content": (
-                    f"Aktuell keine Signale. Markt bei {p:,.2f}.\n"
-                    f"Naechstes Key Level: {near[0]} bei {near[1]:,.2f} ({near[2]:,.1f} pts entfernt).\n"
-                    f"Confluence: {ctx['score']:+d} — {'zu schwach fuer Entry' if abs(ctx['score']) < 4 else 'Richtung erkennbar'}."
-                ),
+                "title": "Kein Setup",
+                "content": f"Naechstes Level: {near[0]} {near[1]:,.2f} ({near[2]:,.0f} pts)",
                 "action": "WARTEN",
                 "type": "no_signal",
             })
@@ -291,36 +255,28 @@ def _answer_question(question: str, ctx: dict) -> list[dict]:
 
     elif category == "session":
         return [{
-            "title": f"Session: {ctx['session']}",
+            "title": ctx["session"],
             "content": (
-                f"Aktuelle Session: {ctx['session']}\n"
-                f"Tages-Range bisher: {ctx['today_range']:,.2f} pts\n"
-                f"Tages-High: {ctx['today_high']:,.2f}\n"
-                f"Tages-Low:  {ctx['today_low']:,.2f}\n"
-                f"Volume:     {ctx['today_volume']:,}\n"
-                f"\n"
-                f"Gestern Close: {ctx['yday_close']:,.2f}\n"
-                f"Gestern Range: {ctx['yday_range']:,.2f} pts"
+                f"Range {ctx['today_range']:,.0f} pts  Vol {ctx['today_volume']:,}\n"
+                f"H {ctx['today_high']:,.2f}  L {ctx['today_low']:,.2f}\n"
+                f"PDC {ctx['yday_close']:,.2f}  PDR {ctx['yday_range']:,.0f}"
             ),
             "type": "status",
         }]
 
     elif category == "levels":
-        dist_vwap = p - ctx["vwap"]
-        dist_poc = p - ctx["poc"]
+        def _lvl(name, val):
+            d = p - val
+            arrow = "^" if d > 0 else "v"
+            return f"{name} {val:,.2f} {arrow}{abs(d):,.0f}"
         return [{
-            "title": "Key Levels",
-            "content": (
-                f"VWAP:  {ctx['vwap']:,.2f}  ({dist_vwap:+,.2f})\n"
-                f"POC:   {ctx['poc']:,.2f}  ({dist_poc:+,.2f})\n"
-                f"VAH:   {ctx['vah']:,.2f}  ({p - ctx['vah']:+,.2f})\n"
-                f"VAL:   {ctx['val']:,.2f}  ({p - ctx['val']:+,.2f})\n"
-                f"EMA9:  {ctx['ema9']:,.2f}  ({p - ctx['ema9']:+,.2f})\n"
-                f"EMA21: {ctx['ema21']:,.2f}  ({p - ctx['ema21']:+,.2f})\n"
-                f"\n"
-                f"Gestern:\n"
-                f"PDH: {ctx['yday_high']:,.2f} | PDL: {ctx['yday_low']:,.2f} | PDC: {ctx['yday_close']:,.2f}"
-            ),
+            "title": "Levels",
+            "content": "\n".join([
+                _lvl("VWAP", ctx["vwap"]), _lvl("POC", ctx["poc"]),
+                _lvl("VAH", ctx["vah"]), _lvl("VAL", ctx["val"]),
+                _lvl("EMA9", ctx["ema9"]), _lvl("EMA21", ctx["ema21"]),
+                f"PDH {ctx['yday_high']:,.2f}  PDL {ctx['yday_low']:,.2f}",
+            ]),
             "type": "status",
         }]
 
@@ -330,41 +286,33 @@ def _answer_question(question: str, ctx: dict) -> list[dict]:
             sig = sigs[0]
             risk = abs(sig["entry"] - sig["stop"])
             return [{
-                "title": "Risiko-Analyse",
+                "title": f"Risk: {risk:,.0f} pts",
                 "content": (
-                    f"Aktuelles Setup: {sig['type'].replace('_',' ').upper()}\n"
-                    f"Risiko: {risk:,.2f} pts pro Kontrakt\n"
-                    f"NQ Tick = $5 → Risiko = ${risk * 4 * 5:,.0f} pro Kontrakt\n"
-                    f"R:R: {sig['rr']:.1f}\n"
-                    f"Confidence: {sig['confidence']}\n"
-                    f"\nBei 2% Risiko auf 50k Konto:\n"
-                    f"Max Risiko: $1,000\n"
-                    f"Max Kontrakte: {max(1, int(1000 / (risk * 20)))}"
+                    f"{sig['type'].replace('_',' ').upper()} {sig['direction'].upper()}\n"
+                    f"R:R {sig['rr']:.1f}  ${risk * 20:,.0f}/ct\n"
+                    f"50k → max {max(1, int(1000 / (risk * 20)))} ct"
                 ),
                 "type": "status",
             }]
-        return [{"title": "Risiko", "content": "Kein aktives Setup — kein Risiko zu berechnen.", "type": "no_signal"}]
+        return [{"title": "Risk", "content": "Kein Setup offen.", "type": "no_signal"}]
 
     # Default: overview
-    pvw = "ueber" if p > ctx["vwap"] else "unter"
+    n_sigs = len(ctx["signals"])
     results = [{
-        "title": f"{m} — Ueberblick",
+        "title": f"{m} {p:,.2f}",
         "content": (
-            f"Preis: {p:,.2f} ({ctx['today_change']:+,.2f} heute)\n"
-            f"Session: {ctx['session']} | Trend: {ctx['trend']}\n"
-            f"Bias: {ctx['bias']} ({ctx['bias_score']:+d})\n"
-            f"Confluence: {ctx['score']:+d} → {ctx['direction']}\n"
-            f"Preis {pvw} VWAP ({ctx['vwap']:,.2f})\n"
-            f"{len(ctx['signals'])} aktive Signale"
+            f"{ctx['session']}  {ctx['trend']}  {ctx['bias']} {ctx['bias_score']:+d}\n"
+            f"Confluence {ctx['score']:+d} {ctx['direction']}\n"
+            f"{'>' if p > ctx['vwap'] else '<'} VWAP  {n_sigs} Signal{'e' if n_sigs != 1 else ''}"
         ),
         "type": "status",
     }]
     if ctx["signals"]:
         sig = ctx["signals"][0]
         results.append({
-            "title": f"Top Setup: {sig['type'].replace('_',' ').upper()} {sig['direction'].upper()}",
-            "content": f"Entry: {sig['entry']:,.2f} | Stop: {sig['stop']:,.2f} | Target: {sig['target']:,.2f} | R:R: {sig['rr']:.1f}",
-            "action": "BEREIT MACHEN" if sig["confidence"] != "high" else "EINSTEIGEN",
+            "title": f"{sig['direction'].upper()} {sig['type'].replace('_',' ').upper()}",
+            "content": f"E {sig['entry']:,.2f}  SL {sig['stop']:,.2f}  TP {sig['target']:,.2f}  R:R {sig['rr']:.1f}",
+            "action": "EINSTEIGEN" if sig["confidence"] == "high" else "BEREIT",
             "type": "signal",
         })
     return results
