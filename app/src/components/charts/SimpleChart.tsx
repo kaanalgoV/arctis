@@ -302,12 +302,13 @@ export function SimpleChart({
     })
     volumeSeriesRef.current = volumeSeries
 
-    // ── VWAP overlay series — single white line, no SD bands ─────────────────
+    // ── VWAP overlay series (on separate 'overlay' price scale) ────────────
     const vwapSeries = chart.addSeries(LineSeries, {
       color: CHART_TOKENS.overlay.vwap,
       lineWidth: 2,
       priceLineVisible: false,
       lastValueVisible: false,
+      priceScaleId: 'overlay',
       visible: false,
     })
     overlayRef.current.vwap = vwapSeries
@@ -319,6 +320,7 @@ export function SimpleChart({
       lineStyle: LineStyle.Dashed,
       priceLineVisible: false,
       lastValueVisible: false,
+      priceScaleId: 'overlay',
       visible: false,
     })
     const vwapLower1Series = chart.addSeries(LineSeries, {
@@ -327,18 +329,20 @@ export function SimpleChart({
       lineStyle: LineStyle.Dashed,
       priceLineVisible: false,
       lastValueVisible: false,
+      priceScaleId: 'overlay',
       visible: false,
     })
     overlayRef.current.vwapUpper1 = vwapUpper1Series
     overlayRef.current.vwapLower1 = vwapLower1Series
 
-    // ── EMA ribbon series ─────────────────────────────────────────────────────
+    // ── EMA ribbon series (on overlay scale — won't affect candle autoScale) ──
     const ema9Series = chart.addSeries(LineSeries, {
       color: '#5AAED8',
       lineWidth: 1,
       lineStyle: LineStyle.Solid,
       priceLineVisible: false,
       lastValueVisible: false,
+      priceScaleId: 'overlay',
       visible: false,
     })
     const ema21Series = chart.addSeries(LineSeries, {
@@ -347,6 +351,7 @@ export function SimpleChart({
       lineStyle: LineStyle.Solid,
       priceLineVisible: false,
       lastValueVisible: false,
+      priceScaleId: 'overlay',
       visible: false,
     })
     const ema50Series = chart.addSeries(LineSeries, {
@@ -355,9 +360,16 @@ export function SimpleChart({
       lineStyle: LineStyle.Dashed,
       priceLineVisible: false,
       lastValueVisible: false,
+      priceScaleId: 'overlay',
       visible: false,
     })
     overlayRef.current.ema9 = ema9Series
+
+    // Configure shared overlay price scale (must be AFTER first series with this ID is added)
+    chart.priceScale('overlay').applyOptions({
+      scaleMargins: { top: 0.05, bottom: 0.12 },
+      visible: false,
+    })
     overlayRef.current.ema21 = ema21Series
     overlayRef.current.ema50 = ema50Series
 
@@ -413,9 +425,8 @@ export function SimpleChart({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // ── Data update: setData on first load, update() for live ticks ───────────
+  // ── Data update: always setData, only zoom on FIRST load ──────────────────
   const prevBarCountRef = useRef(0)
-  const dataInitializedRef = useRef(false)
 
   useEffect(() => {
     const candleSeries = candleRef.current
@@ -423,26 +434,30 @@ export function SimpleChart({
     const chart = chartRef.current
     if (!candleSeries || !volumeSeries || !chart || bars.length === 0) return
 
-    const newCount = bars.length
+    // Save current TIME range (not logical range — logical indices shift after setData)
+    const savedTimeRange = chart.timeScale().getVisibleRange()
     const prevCount = prevBarCountRef.current
+    const newCount = bars.length
 
-    if (!dataInitializedRef.current || prevCount === 0) {
-      // FIRST LOAD: setData with all bars, then zoom to end
-      candleSeries.setData(
-        bars.map((b) => ({
-          time: b.timestamp as any,
-          open: b.open, high: b.high, low: b.low, close: b.close,
-        }))
-      )
-      volumeSeries.setData(
-        bars.map((b) => ({
-          time: b.timestamp as any,
-          value: b.volume,
-          color: b.close >= b.open ? CHART_TOKENS.overlay.volume.bull : CHART_TOKENS.overlay.volume.bear,
-        }))
-      )
-      // Zoom to last N bars
-      const visible = Math.min(newCount, newCount > 500 ? 120 : 80)
+    candleSeries.setData(
+      bars.map((b) => ({
+        time: b.timestamp as any,
+        open: b.open, high: b.high, low: b.low, close: b.close,
+      }))
+    )
+    volumeSeries.setData(
+      bars.map((b) => ({
+        time: b.timestamp as any,
+        value: b.volume,
+        color: b.close >= b.open ? CHART_TOKENS.overlay.volume.bull : CHART_TOKENS.overlay.volume.bear,
+      }))
+    )
+
+    if (prevCount === 0 && newCount > 0) {
+      // FIRST LOAD: zoom to last N bars — fewer for small timeframes
+      // 1m=60 bars (1h), 5m=60 bars (5h), 15m=80 bars (20h), 30m+=120 bars
+      const barInterval = bars.length > 1 ? (bars[bars.length-1].timestamp - bars[bars.length-2].timestamp) : 900
+      const visible = barInterval <= 60 ? 60 : barInterval <= 300 ? 60 : barInterval <= 900 ? 80 : 120
       if (newCount > visible) {
         chart.timeScale().setVisibleLogicalRange({
           from: newCount - visible,
@@ -451,30 +466,10 @@ export function SimpleChart({
       } else {
         chart.timeScale().fitContent()
       }
-      dataInitializedRef.current = true
       isFirstLoadRef.current = false
-    } else {
-      // INCREMENTAL UPDATE: use update() for last bar — keeps scroll position
-      const lastBar = bars[bars.length - 1]
-      candleSeries.update({
-        time: lastBar.timestamp as any,
-        open: lastBar.open, high: lastBar.high, low: lastBar.low, close: lastBar.close,
-      })
-      volumeSeries.update({
-        time: lastBar.timestamp as any,
-        value: lastBar.volume,
-        color: lastBar.close >= lastBar.open ? CHART_TOKENS.overlay.volume.bull : CHART_TOKENS.overlay.volume.bear,
-      })
-
-      // If new bars were appended (count grew), also add the second-to-last
-      // This handles the case where a new 15min candle started
-      if (newCount > prevCount && newCount >= 2) {
-        const prevBar = bars[bars.length - 2]
-        candleSeries.update({
-          time: prevBar.timestamp as any,
-          open: prevBar.open, high: prevBar.high, low: prevBar.low, close: prevBar.close,
-        })
-      }
+    } else if (savedTimeRange) {
+      // SUBSEQUENT UPDATES: restore via TIME range (timestamps are stable across setData)
+      chart.timeScale().setVisibleRange(savedTimeRange)
     }
 
     prevBarCountRef.current = newCount
