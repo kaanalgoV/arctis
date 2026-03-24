@@ -66,10 +66,17 @@ export function useMarketData(options?: { pauseWs?: boolean }) {
             setWsStatus('connected')
             break
           case 'snapshot':
-            // Replace bars array with initial snapshot from server
+            // Only use WS snapshot if it has MORE bars than current set
+            // (prevents replacing a full REST load with a small WS snapshot)
             if (Array.isArray(msg.bars)) {
               const snapshotBars = msg.bars as Bar[]
-              setBars(snapshotBars)
+              setBars(prev => {
+                if (snapshotBars.length >= prev.length) {
+                  return snapshotBars
+                }
+                // WS snapshot is smaller — ignore, keep REST data
+                return prev
+              })
               if (snapshotBars.length > 0) {
                 setLastBarTs(snapshotBars[snapshotBars.length - 1].timestamp)
               }
@@ -120,12 +127,24 @@ export function useMarketData(options?: { pauseWs?: boolean }) {
     }
   }, [symbol, setWsStatus, setLastBarTs, wsUrl])
 
-  // Load bars on symbol/timeframe change + poll every 5s for live updates
+  // Load bars on symbol/timeframe change + poll every 5s for latest candle
   useEffect(() => {
     loadBars()
     const pollId = setInterval(async () => {
       try {
-        // Fetch with requested timeframe for proper aggregation
+        // Always fetch 1min bars for the last candle — gives real-time close price
+        // even when display timeframe is 15min (which only updates every 15 min)
+        const url1m = `${engineUrl}/api/db/bars?symbol=${symbol}&days=1&timeframe=1min`
+        const res1m = await fetch(url1m)
+        if (!res1m.ok) return
+        const data1m = await res1m.json()
+        const bars1m: Bar[] = data1m.bars || []
+        if (bars1m.length === 0) return
+
+        const latestTick = bars1m[bars1m.length - 1]
+        setLastBarTs(latestTick.timestamp)
+
+        // Also fetch in display timeframe to get properly aggregated bars
         const url = `${engineUrl}/api/db/bars?symbol=${symbol}&days=1&timeframe=${timeframe}`
         const res = await fetch(url)
         if (!res.ok) return
@@ -133,12 +152,29 @@ export function useMarketData(options?: { pauseWs?: boolean }) {
         const freshBars: Bar[] = data.bars || []
         if (freshBars.length === 0) return
 
-        const latest = freshBars[freshBars.length - 1]
-        setLastBarTs(latest.timestamp)
+        // Override the last bar's close with the real 1min close (most current price)
+        const latest = { ...freshBars[freshBars.length - 1] }
+        latest.close = latestTick.close
+        latest.high = Math.max(latest.high, latestTick.high)
+        latest.low = Math.min(latest.low, latestTick.low)
+        freshBars[freshBars.length - 1] = latest
 
-        // ALWAYS replace bars — let React+Chart detect actual changes
-        // This ensures the developing candle's OHLC is always current
-        setBars(freshBars)
+        // MERGE: keep the full dataset, only update/append bars from the poll
+        setBars(prev => {
+          if (prev.length === 0) return freshBars
+
+          // Find where the poll data overlaps with existing bars
+          const firstPollTs = freshBars[0].timestamp
+          const cutoffIdx = prev.findIndex(b => b.timestamp >= firstPollTs)
+
+          if (cutoffIdx === -1) {
+            // No overlap — append all fresh bars
+            return [...prev, ...freshBars]
+          }
+
+          // Keep everything before the overlap, replace with fresh data
+          return [...prev.slice(0, cutoffIdx), ...freshBars]
+        })
       } catch { /* silent */ }
     }, 5_000)
     return () => clearInterval(pollId)
