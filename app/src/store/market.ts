@@ -65,8 +65,17 @@ export const useMarketStore = create<MarketState>((set, get) => ({
     if (markets.length > 0) {
       const marketInfo = markets.find((m) => m.root === root)
       if (marketInfo?.contracts?.length) {
-        // First contract is the front month
-        const frontContract = marketInfo.contracts[0]
+        // Pick contract with latest month code (M > H > Z etc.)
+        const sorted = [...marketInfo.contracts].sort((a, b) => {
+          // Month codes: F G H J K M N Q U V X Z (Jan-Dec)
+          const months = 'FGHJKMNQUVXZ'
+          const aMonth = months.indexOf(a.month_code) ?? 0
+          const bMonth = months.indexOf(b.month_code) ?? 0
+          const aYear = parseInt(a.year_code) || 0
+          const bYear = parseInt(b.year_code) || 0
+          return bYear - aYear || bMonth - aMonth  // newest first
+        })
+        const frontContract = sorted[0]
         if (frontContract?.symbol) return frontContract.symbol
       }
     }

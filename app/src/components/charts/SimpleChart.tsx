@@ -220,6 +220,9 @@ export function SimpleChart({
   const [visiblePriceRange, setVisiblePriceRange] = useState({ high: 0, low: 0 })
 
   // Update visible price range from chart's visible logical range
+  // Ref wrapper so the chart-creation effect (empty deps) can call the latest version
+  const updateVisibleRangeRef = useRef<() => void>(() => {})
+
   const updateVisibleRange = useCallback(() => {
     const chart = chartRef.current
     const candle = candleRef.current
@@ -243,6 +246,9 @@ export function SimpleChart({
       setVisiblePriceRange({ high, low })
     }
   }, [bars])
+
+  // Keep ref in sync with latest callback
+  updateVisibleRangeRef.current = updateVisibleRange
 
   // ── Chart creation: runs ONCE on mount ────────────────────────────────────
   useEffect(() => {
@@ -382,7 +388,7 @@ export function SimpleChart({
 
     // ── Subscribe to visible range changes (for VP overlay) ─────────────────
     chart.timeScale().subscribeVisibleLogicalRangeChange(() => {
-      updateVisibleRange()
+      updateVisibleRangeRef.current()
     })
 
     // ── ResizeObserver ────────────────────────────────────────────────────────
@@ -421,6 +427,7 @@ export function SimpleChart({
         ema9: null, ema21: null, ema50: null,
       }
       isFirstLoadRef.current = true
+      prevBarCountRef.current = 0
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -432,7 +439,11 @@ export function SimpleChart({
     const candleSeries = candleRef.current
     const volumeSeries = volumeSeriesRef.current
     const chart = chartRef.current
-    if (!candleSeries || !volumeSeries || !chart || bars.length === 0) return
+    if (!candleSeries || !volumeSeries || !chart || bars.length === 0) {
+      // Reset when bars become empty (symbol switch)
+      if (bars.length === 0) prevBarCountRef.current = 0
+      return
+    }
 
     // Save current TIME range (not logical range — logical indices shift after setData)
     const savedTimeRange = chart.timeScale().getVisibleRange()
