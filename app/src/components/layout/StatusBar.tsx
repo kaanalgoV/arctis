@@ -1,6 +1,20 @@
 import { cn } from '@/lib/utils'
 import { useMarketStore } from '@/store/market'
 
+// ---------------------------------------------------------------------------
+// Live store integration — graceful: if the live module doesn't exist yet,
+// latencyMs falls back to the prop value.
+// ---------------------------------------------------------------------------
+function tryGetLiveLatency(): number | null {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const mod = require('@/live') as { useLiveStore?: { getState: () => { latencyMs: number } } }
+    return mod.useLiveStore?.getState?.()?.latencyMs ?? null
+  } catch {
+    return null
+  }
+}
+
 interface ReplayInfo {
   active: boolean
   progress_pct: number
@@ -14,6 +28,8 @@ interface StatusBarProps {
   lastUpdate?: string
   version?: string
   replay?: ReplayInfo | null
+  liveFeed?: boolean
+  liveProvider?: 'rithmic' | 'databento' | null
 }
 
 export function StatusBar({
@@ -23,8 +39,14 @@ export function StatusBar({
   lastUpdate = '--:--:--',
   version = '0.1.0',
   replay,
+  liveFeed = false,
+  liveProvider = null,
 }: StatusBarProps) {
-  const { wsStatus, symbol, lastBarTs } = useMarketStore()
+  const { wsStatus, symbol, lastBarTs, dataSource } = useMarketStore()
+
+  // Prefer live store latency when data source is live
+  const liveLatency = dataSource === 'live' ? tryGetLiveLatency() : null
+  const effectiveLatencyMs = liveLatency ?? latencyMs
 
   const isReplayActive = replay?.active === true
 
@@ -43,7 +65,7 @@ export function StatusBar({
     ? 'Connected'
     : isReconnecting
     ? 'Reconnecting'
-    : 'Disconnected'
+    : 'OFFLINE'
 
   // Status label always muted — only the dot carries the color signal
   const statusTextColor = 'text-[var(--color-text-muted)]'
@@ -68,7 +90,7 @@ export function StatusBar({
         'font-mono text-[10px] text-[var(--color-text-muted)]',
       )}
     >
-      {/* Left: Connection status or REPLAY badge */}
+      {/* Left: Connection status or REPLAY badge or LIVE badge */}
       <div className="flex items-center gap-1.5 shrink-0">
         {isReplayActive ? (
           <>
@@ -91,6 +113,23 @@ export function StatusBar({
               {Math.round(replay?.progress_pct ?? 0)}%
             </span>
           </>
+        ) : liveFeed ? (
+          <>
+            <span
+              className="px-1.5 py-0.5 rounded font-mono text-[9px] font-semibold leading-none tracking-wide"
+              style={{ background: 'rgba(var(--color-profit-rgb, 34,197,94),0.15)', color: 'var(--color-profit)' }}
+            >
+              LIVE
+            </span>
+            <span
+              className="w-1.5 h-1.5 rounded-full shrink-0 animate-pulse"
+              style={{ backgroundColor: 'var(--color-profit)' }}
+            />
+            <span className="text-[var(--color-border)] mx-0.5 leading-none">|</span>
+            <span className="leading-none" style={{ color: 'var(--color-profit)' }}>
+              {liveProvider === 'rithmic' ? 'RITHMIC' : liveProvider === 'databento' ? 'DATABENTO' : 'OFFLINE'}
+            </span>
+          </>
         ) : (
           <>
             <span className={cn('w-1.5 h-1.5 rounded-full shrink-0', dotColor)} />
@@ -101,9 +140,48 @@ export function StatusBar({
             <span className="leading-none text-[var(--color-text-muted)]">
               Latency:{' '}
               <span className="text-[var(--color-text-muted)]">
-                {latencyMs}ms
+                {effectiveLatencyMs}ms
               </span>
             </span>
+          </>
+        )}
+
+        {/* Data source indicator — shows LIVE (green pulsing) or DB (amber) */}
+        {!isReplayActive && (
+          <>
+            <span className="text-[var(--color-border)] mx-0.5 leading-none">|</span>
+            {dataSource === 'live' ? (
+              <span className="flex items-center gap-1">
+                <span
+                  className="w-1.5 h-1.5 rounded-full shrink-0 animate-pulse"
+                  style={{ backgroundColor: 'var(--color-profit)' }}
+                />
+                <span
+                  className="font-mono text-[9px] font-semibold leading-none tracking-wide"
+                  style={{ color: 'var(--color-profit)' }}
+                >
+                  LIVE
+                </span>
+                {liveLatency !== null && (
+                  <span className="text-[var(--color-text-muted)] leading-none text-[9px]">
+                    {liveLatency}ms
+                  </span>
+                )}
+              </span>
+            ) : (
+              <span className="flex items-center gap-1">
+                <span
+                  className="w-1.5 h-1.5 rounded-full shrink-0"
+                  style={{ backgroundColor: '#F0A500' }}
+                />
+                <span
+                  className="font-mono text-[9px] font-semibold leading-none tracking-wide"
+                  style={{ color: '#F0A500' }}
+                >
+                  DB
+                </span>
+              </span>
+            )}
           </>
         )}
       </div>
