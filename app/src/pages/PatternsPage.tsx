@@ -18,6 +18,8 @@ function formatTime(timestampSeconds: number): string {
 
 function formatWinRate(win_rate: number | null): string {
   if (win_rate === null) return '--'
+  // Backend sends whole numbers (48.0 for 48%), not fractions
+  if (win_rate > 1) return `${Math.round(win_rate)}%`
   return `${Math.round(win_rate * 100)}%`
 }
 
@@ -76,6 +78,8 @@ interface PatternRowProps {
   pattern: string
   direction: string
   winRate: number | null
+  profitFactor: number | null
+  sampleSize: number | null
   confidence: string
   timestamp: number
   detail: string
@@ -87,6 +91,8 @@ function PatternRow({
   pattern,
   direction,
   winRate,
+  profitFactor,
+  sampleSize,
   confidence,
   timestamp,
   detail,
@@ -148,14 +154,42 @@ function PatternRow({
           style={{
             fontSize: 13,
             color:
-              winRate != null && winRate >= 0.7
+              winRate != null && winRate >= 55
                 ? 'var(--color-profit)'
-                : winRate != null && winRate < 0.5
+                : winRate != null && winRate < 35
                 ? 'var(--color-loss)'
                 : 'var(--color-text-secondary)',
           }}
         >
           {formatWinRate(winRate)}
+        </span>
+      </td>
+
+      {/* Profit Factor */}
+      <td className="py-3 px-2">
+        <span
+          className="font-mono tabular-nums font-semibold"
+          style={{
+            fontSize: 13,
+            color:
+              profitFactor != null && profitFactor >= 1.5
+                ? 'var(--color-profit)'
+                : profitFactor != null && profitFactor < 1.0
+                ? 'var(--color-loss)'
+                : 'var(--color-text-secondary)',
+          }}
+        >
+          {profitFactor != null ? `${profitFactor.toFixed(1)}x` : '--'}
+        </span>
+      </td>
+
+      {/* Sample Size */}
+      <td className="py-3 px-2">
+        <span
+          className="font-mono tabular-nums"
+          style={{ fontSize: 11, color: 'var(--color-text-muted)' }}
+        >
+          {sampleSize != null ? `n=${sampleSize}` : '--'}
         </span>
       </td>
 
@@ -362,6 +396,22 @@ export function PatternsPage({ data }: PatternsPageProps) {
                     className="font-mono uppercase tracking-widest"
                     style={{ fontSize: 9, color: 'var(--color-text-muted)' }}
                   >
+                    PF
+                  </span>
+                </th>
+                <th className="py-2 px-2 text-left">
+                  <span
+                    className="font-mono uppercase tracking-widest"
+                    style={{ fontSize: 9, color: 'var(--color-text-muted)' }}
+                  >
+                    Trades
+                  </span>
+                </th>
+                <th className="py-2 px-2 text-left">
+                  <span
+                    className="font-mono uppercase tracking-widest"
+                    style={{ fontSize: 9, color: 'var(--color-text-muted)' }}
+                  >
                     Confidence
                   </span>
                 </th>
@@ -383,6 +433,8 @@ export function PatternsPage({ data }: PatternsPageProps) {
                   pattern={ann.pattern}
                   direction={ann.direction}
                   winRate={ann.win_rate}
+                  profitFactor={(ann as any).profit_factor ?? null}
+                  sampleSize={(ann as any).sample_size ?? null}
                   confidence={ann.confidence}
                   timestamp={ann.timestamp}
                   detail={ann.detail}

@@ -16,6 +16,31 @@ from arctis.models import Market, Timeframe
 router = APIRouter(prefix="/api/analysis")
 
 
+def _get_sim():
+    from arctis.main import sim
+    return sim
+
+
+def _load_bars(market: Market, timeframe: Timeframe, days: int = 60):
+    """Load bars from simulation engine or TimescaleDB.
+
+    In replay/simulation mode the sim engine is the authoritative source so
+    that the probability endpoint reflects replayed context rather than live
+    DB data.
+    """
+    sim = _get_sim()
+    if sim.active and sim.market == market and sim.timeframe == timeframe:
+        return sim.get_bars()
+
+    bars = fetch_bars_as_models(market=market.value, days=days, timeframe=timeframe.value)
+    if not bars:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Keine Bars fuer {market.value} ({timeframe.value}) in der DB gefunden.",
+        )
+    return bars
+
+
 def _detect_regime(feature_vector: list[float]) -> str:
     """Derive a simple regime label from the feature vector.
 
@@ -41,15 +66,11 @@ async def analyze_probability(
     top_n: int = Query(default=20, ge=5, le=50),
 ):
     try:
-        bars = fetch_bars_as_models(market=market.value, days=days, timeframe=timeframe.value)
+        bars = _load_bars(market, timeframe, days=days)
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Fehler beim Laden der Marktdaten: {e}")
-
-    if not bars:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Keine Bars fuer {market.value} ({timeframe.value}) in der DB gefunden.",
-        )
 
     if len(bars) < 780:
         return {

@@ -15,7 +15,7 @@ from arctis.analysis.confluence import calculate_confluence
 from arctis.analysis.bias_state import calculate_bias_state
 from arctis.analysis.structure import detect_swings, classify_trend
 from arctis.analysis.signals import detect_signals
-from arctis.analysis.indicators import calculate_indicators
+from arctis.analysis.indicators import calculate_ema_ribbon
 from arctis.analysis.volume_profile import build_volume_profile
 from arctis.analysis.vwap import calculate_vwap
 
@@ -81,9 +81,10 @@ def _build_full_context(market: str = "NQ", timeframe: str = "1min") -> dict:
 
         # Indicators (EMA)
         try:
-            ind = calculate_indicators(bars)
-            ema9 = ind.get("ema_9", price)
-            ema21 = ind.get("ema_21", price)
+            ema_ribbon = calculate_ema_ribbon(bars)
+            latest_ema = ema_ribbon[-1] if ema_ribbon else None
+            ema9 = latest_ema.ema_9 if latest_ema and latest_ema.ema_9 is not None else price
+            ema21 = latest_ema.ema_21 if latest_ema and latest_ema.ema_21 is not None else price
         except Exception:
             ema9 = ema21 = price
 

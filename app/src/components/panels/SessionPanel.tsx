@@ -26,6 +26,12 @@ interface Session {
   name: string
   progress: number // 0-100
   active: boolean
+  stats?: {
+    avg_volume: number
+    avg_range: number
+    total_volume: number
+    bar_count: number
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -78,6 +84,19 @@ function deriveCurrentProgress(
 }
 
 // ---------------------------------------------------------------------------
+// Format helpers
+// ---------------------------------------------------------------------------
+function formatVolume(v: number): string {
+  if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`
+  if (v >= 1_000) return `${(v / 1_000).toFixed(1)}K`
+  return String(Math.round(v))
+}
+
+function formatRange(r: number): string {
+  return `${r.toFixed(1)}`
+}
+
+// ---------------------------------------------------------------------------
 // Map API data -> internal Session[]
 // ---------------------------------------------------------------------------
 function mapApiDataToSessions(data: SessionAPIData): Session[] {
@@ -87,6 +106,7 @@ function mapApiDataToSessions(data: SessionAPIData): Session[] {
     const displayName = SESSION_DISPLAY_NAMES[key] ?? key
     const isActive = key === data.current_session
     const isDone = currentIdx >= 0 && idx < currentIdx
+    const rawStats = data.session_stats[key]
 
     let progress: number
     if (isDone) {
@@ -97,7 +117,20 @@ function mapApiDataToSessions(data: SessionAPIData): Session[] {
       progress = 0
     }
 
-    return { key, name: displayName, progress, active: isActive }
+    return {
+      key,
+      name: displayName,
+      progress,
+      active: isActive,
+      stats: rawStats
+        ? {
+            avg_volume: rawStats.avg_volume,
+            avg_range: rawStats.avg_range,
+            total_volume: rawStats.total_volume,
+            bar_count: rawStats.bar_count,
+          }
+        : undefined,
+    }
   })
 }
 
@@ -131,6 +164,76 @@ function SessionSkeleton() {
 }
 
 // ---------------------------------------------------------------------------
+// Session stats row — shown below the active session
+// ---------------------------------------------------------------------------
+interface StatsRowProps {
+  stats: NonNullable<Session['stats']>
+  completed?: boolean
+}
+
+function StatsRow({ stats, completed = false }: StatsRowProps) {
+  const labelClass = cn(
+    'font-mono text-[8px] uppercase tracking-wide',
+    completed
+      ? 'text-[var(--color-text-muted)] opacity-60'
+      : 'text-[var(--color-text-muted)]',
+  )
+  const valueClass = cn(
+    'font-mono text-[9px] tabular-nums',
+    completed
+      ? 'text-[#484F58]'
+      : 'text-[var(--color-text-secondary)]',
+  )
+
+  // For completed sessions show total volume; for active show avg
+  const volumeLabel = completed ? 'Vol' : 'Avg Vol'
+  const volumeValue = completed
+    ? formatVolume(stats.total_volume)
+    : formatVolume(stats.avg_volume)
+
+  return (
+    <div className="flex items-center gap-2 pl-[60px] pb-0.5">
+      <span className={labelClass}>{volumeLabel}</span>
+      <span className={valueClass}>{volumeValue}</span>
+      <span
+        className="text-[7px]"
+        style={{ color: 'var(--color-border-subtle)' }}
+      >
+        |
+      </span>
+      <span className={labelClass}>Range</span>
+      <span className={valueClass}>{formatRange(stats.avg_range)} pts</span>
+      <span
+        className="text-[7px]"
+        style={{ color: 'var(--color-border-subtle)' }}
+      >
+        |
+      </span>
+      <span className={labelClass}>Bars</span>
+      <span className={valueClass}>{stats.bar_count}</span>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Pulsing live dot
+// ---------------------------------------------------------------------------
+function LiveDot() {
+  return (
+    <span className="relative flex h-[6px] w-[6px] shrink-0">
+      <span
+        className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75"
+        style={{ backgroundColor: 'var(--color-accent, #5CB8F0)' }}
+      />
+      <span
+        className="relative inline-flex rounded-full h-[6px] w-[6px]"
+        style={{ backgroundColor: 'var(--color-accent, #5CB8F0)' }}
+      />
+    </span>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 export function SessionPanel({ data, loading, error }: SessionPanelProps) {
@@ -160,45 +263,72 @@ export function SessionPanel({ data, loading, error }: SessionPanelProps) {
   const sessions: Session[] = mapApiDataToSessions(data)
 
   return (
-    <div className="flex flex-col gap-1.5">
+    <div className="flex flex-col gap-0.5">
       {sessions.map((s) => (
-        <div key={s.key} className="flex items-center gap-2">
-          {/* Label */}
-          <span
-            className={cn(
-              'text-[10px] min-w-[52px] shrink-0',
-              s.active
-                ? 'text-[#5CB8F0] font-semibold'
-                : 'text-[#484F58]',
-            )}
-          >
-            {s.name}
-          </span>
+        <div key={s.key}>
+          {/* Progress row */}
+          <div className="flex items-center gap-2">
+            {/* Label — active gets live dot + larger text */}
+            <div className="flex items-center gap-1 min-w-[52px] shrink-0">
+              {s.active && <LiveDot />}
+              <span
+                className={cn(
+                  s.active
+                    ? 'text-[11px] font-semibold'
+                    : 'text-[10px]',
+                )}
+                style={{
+                  color: s.active
+                    ? 'var(--color-accent, #5CB8F0)'
+                    : s.progress === 100
+                      ? '#484F58'
+                      : '#484F58',
+                }}
+              >
+                {s.name}
+              </span>
+            </div>
 
-          {/* 2px thin progress track */}
-          <div className="flex-1 h-[2px] bg-[#21262D] rounded-full overflow-hidden">
+            {/* 2px thin progress track */}
             <div
-              className={cn(
-                'h-full rounded-full transition-all duration-500',
-                s.active
-                  ? 'bg-[#5CB8F0]'
-                  : s.progress === 100
-                    ? 'bg-[#5CB8F0] opacity-25'
-                    : '',
-              )}
-              style={{ width: `${s.progress}%` }}
-            />
+              className="flex-1 rounded-full overflow-hidden"
+              style={{
+                height: s.active ? '3px' : '2px',
+                backgroundColor: 'var(--color-border-subtle, #21262D)',
+              }}
+            >
+              <div
+                className={cn(
+                  'h-full rounded-full transition-all duration-500',
+                )}
+                style={{
+                  width: `${s.progress}%`,
+                  backgroundColor: s.active
+                    ? 'var(--color-accent, #5CB8F0)'
+                    : s.progress === 100
+                      ? 'rgba(92,184,240,0.25)'
+                      : 'transparent',
+                }}
+              />
+            </div>
+
+            {/* Percentage — always reserve space */}
+            <span
+              className="font-mono text-[9px] min-w-[28px] text-right tabular-nums"
+              style={{
+                color: s.active
+                  ? 'var(--color-accent, #5CB8F0)'
+                  : '#484F58',
+              }}
+            >
+              {s.progress > 0 ? `${s.progress}%` : ''}
+            </span>
           </div>
 
-          {/* Percentage — always reserve space */}
-          <span
-            className={cn(
-              'font-mono text-[9px] min-w-[28px] text-right tabular-nums',
-              s.active ? 'text-[#5CB8F0]' : 'text-[#484F58]',
-            )}
-          >
-            {s.progress > 0 ? `${s.progress}%` : ''}
-          </span>
+          {/* Stats row — show for active session and completed sessions with stats */}
+          {s.stats && (s.active || s.progress === 100) && (
+            <StatsRow stats={s.stats} completed={s.progress === 100 && !s.active} />
+          )}
         </div>
       ))}
     </div>

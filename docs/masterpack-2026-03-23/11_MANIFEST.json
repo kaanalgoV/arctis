@@ -1,0 +1,62 @@
+{
+  "package_name": "arctis_algoview_saas_masterpack_2026-03-23",
+  "generated_on": "2026-03-23",
+  "purpose": "Audit + competitor synthesis + SaaS blueprint + autonomous build masterprompt for Arctis × AlgoView.",
+  "files": [
+    {
+      "name": "00_START_HERE_README.md",
+      "bytes": 3952,
+      "chars": 3908
+    },
+    {
+      "name": "01_EXEC_SUMMARY_DE.md",
+      "bytes": 6936,
+      "chars": 6857
+    },
+    {
+      "name": "02_REALITY_AUDIT_CLAUDE_BUILD.md",
+      "bytes": 11057,
+      "chars": 10916
+    },
+    {
+      "name": "03_CODE_EVIDENCE_APPENDIX.md",
+      "bytes": 12312,
+      "chars": 12114
+    },
+    {
+      "name": "04_COMPETITOR_RESEARCH_AUTOMATION_CONTEXT.md",
+      "bytes": 11100,
+      "chars": 10908
+    },
+    {
+      "name": "05_PRODUCT_BLUEPRINT_ARCTIS_ALGOVIEW.md",
+      "bytes": 11069,
+      "chars": 10882
+    },
+    {
+      "name": "06_SAAS_ARCHITECTURE_AND_OPERATING_MODEL.md",
+      "bytes": 13467,
+      "chars": 13327
+    },
+    {
+      "name": "07_DELIVERY_ROADMAP_AND_ACCEPTANCE.md",
+      "bytes": 9369,
+      "chars": 9235
+    },
+    {
+      "name": "08_MASTERPROMPT_ARCTIS_ALGOVIEW_SAAS_CLAUDE.md",
+      "bytes": 308302,
+      "chars": 304650
+    },
+    {
+      "name": "09_ACCEPTANCE_MATRIX.csv",
+      "bytes": 20439,
+      "chars": 20188
+    },
+    {
+      "name": "10_SOURCE_INDEX.md",
+      "bytes": 4558,
+      "chars": 4539
+    }
+  ]
+}

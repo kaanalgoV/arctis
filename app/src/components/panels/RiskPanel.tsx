@@ -1,3 +1,4 @@
+import { ShieldAlert, Layers, TrendingDown, Percent } from 'lucide-react'
 import { Skeleton } from '@/components/ui/Skeleton'
 
 interface TradingConfig {
@@ -9,10 +10,14 @@ interface TradingConfig {
   tick_size_es: number
   tick_value_nq: number
   tick_size_nq: number
+  max_contracts?: number
+  risk_per_trade?: number
 }
 
 interface RiskPanelProps {
+  /** Number of trades taken today — pass undefined if not tracked. */
   trades?: number
+  /** Current open contracts — pass undefined if not tracked. */
   contracts?: number
   config?: TradingConfig | null
   /** Whether data is currently being fetched. */
@@ -22,18 +27,46 @@ interface RiskPanelProps {
 }
 
 // ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function fmt$(value: number): string {
+  return `$${value.toLocaleString('en-US', { maximumFractionDigits: 0 })}`
+}
+
+/** Returns a warning level based on how close `current` is to `limit`. */
+function warningLevel(
+  current: number | undefined,
+  limit: number,
+): 'ok' | 'warn' | 'danger' {
+  if (current == null) return 'ok'
+  const ratio = current / limit
+  if (ratio >= 1) return 'danger'
+  if (ratio >= 0.75) return 'warn'
+  return 'ok'
+}
+
+const WARNING_COLORS = {
+  ok:     undefined,           // use default
+  warn:   '#F59E0B',
+  danger: '#EF4444',
+} as const
+
+// ---------------------------------------------------------------------------
 // Loading skeleton
 // ---------------------------------------------------------------------------
+
 function RiskSkeleton() {
   return (
-    <div className="grid grid-cols-2 gap-1">
+    <div className="grid grid-cols-2 gap-1.5">
       {Array.from({ length: 4 }).map((_, i) => (
         <div
           key={i}
-          className="bg-[#161B22] border border-[#21262D] rounded-md p-2 flex flex-col items-center gap-1"
+          className="bg-[#161B22] border border-[#21262D] rounded-md p-2.5 flex flex-col gap-1.5"
         >
-          <Skeleton className="h-4 w-10" />
-          <Skeleton className="h-2 w-8" />
+          <Skeleton className="h-2 w-2.5" />
+          <Skeleton className="h-3.5 w-14" />
+          <Skeleton className="h-2 w-10" />
         </div>
       ))}
     </div>
@@ -41,9 +74,66 @@ function RiskSkeleton() {
 }
 
 // ---------------------------------------------------------------------------
+// Metric card
+// ---------------------------------------------------------------------------
+
+interface RiskCardProps {
+  icon: React.ReactNode
+  label: string
+  value: string
+  /** Override text color (e.g. for warning state). */
+  valueColor?: string
+  /** Show a warning indicator pill */
+  warningState?: 'warn' | 'danger'
+}
+
+function RiskCard({ icon, label, value, valueColor, warningState }: RiskCardProps) {
+  const borderColor =
+    warningState === 'danger'
+      ? 'border-[#EF4444]/40'
+      : warningState === 'warn'
+      ? 'border-[#F59E0B]/40'
+      : 'border-[#21262D]'
+
+  return (
+    <div
+      className={`bg-[#161B22] border ${borderColor} rounded-md p-2.5 flex flex-col gap-1 hover:border-[#30363D] transition-colors`}
+    >
+      {/* Icon row */}
+      <div className="flex items-center justify-between">
+        <span className="text-[#484F58]">{icon}</span>
+        {warningState && (
+          <span
+            className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+            style={{
+              background: warningState === 'danger' ? '#EF4444' : '#F59E0B',
+            }}
+            aria-label={warningState === 'danger' ? 'Limit reached' : 'Approaching limit'}
+          />
+        )}
+      </div>
+
+      {/* Value */}
+      <div
+        className="font-mono text-[14px] font-semibold tabular-nums leading-none"
+        style={{ color: valueColor ?? '#E6EDF3' }}
+      >
+        {value}
+      </div>
+
+      {/* Label */}
+      <div className="text-[9px] text-[#6E7681] uppercase tracking-wider leading-none">
+        {label}
+      </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
-export function RiskPanel({ trades = 0, contracts = 0, config, loading, error }: RiskPanelProps) {
+
+export function RiskPanel({ trades, contracts, config, loading, error }: RiskPanelProps) {
   // Loading state
   if (loading && config == null) {
     return <RiskSkeleton />
@@ -58,7 +148,7 @@ export function RiskPanel({ trades = 0, contracts = 0, config, loading, error }:
     )
   }
 
-  // No config yet — show waiting state
+  // No config yet
   if (config == null) {
     return (
       <div className="flex items-center justify-center py-3">
@@ -67,52 +157,99 @@ export function RiskPanel({ trades = 0, contracts = 0, config, loading, error }:
     )
   }
 
-  const maxTrades = config.max_daily_trades
-  const riskAmount = config.account_size * (config.risk_percent / 100)
-  const limitPercent = config.risk_percent
+  // Derived values
+  const maxLoss   = config.daily_loss_limit > 0
+    ? fmt$(config.daily_loss_limit)
+    : config.account_size > 0
+      ? fmt$(config.account_size * (config.risk_percent / 100))
+      : '—'
 
-  const tradesExceeded = trades >= maxTrades
+  const posLimit  = config.max_contracts != null
+    ? String(config.max_contracts)
+    : config.max_daily_trades > 0
+      ? String(config.max_daily_trades)
+      : '—'
 
-  return (
-    <div className="grid grid-cols-2 gap-1">
-      <RiskCell
-        value={
-          <>
-            {trades}
-            <span className="text-[10px] text-[#484F58]">/{maxTrades}</span>
-          </>
-        }
-        label="Trades"
-        color={tradesExceeded ? '#EF4444' : '#E6EDF3'}
-      />
-      <RiskCell
-        value={`$${riskAmount.toLocaleString('en-US', { maximumFractionDigits: 0 })}`}
-        label="Risk"
-      />
-      <RiskCell value={`${limitPercent}%`} label="Limit" />
-      <RiskCell value={String(contracts)} label="Contracts" />
-    </div>
+  const dailyLossLimitValue = config.daily_loss_limit > 0
+    ? fmt$(config.daily_loss_limit)
+    : '—'
+
+  const riskPerTrade = config.risk_per_trade != null
+    ? fmt$(config.risk_per_trade)
+    : config.account_size > 0 && config.risk_percent > 0
+      ? fmt$(config.account_size * (config.risk_percent / 100))
+      : '—'
+
+  // Warning state: only relevant if `contracts` data is actually passed
+  const contractsWarn = warningLevel(
+    contracts,
+    config.max_contracts ?? config.max_daily_trades,
   )
-}
+  const contractColor =
+    contractsWarn !== 'ok' ? WARNING_COLORS[contractsWarn] : undefined
 
-function RiskCell({
-  value,
-  label,
-  color,
-}: {
-  value: React.ReactNode
-  label: string
-  color?: string
-}) {
+  // Trades warning
+  const tradesWarn  = warningLevel(trades, config.max_daily_trades)
+  const tradesColor =
+    tradesWarn !== 'ok' ? WARNING_COLORS[tradesWarn] : '#EF4444'
+
+  // Display values — show "—" for unavailable live data
+  const tradesDisplay   = trades    != null ? String(trades)    : '—'
+  const contractsDisplay = contracts != null ? String(contracts) : '—'
+
   return (
-    <div className="bg-[#161B22] border border-[#21262D] rounded-md p-2 text-center hover:border-[#30363D] transition-colors">
-      <div
-        className="font-mono text-[15px] font-bold tabular-nums"
-        style={{ color: color ?? '#E6EDF3' }}
-      >
-        {value}
-      </div>
-      <div className="text-[9px] text-[#8B949E] uppercase tracking-wider mt-0.5">{label}</div>
+    <div className="grid grid-cols-2 gap-1.5">
+      {/* Max Loss */}
+      <RiskCard
+        icon={<ShieldAlert size={10} strokeWidth={2} />}
+        label="Max Loss"
+        value={maxLoss}
+        valueColor="#EF4444"
+      />
+
+      {/* Daily Loss Limit — previously hidden, now shown */}
+      <RiskCard
+        icon={<TrendingDown size={10} strokeWidth={2} />}
+        label="Daily Limit"
+        value={dailyLossLimitValue}
+        valueColor="#EF4444"
+      />
+
+      {/* Position / Contract Limit */}
+      <RiskCard
+        icon={<Layers size={10} strokeWidth={2} />}
+        label="Pos. Limit"
+        value={posLimit}
+      />
+
+      {/* Risk per Trade */}
+      <RiskCard
+        icon={<Percent size={10} strokeWidth={2} />}
+        label="Risk / Trade"
+        value={riskPerTrade}
+      />
+
+      {/* Trades today — only render row if trades prop is passed */}
+      {trades != null && (
+        <RiskCard
+          icon={<ShieldAlert size={10} strokeWidth={2} />}
+          label={`Trades (/${config.max_daily_trades})`}
+          value={tradesDisplay}
+          valueColor={tradesColor}
+          warningState={tradesWarn !== 'ok' ? tradesWarn : undefined}
+        />
+      )}
+
+      {/* Open contracts — only render if prop is passed */}
+      {contracts != null && (
+        <RiskCard
+          icon={<Layers size={10} strokeWidth={2} />}
+          label="Open Contracts"
+          value={contractsDisplay}
+          valueColor={contractColor}
+          warningState={contractsWarn !== 'ok' ? contractsWarn : undefined}
+        />
+      )}
     </div>
   )
 }

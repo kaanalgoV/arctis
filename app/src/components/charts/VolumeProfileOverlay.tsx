@@ -42,7 +42,7 @@ export function VolumeProfileOverlay({
   const priceRange = priceHigh - priceLow
 
   const maxVol = useMemo(
-    () => (bins.length > 0 ? Math.max(...bins.map((b) => b.volume)) : 1),
+    () => (bins.length > 0 ? bins.reduce((max, b) => Math.max(max, b.volume), -Infinity) : 1),
     [bins],
   )
 

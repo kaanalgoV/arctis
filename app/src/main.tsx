@@ -16,12 +16,21 @@ class ErrorBoundary extends Component<{children: ReactNode}, {error: Error | nul
           <h2 style={{color:'#EF4136',marginBottom:16}}>Arctis Error</h2>
           <pre style={{whiteSpace:'pre-wrap',color:'#949DA8'}}>{this.state.error.message}</pre>
           <pre style={{whiteSpace:'pre-wrap',color:'#6E7681',marginTop:8,fontSize:11}}>{this.state.error.stack}</pre>
+          <button onClick={() => this.setState({ error: null })} style={{marginTop:20,padding:'8px 16px',background:'#5CB8F0',color:'#0A0D12',border:'none',borderRadius:6,cursor:'pointer',fontWeight:'bold'}}>
+            Retry
+          </button>
         </div>
       )
     }
     return this.props.children
   }
 }
+
+// Global unhandled error handler for promises
+window.addEventListener('unhandledrejection', (e) => {
+  console.error('UNHANDLED PROMISE:', e.reason)
+})
+
 
 try {
   createRoot(document.getElementById('root')!).render(

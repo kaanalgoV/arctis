@@ -15,7 +15,7 @@ class ConfluenceResult:
     score: int  # positive = long bias, negative = short bias
     max_score: int  # theoretical maximum
     direction: str  # "LONG", "SHORT", "NEUTRAL"
-    confidence: str  # "HIGH", "MODERATE", "LOW"
+    confidence: str  # "high", "medium", "low"
     signals: list[Signal] = field(default_factory=list)
 
 def calculate_confluence(
@@ -167,11 +167,11 @@ def calculate_confluence(
         direction = "NEUTRAL"
 
     if abs_score >= 8:
-        confidence = "STARK"
+        confidence = "high"
     elif abs_score >= 5:
-        confidence = "MITTEL"
+        confidence = "medium"
     else:
-        confidence = "SCHWACH"
+        confidence = "low"
 
     return ConfluenceResult(
         score=total_score,

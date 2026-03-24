@@ -23,8 +23,8 @@ export interface VPResult {
 export function calculateVolumeProfile(bars: OHLCVBar[], binSize = 2.0): VPResult {
   if (!bars.length) return { bins: [], poc: 0, vah: 0, val: 0 }
 
-  const priceMin = Math.min(...bars.map((b) => b.low))
-  const priceMax = Math.max(...bars.map((b) => b.high))
+  const priceMin = bars.reduce((min, b) => Math.min(min, b.low), Infinity)
+  const priceMax = bars.reduce((max, b) => Math.max(max, b.high), -Infinity)
 
   // Build bin map: key = lower edge of bin
   const binMap = new Map<number, number>()

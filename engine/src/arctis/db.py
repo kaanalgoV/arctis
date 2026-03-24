@@ -8,10 +8,12 @@ from sqlalchemy import create_engine
 
 from arctis.models import OHLCVBar
 
-DB_URL = os.getenv(
+_raw_url = os.getenv(
     "DATABASE_URL",
     "postgresql://algorivo:algorivo_dev@localhost:5532/algorivo",
 )
+# SQLAlchemy 2.x requires "postgresql://" not "postgres://"
+DB_URL = _raw_url.replace("postgres://", "postgresql://", 1) if _raw_url.startswith("postgres://") else _raw_url
 
 _engine = None
 

@@ -1,4 +1,16 @@
-"""Opening Fake Detection — identifies false breakouts of prior-day extremes in first 2 hours."""
+"""Opening Fake Detection — identifies false breakouts of prior-day extremes in first 2 hours.
+
+ALGOVIEW CALIBRATION (fakeout_pro_v5 strategy, NQH6/NQZ5):
+  Win Rate:      16.0%  (only 1 in 6 trades wins)
+  Profit Factor: 3.83   (profitable despite low WR)
+  Avg R:R:       6.72   (winners are ~7x larger than losers)
+  Sample size:   50 trades (Aug 2025 — Mar 2026)
+
+KEY: This pattern requires strict stop discipline. The edge is entirely in the
+reward/risk ratio — not in win rate. Do NOT widen stops chasing winners.
+
+DATA SOURCE: AlgoView TimescaleDB, fakeout_pro_v5, NQ Aug 2025-Mar 2026
+"""
 
 from dataclasses import dataclass
 
@@ -27,6 +39,11 @@ class OpeningFake:
     break_time: int         # unix timestamp of the bar that broke the extreme
     reversal_confirmed: bool
     confidence: str         # "high" | "medium" | "low" | "none"
+    # AlgoView-calibrated statistics (fakeout_pro_v5, n=50, NQ Aug 2025-Mar 2026)
+    win_rate: float = 16.0          # 16% — low WR, but PF 3.83 due to extreme R:R
+    profit_factor: float = 3.83     # profitable overall despite 1-in-6 win rate
+    avg_rr: float = 6.72            # winners ~7x larger than losers
+    sample_size: int = 50
 
 
 def detect_opening_fake(
@@ -48,6 +65,12 @@ def detect_opening_fake(
       low    — break occurred but volume was normal (could still be a fake)
       none   — no break detected
 
+    AlgoView statistics (fakeout_pro_v5, n=50 trades, NQ Aug 2025-Mar 2026):
+      Win Rate: 16% | Profit Factor: 3.83 | Avg R:R: 6.72
+      Low win rate (16%) but extreme reward/risk ratio (6.7:1). Only 1 in 6
+      trades wins, but winners are ~7x larger than losers. Profitable overall
+      (PF 3.83). Requires strict stop discipline — do NOT widen stops.
+
     Args:
         bars:      Ordered list of 1-minute OHLCVBar from session open.
                    Only the first 120 bars are examined.
@@ -56,7 +79,8 @@ def detect_opening_fake(
 
     Returns:
         OpeningFake dataclass. ``detected=False`` when bars are insufficient
-        or no fake pattern is found.
+        or no fake pattern is found. When detected, ``win_rate``, ``profit_factor``,
+        ``avg_rr``, and ``sample_size`` fields carry AlgoView-calibrated statistics.
     """
     _no_fake = OpeningFake(
         detected=False,

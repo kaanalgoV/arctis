@@ -1,0 +1,121 @@
+story_id,title,epic,priority,current_status,target_state,assessment
+US-001,Connect All Analysis Endpoints to TimescaleDB,Foundation / Live Data,P0,partial,hardened,"Viele Analysepfade nutzen DB, aber `routes/analysis.py` hat noch Replay/Parquet-Fallback vor DB."
+US-002,Dynamic Market Selector,Foundation / Live Data,P0,partial,hardened,"Backend liefert Marktinfos, Frontend löst Kontrakte aber weiterhin über harte SYMBOL_MAP auf."
+US-003,Timeframe Selector with On-the-fly Aggregation,Foundation / Live Data,P0,partial,hardened,"REST-Aggregation existiert, der Live-/WS-Pfad ist für höhere Timeframes nicht konsistent."
+US-004,WebSocket Endpoint for Live Bar Updates,Foundation / Live Data,P0,partial,hardened,"WS-Endpunkt existiert, aber liefert rohe Symbolbars ohne timeframe-spezifischen Vertrag."
+US-005,Frontend WebSocket Hook (useMarketData),Foundation / Live Data,P0,partial,hardened,"Hook existiert und lädt REST+WS, aber mit harten URLs und falscher WS-Semantik."
+US-006,Session Panel — Live Data,Live Panels / HUD,P0,partial,hardened,"Feature im Chart-/Analysebereich sichtbar, aber Rendering-/Realtime-/Object-Verträge bleiben zu härten."
+US-007,Confluence Panel — Live Score,Live Panels / HUD,P0,partial,hardened,"Teilweise umgesetzt; wesentliche Pfad-, Integrations- oder Beweisarbeit fehlt noch."
+US-008,Patterns Panel — Live Patterns,Live Panels / HUD,P0,partial,hardened,"Teilweise umgesetzt; wesentliche Pfad-, Integrations- oder Beweisarbeit fehlt noch."
+US-009,Feed Panel — Real Events,Live Panels / HUD,P0,partial,hardened,"Backend-Feed existiert, aber das UI baut Feed-Items weiterhin clientseitig zusammen."
+US-010,Risk Panel — Connected to Config and Daily Check,Live Panels / HUD,P0,partial,hardened,"Settings-/Config-Funktionen sind angelegt, aber noch nicht Teil einer SaaS-ready Control Plane."
+US-011,HUD Metrics Strip — Live Values,Live Panels / HUD,P1,partial,hardened,"Teilweise umgesetzt; wesentliche Pfad-, Integrations- oder Beweisarbeit fehlt noch."
+US-012,VWAP Overlay with Standard Deviation Bands,Chart Enhancements,P1,partial,hardened,"Feature im Chart-/Analysebereich sichtbar, aber Rendering-/Realtime-/Object-Verträge bleiben zu härten."
+US-013,EMA Ribbon Overlay,Chart Enhancements,P1,partial,hardened,"Feature im Chart-/Analysebereich sichtbar, aber Rendering-/Realtime-/Object-Verträge bleiben zu härten."
+US-014,Volume Profile Sidebar,Chart Enhancements,P1,partial,hardened,"Feature im Chart-/Analysebereich sichtbar, aber Rendering-/Realtime-/Object-Verträge bleiben zu härten."
+US-015,Session Separators,Chart Enhancements,P1,partial,hardened,"Feature im Chart-/Analysebereich sichtbar, aber Rendering-/Realtime-/Object-Verträge bleiben zu härten."
+US-016,Previous Day Levels,Chart Enhancements,P1,partial,hardened,"Feature im Chart-/Analysebereich sichtbar, aber Rendering-/Realtime-/Object-Verträge bleiben zu härten."
+US-017,Opening Range Box,Chart Enhancements,P1,partial,hardened,"Feature im Chart-/Analysebereich sichtbar, aber Rendering-/Realtime-/Object-Verträge bleiben zu härten."
+US-018,BOS/CHoCH Markers,Chart Enhancements,P1,not_done,required,BOS/CHoCH-Marker im primären Chartpfad explizit deaktiviert.
+US-019,Pattern Markers and Range Boxes,Chart Enhancements,P1,partial,hardened,"Teilweise umgesetzt; wesentliche Pfad-, Integrations- oder Beweisarbeit fehlt noch."
+US-020,Probability Target Zone,Chart Enhancements,P1,partial,hardened,"Feature im Chart-/Analysebereich sichtbar, aber Rendering-/Realtime-/Object-Verträge bleiben zu härten."
+US-021,Velocity Module,BIAS Integration,P1,implemented,hardened,BIAS-/Regelmodul im Code sichtbar und als wertvoller Rohbau vorhanden; trotzdem Integrationshärtung nötig.
+US-022,Auction Quality Module,BIAS Integration,P1,implemented,hardened,BIAS-/Regelmodul im Code sichtbar und als wertvoller Rohbau vorhanden; trotzdem Integrationshärtung nötig.
+US-023,Naked POC Tracker,BIAS Integration,P1,implemented,hardened,BIAS-/Regelmodul im Code sichtbar und als wertvoller Rohbau vorhanden; trotzdem Integrationshärtung nötig.
+US-024,5-Bias-State System,BIAS Integration,P1,implemented,hardened,BIAS-/Regelmodul im Code sichtbar und als wertvoller Rohbau vorhanden; trotzdem Integrationshärtung nötig.
+US-025,Bias-Switch-Level,BIAS Integration,P1,implemented,hardened,BIAS-/Regelmodul im Code sichtbar und als wertvoller Rohbau vorhanden; trotzdem Integrationshärtung nötig.
+US-026,Opening Fake Detection,BIAS Integration,P1,implemented,hardened,BIAS-/Regelmodul im Code sichtbar und als wertvoller Rohbau vorhanden; trotzdem Integrationshärtung nötig.
+US-027,Double Fake Exhaustion,BIAS Integration,P1,implemented,hardened,BIAS-/Regelmodul im Code sichtbar und als wertvoller Rohbau vorhanden; trotzdem Integrationshärtung nötig.
+US-028,60% Correction Monitor,BIAS Integration,P1,implemented,hardened,BIAS-/Regelmodul im Code sichtbar und als wertvoller Rohbau vorhanden; trotzdem Integrationshärtung nötig.
+US-029,Key Level Identification,BIAS Integration,P1,implemented,hardened,BIAS-/Regelmodul im Code sichtbar und als wertvoller Rohbau vorhanden; trotzdem Integrationshärtung nötig.
+US-030,Daily Bias Endpoint,BIAS Integration,P1,implemented,hardened,BIAS-/Regelmodul im Code sichtbar und als wertvoller Rohbau vorhanden; trotzdem Integrationshärtung nötig.
+US-031,Bias Panel (Frontend),BIAS Integration,P1,partial,hardened,"Bias-bezogene Funktion teilweise sichtbar, aber noch nicht voll in den kanonischen Produktfluss integriert."
+US-032,Chart Overlays for BIAS Levels,BIAS Integration,P1,partial,hardened,"Bias-bezogene Funktion teilweise sichtbar, aber noch nicht voll in den kanonischen Produktfluss integriert."
+US-033,Replay Engine Refactor,Replay,P2,partial,hardened,"Replay ist vorhanden, aber noch nicht für alle Analysepfade und UI-Zustände konsistent."
+US-034,Replay Timeline Scrubber,Replay,P2,partial,hardened,"Replay ist vorhanden, aber noch nicht für alle Analysepfade und UI-Zustände konsistent."
+US-035,Replay Transport Controls,Replay,P2,partial,hardened,"Replay ist vorhanden, aber noch nicht für alle Analysepfade und UI-Zustände konsistent."
+US-036,Replay Speed Control,Replay,P2,partial,hardened,"Replay ist vorhanden, aber noch nicht für alle Analysepfade und UI-Zustände konsistent."
+US-037,Replay-Synced Panels,Replay,P2,partial,hardened,"Replay ist vorhanden, aber noch nicht für alle Analysepfade und UI-Zustände konsistent."
+US-038,Replay-Synced Chart,Replay,P2,partial,hardened,"Replay ist vorhanden, aber noch nicht für alle Analysepfade und UI-Zustände konsistent."
+US-039,Replay Date Picker,Replay,P2,partial,hardened,"Replay ist vorhanden, aber noch nicht für alle Analysepfade und UI-Zustände konsistent."
+US-040,"""Would You Have Traded?"" Decision Tracker",Replay,P2,partial,hardened,"Teilweise umgesetzt; wesentliche Pfad-, Integrations- oder Beweisarbeit fehlt noch."
+US-041,Feed Event Engine (Backend),Feed / Alerts,P2,partial,hardened,"Teilweise umgesetzt; wesentliche Pfad-, Integrations- oder Beweisarbeit fehlt noch."
+US-042,Feed Event Types,Feed / Alerts,P2,partial,hardened,"Teilweise umgesetzt; wesentliche Pfad-, Integrations- oder Beweisarbeit fehlt noch."
+US-043,Feed Filtering,Feed / Alerts,P2,not_done,required,Feed-Filtering als reife Produktfunktion nicht als kanonischer Workflow erkennbar.
+US-044,Feed-to-Chart Linking,Feed / Alerts,P2,not_done,required,Feed-to-chart linking bzw. Sound Alerts sind nicht als belastbar integrierte Funktionen sichtbar.
+US-045,Feed Sound Alerts,Feed / Alerts,P2,not_done,required,Feed-to-chart linking bzw. Sound Alerts sind nicht als belastbar integrierte Funktionen sichtbar.
+US-046,Horizontal Line Tool,Drawings,P2,implemented,hardened,"Im Repo als substanzieller Rohbau sichtbar, aber noch nicht automatisch SaaS-/Produkt-reif."
+US-047,Rectangle / Zone Tool,Drawings,P2,not_done,required,Rectangle/Trendline/Text sind im Chartpfad ausdrücklich übersprungen oder nicht fertig.
+US-048,Trend Line Tool,Drawings,P2,not_done,required,Rectangle/Trendline/Text sind im Chartpfad ausdrücklich übersprungen oder nicht fertig.
+US-049,Text Annotation Tool,Drawings,P2,not_done,required,Rectangle/Trendline/Text sind im Chartpfad ausdrücklich übersprungen oder nicht fertig.
+US-050,Drawing Persistence,Drawings,P2,partial,hardened,"Drawings scheinen nur lokal/persönlich zu persistieren, nicht als echte Backend-Domain."
+US-051,Settings Slide-Over Panel,Settings,P2,partial,hardened,"Settings-/Config-Funktionen sind angelegt, aber noch nicht Teil einer SaaS-ready Control Plane."
+US-052,Connection Settings Tab,Settings,P2,partial,hardened,"Settings-/Config-Funktionen sind angelegt, aber noch nicht Teil einer SaaS-ready Control Plane."
+US-053,Risk Settings Tab,Settings,P2,partial,hardened,"Settings-/Config-Funktionen sind angelegt, aber noch nicht Teil einer SaaS-ready Control Plane."
+US-054,Display Settings Tab,Settings,P2,partial,hardened,"Settings-/Config-Funktionen sind angelegt, aber noch nicht Teil einer SaaS-ready Control Plane."
+US-055,Alert Settings Tab,Settings,P2,partial,hardened,"Settings-/Config-Funktionen sind angelegt, aber noch nicht Teil einer SaaS-ready Control Plane."
+US-056,Travis Knowledge Panel,Knowledge / Assistant,P2,not_done,required,Travis/MCP-Integration ist im Produktkern noch nicht realisiert.
+US-057,Travis Contextual Suggestions,Knowledge / Assistant,P2,not_done,required,Travis/MCP-Integration ist im Produktkern noch nicht realisiert.
+US-058,Travis Search Command,Knowledge / Assistant,P2,not_done,required,Travis/MCP-Integration ist im Produktkern noch nicht realisiert.
+US-059,Loading Skeletons,Polish / UX,P2,partial,hardened,"UX-/Polish-Thema teilweise sichtbar, aber nicht als final gehärtet zu bewerten."
+US-060,Error States,Polish / UX,P2,partial,hardened,"UX-/Polish-Thema teilweise sichtbar, aber nicht als final gehärtet zu bewerten."
+US-061,Keyboard Shortcuts,Polish / UX,P2,partial,hardened,"UX-/Polish-Thema teilweise sichtbar, aber nicht als final gehärtet zu bewerten."
+US-062,Responsive Layout,Polish / UX,P2,partial,hardened,"UX-/Polish-Thema teilweise sichtbar, aber nicht als final gehärtet zu bewerten."
+US-063,Performance Optimization,Polish / UX,P2,partial,hardened,Performance-Optimierung ist noch nicht hinreichend bewiesen; Chart-Re-Creation bleibt ein Kernproblem.
+US-064,"Favicon, Page Title, App Icon",Polish / UX,P2,not_done,required,Branding-/Produkt-Polish bleibt unvollständig; generische Starter-Reste sind noch vorhanden.
+US-065,Canonical Instrument Identity Layer,Canonicalization / Realtime,P0,planned,required,"Fixe die Root-/Contract-/Instrument-Semantik end-to-end über Backend, Frontend, Feed, Replay und Persistenz."
+US-066,Dynamic Contract Selection End-to-End,Canonicalization / Realtime,P0,planned,required,"Ersetze jede harte Frontend-Symbolzuordnung durch echte, DB-/metadata-getriebene Contract-Auswahl inklusive Roll-Handling."
+US-067,Canonical API/WS Client and Environment Config,Canonicalization / Realtime,P0,planned,required,Eliminiere harte localhost-URLs und baue einen env-/tenant-aware API- und WebSocket-Client.
+US-068,Timeframe-Correct Live Data Pipeline,Canonicalization / Realtime,P0,planned,required,"Sorge dafür, dass Live-Daten auf jedem Timeframe fachlich korrekt ankommen und nicht rohe 1m-Bars an aggregierte Serien angehängt werden."
+US-069,WebSocket Subscription Protocol v2,Canonicalization / Realtime,P0,planned,required,"Definiere ein sauberes Subscription-Schema für Instrument, Contract, Timeframe, Replay-Kontext und Filterscope."
+US-070,Incremental Chart Engine,Canonicalization / Realtime,P0,planned,required,Baue den kanonischen Chartpfad auf stabilen inkrementellen Updates statt Re-Creation auf.
+US-071,Canonical Feed/Event Integration,Canonicalization / Realtime,P0,planned,required,"Mache den Backend-Event-Feed zur einzigen Produktquelle für Timeline, Alert-Referenzen und Context-Verlinkung."
+US-072,Replay-Consistent Analysis Contract,Canonicalization / Realtime,P0,planned,required,"Erzwinge, dass alle Analysepfade denselben Live-/Replay-Zeitpunkt respektieren."
+US-073,"Health, Readiness and Schema Verification",Canonicalization / Realtime,P0,planned,required,Implementiere ehrliche Health/Readiness-Prüfungen auf Basis des echten Schemas und der echten Upstream-Verfügbarkeit.
+US-074,Documentation Truth Automation,Canonicalization / Realtime,P0,planned,required,"Sorge dafür, dass Architektur-, Limitation- und Acceptance-Dokumente aus prüfbaren Fakten gepflegt werden."
+US-075,AlgoView Radar Surface,AlgoView / Context / Explanation,P1,planned,required,Baue AlgoView als echte Radar-/Universe-/Ranking-Oberfläche und nicht nur als Label.
+US-076,Watchlists and Saved Market Views,AlgoView / Context / Explanation,P1,planned,required,"Persistiere Watchlists, Saved Views und Filtermodelle je Nutzer, Workspace und Organisation."
+US-077,Cross-Instrument Ranking Engine,AlgoView / Context / Explanation,P1,planned,required,"Erstelle ein Ranking-System, das Märkte nach Relevanz, Regimewechseln, Setups und Kontext priorisiert."
+US-078,Context Graph Core,AlgoView / Context / Explanation,P1,planned,required,"Baue einen Graphen oder graphartige Referenzstruktur, die Signale, Levels, Strukturen, Sessions, Bias und Alerts verknüpft."
+US-079,Explanation Ledger,AlgoView / Context / Explanation,P1,planned,required,"Mache Erklärungen zu versionierten Artefakten mit Evidenzquellen, Invalidation und Referenzen."
+US-080,Narrative Synthesis Service,AlgoView / Context / Explanation,P1,planned,required,"Erzeuge strukturierte Kurz- und Lang-Erklärungen für Markierungen, Zustandswechsel und Setups."
+US-081,Auto-Marking Rule Engine,AlgoView / Context / Explanation,P1,planned,required,"Vereinheitliche alle Markerzeuger in einer klaren Rule-/Signal-Engine mit Priorität, Dedupe und Objektlebenszyklus."
+US-082,Context Cards and Why-Now Layer,AlgoView / Context / Explanation,P1,planned,required,"Baue UI-Elemente, die jede wichtige Situation in Why-now / why-here / what-changed / what-invalidates zerlegen."
+US-083,Scenario Stack and Invalidation Model,AlgoView / Context / Explanation,P1,planned,required,"Führe für relevante Kontexte Basis-, Bull-, Bear- und Invalidationsszenarien als Produktobjekte ein."
+US-084,Setup Quality Scoring,AlgoView / Context / Explanation,P1,planned,required,Bewerte erkannte Setups mit nachvollziehbaren Scoring-Faktoren statt bloßem Signal-Label.
+US-085,Alert Rules Model,Alerts / Learning,P1,planned,required,"Implementiere eine persistente Alert-Regel-Engine mit Scope, Thresholds, Triggern, Cooldowns und Ownership."
+US-086,Multi-Channel Alert Delivery,Alerts / Learning,P1,planned,required,"Unterstütze in-app, E-Mail, Push/Webhook oder andere Kanäle über denselben Delivery-Vertrag."
+US-087,Alert Dedupe and Cooldown Engine,Alerts / Learning,P1,planned,required,"Verhindere Alert-Spam durch Dedupe, Hysterese, Cooldowns und kanalabhängige Policies."
+US-088,Daily Briefing Generator,Alerts / Learning,P1,planned,required,"Erzeuge Tages-/Session-Briefings aus Radar-, Context- und Alert-Daten."
+US-089,Replay Coach,Alerts / Learning,P1,planned,required,"Baue einen Coach-Modus, der im Replay relevante Entscheidungspunkte und methodische Warnungen hervorhebt."
+US-090,Journal Persistence,Alerts / Learning,P1,planned,required,"Mache Beobachtungen, Entscheidungen, Kontextobjekte und Screenshots zu verlinkbaren Journal-Artefakten."
+US-091,Playbook Library,Alerts / Learning,P1,planned,required,"Erlaube Nutzer- und Team-Playbooks mit Setup-Definitionen, Kriterien und Beispiel-Kontexten."
+US-092,Trade Review Scoring,Alerts / Learning,P1,planned,required,Implementiere eine Review-Schicht für Post-Session-Auswertung gegen definierte Playbooks und Kontextregeln.
+US-093,Workspace Model,SaaS Control Plane,P1,planned,required,"Führe echte persönliche und geteilte Workspaces mit Layout, Instrumentsets, Filtern und History ein."
+US-094,Organizations and Roles,SaaS Control Plane,P1,planned,required,Baue Org-/Membership-/Role-Grundlagen für Team- und Multi-Tenant-Betrieb.
+US-095,Invitations and Membership Flows,SaaS Control Plane,P1,planned,required,"Ergänze Einladungen, Rollenwechsel, Member-Lifecycle und Active-Org-Kontext."
+US-096,Entitlements Layer,SaaS Control Plane,P1,planned,required,"Lege Features, Limits und Planrechte als eigenes Entitlement-Modell an."
+US-097,Usage Metering,SaaS Control Plane,P1,planned,required,"Erfasse nutzungsrelevante Ereignisse für Billing, Limits, Analytics und Produktsteuerung."
+US-098,Billing Plans and Checkout Skeleton,SaaS Control Plane,P1,planned,required,"Implementiere Planmodelle, Checkout/Subscription-Logik und Lifecycle-Grundlagen."
+US-099,Trial Lifecycle,SaaS Control Plane,P1,planned,required,"Definiere Trial-Start, Trial-Ende, Conversion und Feature-Grenzen sauber."
+US-100,Admin Console,SaaS Control Plane,P1,planned,required,"Baue eine Admin-/Owner-Konsole für Nutzer, Workspaces, Entitlements, Billing und Audit."
+US-101,Audit Logs,SaaS Control Plane,P1,planned,required,Protokolliere sicherheits- und organisationsrelevante Änderungen nachvollziehbar.
+US-102,API Keys and Webhooks,SaaS Control Plane,P1,planned,required,Führe kontrollierte Integrationspunkte für externe Systeme ein.
+US-103,Feature Flags and Remote Config,SaaS Control Plane,P1,planned,required,"Steuere riskante Funktionen über Flags, Segmente, Prozent-Rollouts und Remote Config."
+US-104,Observability Tracing,SaaS Control Plane,P1,planned,required,"Instrumentiere Backend, Worker und Frontend mit verteiltem Tracing."
+US-105,Product Analytics and Session Replay,SaaS Control Plane,P1,planned,required,"Messe Produktnutzung, Nutzerfriktion und Fehlbedienung mit Analytics und Replay."
+US-106,SLOs and Error Budgets,SaaS Control Plane,P1,planned,required,"Definiere Betriebsziele für Latenz, Fehlerrate, Alert-Delivery und WS-Stabilität."
+US-107,Background Jobs and Workers,Ops / Security / Evaluation,P2,planned,required,"Entkopple teure Prozesse wie Erklärungen, Alerts, Briefings, Exporte und Benchmarks in Worker."
+US-108,Event Bus and Outbox,Ops / Security / Evaluation,P2,planned,required,"Führe ein robustes Eventing-Modell mit Outbox, Retries, Idempotenz und Dead-Letter-Handling ein."
+US-109,Data Retention Policies,Ops / Security / Evaluation,P2,planned,required,"Steuere Aufbewahrung für Markt-, Journal-, Audit-, Replay- und Analytics-Daten je Plan und Compliance-Rahmen."
+US-110,Security Hardening,Ops / Security / Evaluation,P2,planned,required,"Härte Auth, Secrets, Uploads, Admin-Actions, Token-Flows und sensible Datenpfade."
+US-111,Rate Limiting and Abuse Controls,Ops / Security / Evaluation,P2,planned,required,"Schütze APIs, WS, Alerts und AI-/Explanation-Volumes gegen Missbrauch."
+US-112,Secrets and Environment Management,Ops / Security / Evaluation,P2,planned,required,"Systematisiere Konfiguration, Geheimnisse und Environment-Parität über local/dev/staging/prod."
+US-113,Deployment Topology,Ops / Security / Evaluation,P2,planned,required,"Definiere sauberes Staging/Prod-Routing, Datenmigrationen, Rollbacks und Flag-gesteuerte Releases."
+US-114,CI/CD and Migration Gates,Ops / Security / Evaluation,P2,planned,required,"Mache Typecheck, Tests, Smoke, Migrationen und Release-Checks verbindlich."
+US-115,Test Matrix,Ops / Security / Evaluation,P2,planned,required,"Baue eine echte Testmatrix für data correctness, replay/live parity, UI contracts und tenant isolation."
+US-116,Synthetic Replay Fixtures,Ops / Security / Evaluation,P2,planned,required,"Erzeuge deterministische Datensätze für Replay-, Alert- und Erklärungs-Regressionen."
+US-117,Forecasting Benchmark Harness,Ops / Security / Evaluation,P2,planned,required,"Baue ein reproduzierbares Harness für Baselines, klassische Modelle und Foundation-Time-Series-Modelle."
+US-118,Model Registry and Evaluation Reports,Ops / Security / Evaluation,P2,planned,required,"Versioniere Modelle, Datenschnitte, Benchmarks, Metriken und Freigabezustände."
+US-119,AI Guardrails and Explanation Policy,Ops / Security / Evaluation,P2,planned,required,"Erzwinge Unsicherheitsdarstellung, Evidenzpflicht und Verbot unkontrollierter Blackbox-Behauptungen."
+US-120,Release Candidate Go-Live Checklist,Ops / Security / Evaluation,P2,planned,required,Erstelle einen verbindlichen Go-Live- und Release-Candidate-Prozess für Beta und v1.

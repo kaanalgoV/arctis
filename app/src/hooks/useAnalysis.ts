@@ -75,8 +75,8 @@ export function useAnalysis(pollIntervalMs = 5000) {
 
   // Refetch on new bar
   useEffect(() => {
-    if (lastBarTs) fetchAll()
-  }, [lastBarTs])
+    if (lastBarTs) void fetchAll()
+  }, [lastBarTs, fetchAll])
 
   return { ...data, isLoading, error, refetch: fetchAll }
 }

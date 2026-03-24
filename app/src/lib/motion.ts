@@ -2,7 +2,7 @@ export const transitions = {
   springStiff: { type: 'spring' as const, stiffness: 400, damping: 30 },
   springGentle: { type: 'spring' as const, stiffness: 300, damping: 25 },
   easeOut: { duration: 0.15, ease: 'easeOut' as const },
-  easeOutSlow: { duration: 0.35, ease: [0.16, 1, 0.3, 1] },
+  easeOutSlow: { duration: 0.35, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] },
 }
 
 export const fadeIn = {

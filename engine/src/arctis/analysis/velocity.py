@@ -11,7 +11,8 @@ class VelocityPoint:
     velocity: float      # absolute price change per bar
     avg_velocity: float  # rolling average over N bars
     ratio: float         # velocity / avg_velocity
-    scale: int           # 1-10 scale
+    scale: int           # 1-10 scale (always positive, magnitude only)
+    signed_scale: int    # signed: positive = bullish bar, negative = bearish bar
 
 
 def calculate_velocity(bars: list[OHLCVBar], period: int = 20) -> list[VelocityPoint]:
@@ -31,13 +32,20 @@ def calculate_velocity(bars: list[OHLCVBar], period: int = 20) -> list[VelocityP
       1.5-2.0 -> 8 (very fast)
       2.0-2.5 -> 9 (extremely fast)
       >2.5    -> 10 (manipulative/stop-run)
+
+    signed_scale mirrors scale but carries the direction of the bar:
+      positive = bullish bar (close > open)
+      negative = bearish bar (close < open)
+    This is the value that should be passed to BIAS scoring so that
+    downward velocity correctly decreases (not increases) the BIAS score.
     """
     if len(bars) < period:
         return []
 
     results = []
     for i in range(period, len(bars)):
-        vel = abs(bars[i].close - bars[i].open)
+        raw_move = bars[i].close - bars[i].open   # signed: positive = bullish
+        vel = abs(raw_move)
 
         # Rolling average over the preceding `period` bars (not including current)
         window = bars[i - period:i]
@@ -45,7 +53,7 @@ def calculate_velocity(bars: list[OHLCVBar], period: int = 20) -> list[VelocityP
 
         ratio = vel / avg if avg > 0 else 0.0
 
-        # Scale mapping
+        # Scale mapping (magnitude only, 1-10)
         if ratio < 0.3:
             scale = 1
         elif ratio < 0.5:
@@ -67,12 +75,17 @@ def calculate_velocity(bars: list[OHLCVBar], period: int = 20) -> list[VelocityP
         else:
             scale = 10
 
+        # signed_scale: magnitude × direction (-10..+10)
+        direction_sign = 1 if raw_move >= 0 else -1
+        signed_scale = direction_sign * scale
+
         results.append(VelocityPoint(
             timestamp=bars[i].timestamp,
             velocity=round(vel, 4),
             avg_velocity=round(avg, 4),
             ratio=round(ratio, 2),
             scale=scale,
+            signed_scale=signed_scale,
         ))
 
     return results

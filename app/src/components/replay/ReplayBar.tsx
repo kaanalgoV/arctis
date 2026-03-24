@@ -18,18 +18,20 @@ export interface ReplayBarProps {
   currentTime: string
   totalTime: string
   date: string
-  onPlay: () => void
-  onPause: () => void
-  onSpeedChange: (speed: number) => void
-  onSeek: (progress: number) => void
-  onDateChange: (direction: 'prev' | 'next') => void
+  onPlay?: () => void
+  onPause?: () => void
+  onSpeedChange?: (speed: number) => void
+  onSeek?: (progress: number) => void
+  onDateChange?: (direction: 'prev' | 'next') => void
   proberunMode?: boolean
   onProberunToggle?: () => void
+  availableDates?: string[]
+  onSelectDate?: (date: string) => void
 }
 
 // ── Speed options ─────────────────────────────────────────────────────────────
 
-const SPEED_OPTIONS = [1, 5, 10, 25] as const
+const SPEED_OPTIONS = [0.5, 1, 2, 5, 10] as const
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
@@ -141,6 +143,8 @@ export function ReplayBar({
   onDateChange,
   proberunMode,
   onProberunToggle,
+  availableDates,
+  onSelectDate,
 }: ReplayBarProps) {
   return (
     <div
@@ -153,14 +157,14 @@ export function ReplayBar({
     >
       {/* Transport controls */}
       <div className="flex items-center gap-0.5 shrink-0">
-        <TransportButton onClick={() => onSeek(0)} label="Skip to start">
+        <TransportButton onClick={() => onSeek?.(0)} label="Skip to start">
           <SkipBack size={11} strokeWidth={1.75} />
         </TransportButton>
-        <TransportButton onClick={() => onSeek(Math.max(0, progress - 5))} label="Step back">
+        <TransportButton onClick={() => onSeek?.(Math.max(0, progress - 5))} label="Step back">
           <ChevronLeft size={11} strokeWidth={1.75} />
         </TransportButton>
         <TransportButton
-          onClick={isPlaying ? onPause : onPlay}
+          onClick={isPlaying ? () => onPause?.() : () => onPlay?.()}
           label={isPlaying ? 'Pause' : 'Play'}
         >
           {isPlaying ? (
@@ -169,16 +173,16 @@ export function ReplayBar({
             <Play size={11} strokeWidth={1.75} />
           )}
         </TransportButton>
-        <TransportButton onClick={() => onSeek(Math.min(100, progress + 5))} label="Step forward">
+        <TransportButton onClick={() => onSeek?.(Math.min(100, progress + 5))} label="Step forward">
           <ChevronRight size={11} strokeWidth={1.75} />
         </TransportButton>
-        <TransportButton onClick={() => onSeek(100)} label="Skip to end">
+        <TransportButton onClick={() => onSeek?.(100)} label="Skip to end">
           <SkipForward size={11} strokeWidth={1.75} />
         </TransportButton>
       </div>
 
       {/* Progress track */}
-      <ProgressTrack progress={progress} onSeek={onSeek} />
+      <ProgressTrack progress={progress} onSeek={(pct) => onSeek?.(pct)} />
 
       {/* Time display */}
       <div className="shrink-0">
@@ -192,7 +196,7 @@ export function ReplayBar({
 
       {/* Proberun toggle */}
       <button
-        onClick={onProberunToggle}
+        onClick={onProberunToggle ?? (() => {})}
         className={cn(
           'px-2 py-0.5 text-[10px] font-mono rounded transition-colors cursor-pointer shrink-0',
           proberunMode
@@ -211,7 +215,7 @@ export function ReplayBar({
         {SPEED_OPTIONS.map((s) => (
           <button
             key={s}
-            onClick={() => onSpeedChange(s)}
+            onClick={() => onSpeedChange?.(s)}
             className={cn(
               'px-1.5 py-0.5 rounded',
               'font-mono text-[10px] leading-none',
@@ -222,7 +226,7 @@ export function ReplayBar({
                 : 'text-[var(--color-text-muted)] hover:bg-white/[0.04] hover:text-[var(--color-text-secondary)]',
             )}
           >
-            {s}x
+            {s === 0.5 ? '½' : s}x
           </button>
         ))}
       </div>
@@ -233,7 +237,7 @@ export function ReplayBar({
       {/* Date picker */}
       <div className="flex items-center gap-1 shrink-0">
         <button
-          onClick={() => onDateChange('prev')}
+          onClick={() => onDateChange?.('prev')}
           aria-label="Previous day"
           className={cn(
             'flex items-center justify-center w-4 h-4 rounded',
@@ -245,11 +249,25 @@ export function ReplayBar({
         >
           <ChevronLeft size={11} strokeWidth={1.75} />
         </button>
-        <span className="font-mono text-[10px] tabular-nums text-[var(--color-text-secondary)] leading-none min-w-[68px] text-center">
-          {date || '—'}
-        </span>
+        <input
+          type="date"
+          value={date || ''}
+          min={availableDates && availableDates.length > 0 ? availableDates[0] : undefined}
+          max={availableDates && availableDates.length > 0 ? availableDates[availableDates.length - 1] : undefined}
+          onChange={(e) => {
+            if (e.target.value) onSelectDate?.(e.target.value)
+          }}
+          aria-label="Select replay date"
+          className={cn(
+            'font-mono text-[10px] tabular-nums leading-none',
+            'bg-transparent text-[var(--color-text-secondary)]',
+            'border-0 outline-none cursor-pointer',
+            'focus:border focus:border-[var(--color-border-subtle)] focus:rounded',
+            '[color-scheme:dark]',
+          )}
+        />
         <button
-          onClick={() => onDateChange('next')}
+          onClick={() => onDateChange?.('next')}
           aria-label="Next day"
           className={cn(
             'flex items-center justify-center w-4 h-4 rounded',

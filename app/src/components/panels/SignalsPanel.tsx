@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils'
+import { Skeleton } from '@/components/ui/Skeleton'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -44,20 +45,14 @@ function formatPrice(price: number): string {
 
 function confidenceColor(confidence: string): string {
   if (confidence === 'high') return 'var(--color-profit)'
-  if (confidence === 'medium') return 'var(--color-text-secondary)'
-  return 'var(--color-text-muted)'
+  if (confidence === 'medium') return '#F0A500'
+  return 'var(--color-loss)'
 }
 
-function confidenceBg(confidence: string): string {
-  if (confidence === 'high') return 'rgba(0,135,87,0.12)'
-  if (confidence === 'medium') return 'rgba(255,255,255,0.03)'
-  return 'rgba(255,255,255,0.02)'
-}
-
-function confidenceBorder(confidence: string): string {
-  if (confidence === 'high') return 'rgba(0,135,87,0.28)'
-  if (confidence === 'medium') return 'var(--color-border-subtle)'
-  return 'var(--color-border-subtle)'
+function confidenceBgColor(confidence: string): string {
+  if (confidence === 'high') return 'rgba(34,197,94,0.10)'
+  if (confidence === 'medium') return 'rgba(240,165,0,0.10)'
+  return 'rgba(239,68,68,0.10)'
 }
 
 function rrColor(rr: number): string {
@@ -66,65 +61,143 @@ function rrColor(rr: number): string {
   return 'var(--color-text-muted)'
 }
 
-// ── Direction Badge ───────────────────────────────────────────────────────────
+// ── Loading Skeleton ───────────────────────────────────────────────────────────
+
+function SignalsSkeleton() {
+  return (
+    <div className="flex flex-col gap-2">
+      {Array.from({ length: 3 }).map((_, i) => (
+        <div
+          key={i}
+          className="flex flex-col gap-2 px-3 py-2.5 rounded-[var(--radius-sm)]"
+          style={{
+            background: 'var(--color-surface-raised)',
+            border: '1px solid var(--color-border-subtle)',
+          }}
+        >
+          {/* Header row */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Skeleton className="h-4 w-4 rounded-full" />
+              <Skeleton className="h-3 w-10" />
+              <Skeleton className="h-3 w-14" />
+            </div>
+            <div className="flex items-center gap-2">
+              <Skeleton className="h-4 w-8" />
+              <Skeleton className="h-4 w-10" />
+            </div>
+          </div>
+          {/* Price row */}
+          <div className="grid gap-1" style={{ gridTemplateColumns: '1fr 1fr 1fr' }}>
+            {Array.from({ length: 3 }).map((_, j) => (
+              <div key={j} className="flex flex-col gap-0.5">
+                <Skeleton className="h-2 w-8" />
+                <Skeleton className="h-3 w-16" />
+              </div>
+            ))}
+          </div>
+          {/* R:R bar */}
+          <Skeleton className="h-1 w-full rounded" />
+          {/* Reason */}
+          <Skeleton className="h-2 w-3/4" />
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ── Direction Dot + Label ──────────────────────────────────────────────────────
 
 function DirectionBadge({ direction }: { direction: string }) {
   const isLong = direction === 'long'
+  const dotColor = isLong ? 'var(--color-profit)' : 'var(--color-loss)'
+  const label = isLong ? 'LONG' : 'SHORT'
   return (
-    <div
-      className="flex items-center justify-center"
-      style={{
-        width: 36,
-        height: 18,
-        borderRadius: 3,
-        background: isLong ? 'rgba(0,135,87,0.18)' : 'rgba(239,65,54,0.18)',
-        border: `1px solid ${isLong ? 'rgba(0,135,87,0.4)' : 'rgba(239,65,54,0.4)'}`,
-      }}
-    >
+    <div className="flex items-center gap-1">
       <span
         style={{
-          fontSize: 9,
+          width: 6,
+          height: 6,
+          borderRadius: '50%',
+          background: dotColor,
+          display: 'inline-block',
+          flexShrink: 0,
+          boxShadow: `0 0 4px ${dotColor}`,
+        }}
+      />
+      <span
+        style={{
+          fontSize: 10,
           fontFamily: 'var(--font-mono)',
           fontWeight: 700,
           letterSpacing: '0.08em',
-          color: isLong ? 'var(--color-profit)' : 'var(--color-loss)',
+          color: dotColor,
         }}
       >
-        {isLong ? 'LONG' : 'SHORT'}
+        {label}
       </span>
     </div>
+  )
+}
+
+// ── Confidence Badge ───────────────────────────────────────────────────────────
+
+function ConfidenceBadge({ confidence }: { confidence: string }) {
+  const label = confidence === 'high' ? 'HIGH' : confidence === 'medium' ? 'MED' : 'LOW'
+  const color = confidenceColor(confidence)
+  const bg = confidenceBgColor(confidence)
+  return (
+    <span
+      style={{
+        fontSize: 8,
+        fontFamily: 'var(--font-mono)',
+        fontWeight: 700,
+        letterSpacing: '0.08em',
+        textTransform: 'uppercase' as const,
+        color,
+        background: bg,
+        border: `1px solid ${color}`,
+        borderRadius: 3,
+        padding: '1px 5px',
+        lineHeight: 1.6,
+      }}
+    >
+      {label}
+    </span>
   )
 }
 
 // ── Signal Card ───────────────────────────────────────────────────────────────
 
 function SignalCard({ signal }: { signal: Signal }) {
+  const isLong = signal.direction === 'long'
   const typeLabel = SIGNAL_TYPE_LABELS[signal.type] ?? signal.type.toUpperCase()
   const risk = Math.abs(signal.entry - signal.stop)
   const reward = Math.abs(signal.target - signal.entry)
+  const total = risk + reward
+  const riskPct = total > 0 ? (risk / total) * 100 : 50
+  const rewardPct = total > 0 ? (reward / total) * 100 : 50
+  const borderColor = isLong ? 'var(--color-profit)' : 'var(--color-loss)'
 
   return (
     <div
-      className={cn(
-        'flex flex-col gap-2 px-3 py-2.5',
-        'rounded-[var(--radius-sm)]',
-        'border',
-      )}
+      className="flex flex-col gap-2 px-3 py-2.5 rounded-[var(--radius-sm)]"
       style={{
-        background: confidenceBg(signal.confidence),
-        borderColor: confidenceBorder(signal.confidence),
+        background: 'var(--color-surface-raised)',
+        border: '1px solid var(--color-border-subtle)',
+        borderLeft: `2px solid ${borderColor}`,
       }}
     >
-      {/* Header row: direction + type + confidence + R:R */}
+      {/* Header row: direction dot + type | confidence + R:R */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-2">
           <DirectionBadge direction={signal.direction} />
           <span
             style={{
-              fontSize: 10,
+              fontSize: 9,
               fontFamily: 'var(--font-mono)',
-              color: 'var(--color-text-secondary)',
-              fontWeight: 600,
+              color: 'var(--color-text-muted)',
+              fontWeight: 500,
               letterSpacing: '0.04em',
             }}
           >
@@ -132,32 +205,7 @@ function SignalCard({ signal }: { signal: Signal }) {
           </span>
         </div>
         <div className="flex items-center gap-1.5">
-          {/* Confidence badge */}
-          <div
-            className="flex items-center justify-center"
-            style={{
-              height: 16,
-              paddingLeft: 5,
-              paddingRight: 5,
-              borderRadius: 3,
-              background: 'transparent',
-              border: `1px solid ${confidenceColor(signal.confidence)}`,
-            }}
-          >
-            <span
-              style={{
-                fontSize: 8,
-                fontFamily: 'var(--font-mono)',
-                fontWeight: 600,
-                letterSpacing: '0.07em',
-                textTransform: 'uppercase',
-                color: confidenceColor(signal.confidence),
-              }}
-            >
-              {signal.confidence}
-            </span>
-          </div>
-          {/* R:R */}
+          <ConfidenceBadge confidence={signal.confidence} />
           <span
             className="tabular-nums"
             style={{
@@ -165,6 +213,7 @@ function SignalCard({ signal }: { signal: Signal }) {
               fontFamily: 'var(--font-mono)',
               fontWeight: 700,
               color: rrColor(signal.rr),
+              letterSpacing: '-0.02em',
             }}
           >
             {signal.rr.toFixed(1)}R
@@ -172,20 +221,20 @@ function SignalCard({ signal }: { signal: Signal }) {
         </div>
       </div>
 
-      {/* Price row: Entry / Stop / Target */}
+      {/* Price grid: Entry / Stop / Target */}
       <div
-        className="grid gap-1"
-        style={{ gridTemplateColumns: '1fr 1fr 1fr' }}
+        className="grid"
+        style={{ gridTemplateColumns: '1fr 1fr 1fr', gap: '0 4px' }}
       >
         {/* Entry */}
         <div className="flex flex-col gap-0.5">
           <span
             style={{
-              fontSize: 8,
+              fontSize: 7,
               fontFamily: 'var(--font-mono)',
               color: 'var(--color-text-muted)',
               textTransform: 'uppercase',
-              letterSpacing: '0.08em',
+              letterSpacing: '0.10em',
             }}
           >
             Entry
@@ -206,11 +255,11 @@ function SignalCard({ signal }: { signal: Signal }) {
         <div className="flex flex-col gap-0.5">
           <span
             style={{
-              fontSize: 8,
+              fontSize: 7,
               fontFamily: 'var(--font-mono)',
               color: 'var(--color-text-muted)',
               textTransform: 'uppercase',
-              letterSpacing: '0.08em',
+              letterSpacing: '0.10em',
             }}
           >
             Stop
@@ -231,11 +280,11 @@ function SignalCard({ signal }: { signal: Signal }) {
         <div className="flex flex-col gap-0.5">
           <span
             style={{
-              fontSize: 8,
+              fontSize: 7,
               fontFamily: 'var(--font-mono)',
               color: 'var(--color-text-muted)',
               textTransform: 'uppercase',
-              letterSpacing: '0.08em',
+              letterSpacing: '0.10em',
             }}
           >
             Target
@@ -254,29 +303,31 @@ function SignalCard({ signal }: { signal: Signal }) {
         </div>
       </div>
 
-      {/* Risk magnitude bar */}
+      {/* R:R visual bar */}
       <div
-        className="flex items-center gap-1.5"
-        style={{ height: 4 }}
+        style={{
+          display: 'flex',
+          height: 3,
+          borderRadius: 2,
+          overflow: 'hidden',
+          background: 'var(--color-surface-secondary)',
+          gap: 1,
+        }}
       >
-        {/* Risk portion */}
         <div
           style={{
-            flex: risk,
-            height: 4,
-            borderRadius: 2,
+            width: `${riskPct}%`,
             background: 'var(--color-loss)',
-            opacity: 0.6,
+            opacity: 0.55,
+            borderRadius: '2px 0 0 2px',
           }}
         />
-        {/* Reward portion */}
         <div
           style={{
-            flex: reward,
-            height: 4,
-            borderRadius: 2,
+            width: `${rewardPct}%`,
             background: 'var(--color-profit)',
-            opacity: 0.6,
+            opacity: 0.55,
+            borderRadius: '0 2px 2px 0',
           }}
         />
       </div>
@@ -287,6 +338,7 @@ function SignalCard({ signal }: { signal: Signal }) {
           margin: 0,
           fontSize: 9,
           fontFamily: 'var(--font-mono)',
+          fontStyle: 'italic',
           color: 'var(--color-text-muted)',
           lineHeight: 1.5,
         }}
@@ -301,12 +353,29 @@ function SignalCard({ signal }: { signal: Signal }) {
 
 function EmptyState() {
   return (
-    <div className="flex items-center justify-center py-6">
+    <div
+      className="flex flex-col items-center justify-center gap-2 py-8"
+      style={{ color: 'var(--color-text-muted)' }}
+    >
+      {/* Muted icon: simple horizontal lines suggesting an empty list */}
+      <svg
+        width="20"
+        height="16"
+        viewBox="0 0 20 16"
+        fill="none"
+        style={{ opacity: 0.35 }}
+      >
+        <rect x="0" y="0" width="8" height="2" rx="1" fill="currentColor" />
+        <rect x="0" y="5" width="14" height="2" rx="1" fill="currentColor" />
+        <rect x="0" y="10" width="10" height="2" rx="1" fill="currentColor" />
+        <circle cx="17" cy="14" r="2.5" stroke="currentColor" strokeWidth="1.2" />
+        <line x1="19" y1="15.5" x2="20.5" y2="17" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+      </svg>
       <span
         style={{
-          fontSize: 11,
-          color: 'var(--color-text-muted)',
+          fontSize: 10,
           fontFamily: 'var(--font-mono)',
+          letterSpacing: '0.06em',
         }}
       >
         No active signals
@@ -315,88 +384,35 @@ function EmptyState() {
   )
 }
 
-// ── Main Component ─────────────────────────────────────────────────────────────
-
-export function SignalsPanel({ data, className }: SignalsPanelProps) {
-  if (!data) {
-    return (
-      <div className={cn('flex flex-col gap-2', className)}>
-        <EmptyState />
-      </div>
-    )
-  }
-
-  const { signals, bias, bias_score } = data
-  const longSignals = signals.filter((s) => s.direction === 'long')
-  const shortSignals = signals.filter((s) => s.direction === 'short')
-
-  if (signals.length === 0) {
-    return (
-      <div className={cn('flex flex-col gap-2', className)}>
-        {/* Bias context strip */}
-        <BiasMicroStrip bias={bias} score={bias_score} />
-        <EmptyState />
-      </div>
-    )
-  }
-
-  return (
-    <div className={cn('flex flex-col gap-2', className)}>
-      {/* Bias context strip */}
-      <BiasMicroStrip bias={bias} score={bias_score} />
-
-      {/* Long signals */}
-      {longSignals.length > 0 && (
-        <div className="flex flex-col gap-1.5">
-          {longSignals.map((sig, i) => (
-            <SignalCard key={`long-${i}`} signal={sig} />
-          ))}
-        </div>
-      )}
-
-      {/* Short signals */}
-      {shortSignals.length > 0 && (
-        <div className="flex flex-col gap-1.5">
-          {shortSignals.map((sig, i) => (
-            <SignalCard key={`short-${i}`} signal={sig} />
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
 // ── Bias Micro Strip ──────────────────────────────────────────────────────────
 
 function BiasMicroStrip({ bias, score }: { bias: string; score: number }) {
-  const isLong = bias.includes('LONG')
-  const isShort = bias.includes('SHORT')
-  const isRange = bias === 'RANGE'
+  const biasUpper = bias.toUpperCase()
+  const isLong = biasUpper.includes('LONG')
+  const isShort = biasUpper.includes('SHORT')
 
-  let color = 'var(--color-text-muted)'
-  if (isLong && !isRange) color = 'var(--color-profit)'
-  else if (isShort && !isRange) color = 'var(--color-loss)'
-  else if (isLong) color = 'rgba(0,135,87,0.7)'
-  else if (isShort) color = 'rgba(239,65,54,0.7)'
+  let biasColor = 'var(--color-text-muted)'
+  if (isLong) biasColor = 'var(--color-profit)'
+  else if (isShort) biasColor = 'var(--color-loss)'
 
   const biasLabel = bias.replace('_', ' ')
 
   return (
     <div
-      className="flex items-center justify-between px-2 py-1.5 rounded-[var(--radius-sm)]"
+      className="flex items-center justify-between px-2.5 py-1.5 rounded-[var(--radius-sm)]"
       style={{
-        background: 'var(--color-surface-raised)/40',
+        background: 'var(--color-surface-secondary)',
         border: '1px solid var(--color-border-subtle)',
       }}
     >
       <div className="flex items-center gap-1.5">
         <span
           style={{
-            fontSize: 8,
+            fontSize: 7,
             fontFamily: 'var(--font-mono)',
             color: 'var(--color-text-muted)',
             textTransform: 'uppercase',
-            letterSpacing: '0.08em',
+            letterSpacing: '0.10em',
           }}
         >
           Bias
@@ -406,7 +422,7 @@ function BiasMicroStrip({ bias, score }: { bias: string; score: number }) {
             fontSize: 10,
             fontFamily: 'var(--font-mono)',
             fontWeight: 700,
-            color,
+            color: biasColor,
             letterSpacing: '0.05em',
           }}
         >
@@ -424,6 +440,54 @@ function BiasMicroStrip({ bias, score }: { bias: string; score: number }) {
       >
         {score >= 0 ? '+' : ''}{score}
       </span>
+    </div>
+  )
+}
+
+// ── Main Component ─────────────────────────────────────────────────────────────
+
+export function SignalsPanel({ data, className }: SignalsPanelProps) {
+  // Loading: no data yet
+  if (!data) {
+    return (
+      <div className={cn('flex flex-col gap-2', className)}>
+        <SignalsSkeleton />
+      </div>
+    )
+  }
+
+  const { signals, bias, bias_score } = data
+  const longSignals = signals.filter((s) => s.direction === 'long')
+  const shortSignals = signals.filter((s) => s.direction === 'short')
+
+  if (signals.length === 0) {
+    return (
+      <div className={cn('flex flex-col gap-2', className)}>
+        <BiasMicroStrip bias={bias} score={bias_score} />
+        <EmptyState />
+      </div>
+    )
+  }
+
+  return (
+    <div className={cn('flex flex-col gap-2', className)}>
+      <BiasMicroStrip bias={bias} score={bias_score} />
+
+      {longSignals.length > 0 && (
+        <div className="flex flex-col gap-1.5">
+          {longSignals.map((sig, i) => (
+            <SignalCard key={`long-${i}`} signal={sig} />
+          ))}
+        </div>
+      )}
+
+      {shortSignals.length > 0 && (
+        <div className="flex flex-col gap-1.5">
+          {shortSignals.map((sig, i) => (
+            <SignalCard key={`short-${i}`} signal={sig} />
+          ))}
+        </div>
+      )}
     </div>
   )
 }

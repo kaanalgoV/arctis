@@ -1,12 +1,13 @@
 """Session and time-based analysis."""
 
 from dataclasses import dataclass
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from enum import Enum
+from zoneinfo import ZoneInfo
 
 from arctis.models import OHLCVBar
 
-ET_OFFSET = timedelta(hours=-5)
+ET = ZoneInfo("America/New_York")
 
 
 class Session(str, Enum):
@@ -29,7 +30,7 @@ class SessionStats:
 
 def _to_et_hour_minute(unix_ts: int) -> tuple[int, int]:
     utc_dt = datetime.fromtimestamp(unix_ts, tz=timezone.utc)
-    et_dt = utc_dt + ET_OFFSET
+    et_dt = utc_dt.astimezone(ET)
     return et_dt.hour, et_dt.minute
 
 
