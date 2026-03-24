@@ -18,23 +18,40 @@ class VWAPData:
 def calculate_vwap(bars: list[OHLCVBar]) -> list[VWAPData]:
     """Calculate session-anchored VWAP with 1/2 SD bands.
 
-    Resets at each new trading day (detected by timestamp gap > 6 hours).
+    Resets daily at RTH open (14:30 UTC = 09:30 ET) — same as TradingView.
+    For CME futures that trade 23 hours, a time-gap reset is unreliable.
+    Instead we detect when the bar crosses the 14:30 UTC boundary.
     """
     if len(bars) < 2:
         return []
+
+    from datetime import datetime, timezone
 
     results = []
     cum_tp_vol = 0.0
     cum_vol = 0.0
     cum_tp2_vol = 0.0
-    prev_ts = bars[0].timestamp
+    prev_trading_day = None
 
     for bar in bars:
-        # Detect session reset (gap > 6 hours = new day)
-        if bar.timestamp - prev_ts > 6 * 3600:
+        # Determine the trading day for this bar.
+        # CME trading day starts at 17:00 CT (23:00 UTC) previous calendar day.
+        # For VWAP reset we use 14:30 UTC (09:30 ET = RTH open) as the anchor.
+        dt = datetime.fromtimestamp(bar.timestamp, tz=timezone.utc)
+        # Trading day: if before 14:30 UTC, it belongs to the previous calendar date.
+        # If at or after 14:30 UTC, it's the current date.
+        if dt.hour < 14 or (dt.hour == 14 and dt.minute < 30):
+            trading_day = (dt.date().toordinal() - 1)  # previous day's session
+        else:
+            trading_day = dt.date().toordinal()
+
+        # Reset VWAP at new trading day
+        if prev_trading_day is not None and trading_day != prev_trading_day:
             cum_tp_vol = 0.0
             cum_vol = 0.0
             cum_tp2_vol = 0.0
+
+        prev_trading_day = trading_day
 
         tp = (bar.high + bar.low + bar.close) / 3.0
         cum_tp_vol += tp * bar.volume
@@ -58,6 +75,5 @@ def calculate_vwap(bars: list[OHLCVBar]) -> list[VWAPData]:
                 lower_2=round(vwap - 2 * sd, 2),
             )
         )
-        prev_ts = bar.timestamp
 
     return results

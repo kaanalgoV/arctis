@@ -24,8 +24,8 @@ interface VolumeProfileOverlayProps {
  * div overlay on the right side of the chart canvas.
  *
  * - Width: 120px, offset 60px from right (avoids the LWC price axis)
- * - POC bin: amber (#fbbf24), opacity 0.8, left border accent
- * - Value Area bins: ice-blue tint (rgba(96,165,250,0.2))
+ * - POC bin: ice blue (#5AAED8), opacity 0.6, left border accent
+ * - Value Area bins: ice-blue tint (rgba(90,174,216,0.15))
  * - Other bins: neutral (rgba(139,148,158,0.15))
  * - Labels: POC / VAH / VAL in 9px font-mono
  */
@@ -85,11 +85,11 @@ export function VolumeProfileOverlay({
                 height: '100%',
                 marginLeft: 'auto',
                 backgroundColor: isPOCBin
-                  ? 'rgba(251, 191, 36, 0.6)'
+                  ? 'rgba(90, 174, 216, 0.6)'
                   : isVA
-                    ? 'rgba(96, 165, 250, 0.2)'
+                    ? 'rgba(90, 174, 216, 0.15)'
                     : 'rgba(139, 148, 158, 0.15)',
-                borderLeft: isPOCBin ? '2px solid #fbbf24' : undefined,
+                borderLeft: isPOCBin ? '2px solid #5AAED8' : undefined,
               }}
             />
           </div>
@@ -101,7 +101,7 @@ export function VolumeProfileOverlay({
         className="absolute left-0 text-[9px] font-mono leading-none select-none"
         style={{
           top: priceToY(poc),
-          color: '#fbbf24',
+          color: '#5AAED8',
           transform: 'translateY(-50%)',
           textShadow: '0 0 4px rgba(0,0,0,0.8)',
         }}
@@ -114,7 +114,7 @@ export function VolumeProfileOverlay({
         className="absolute left-0 text-[9px] font-mono leading-none select-none"
         style={{
           top: priceToY(vah),
-          color: 'rgba(96, 165, 250, 0.8)',
+          color: '#5AAED8',
           transform: 'translateY(-50%)',
           textShadow: '0 0 4px rgba(0,0,0,0.8)',
         }}
@@ -127,7 +127,7 @@ export function VolumeProfileOverlay({
         className="absolute left-0 text-[9px] font-mono leading-none select-none"
         style={{
           top: priceToY(val),
-          color: 'rgba(96, 165, 250, 0.8)',
+          color: '#5AAED8',
           transform: 'translateY(-50%)',
           textShadow: '0 0 4px rgba(0,0,0,0.8)',
         }}
@@ -141,7 +141,7 @@ export function VolumeProfileOverlay({
         style={{
           top: priceToY(vah),
           height: 1,
-          borderTop: '1px dashed rgba(96, 165, 250, 0.4)',
+          borderTop: '1px dashed rgba(90, 174, 216, 0.4)',
         }}
       />
 
@@ -151,7 +151,7 @@ export function VolumeProfileOverlay({
         style={{
           top: priceToY(val),
           height: 1,
-          borderTop: '1px dashed rgba(96, 165, 250, 0.4)',
+          borderTop: '1px dashed rgba(90, 174, 216, 0.4)',
         }}
       />
     </div>

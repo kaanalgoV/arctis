@@ -1,17 +1,17 @@
 """Pattern Detection Engine v3 — CALIBRATED ON REAL ALGOVIEW DATA.
 
 Win rates and profit factors are from 4,398 actual trades across 6 strategies
-backtested on NQ (NQH6/NQZ5) from August 2025 to March 2026 using AlgoView.
+backtested on NQ (NQH6/NQZ5) from August 2025 to March 2026 using Arctis.
 
 PROFITABLE (PF > 1.0, sufficient sample size):
   - MBO Confluence:     40.4% WR, PF 1.59, R:R 1.82 (n=1005)
   - Daily Breakout:     48.4% WR, PF 1.62, R:R 1.71 (n=188)
-  - Travis Double Fake: 45.8% WR, PF 1.74, R:R 1.98 (n=48, small sample)
+  - Arctis Double Fake: 45.8% WR, PF 1.74, R:R 1.98 (n=48, small sample)
   - Opening Fake:       16.0% WR, PF 3.83, R:R 6.72 (n=50, extreme R:R)
 
 MARGINAL / UNPROFITABLE:
   - Session BIAS alone: 35.1% WR, PF 0.78 (n=2047, NOT profitable as standalone)
-  - Double Fake (Kaan): 20.0% WR, PF 0.42 (n=30, unprofitable)
+  - Arctis Double Fake v1: 20.0% WR, PF 0.42 (n=30, unprofitable)
 
 KEY INSIGHT: Win rate is NOT the primary metric. A 40% WR with 1.82 R:R
 produces PF 1.59 — consistently profitable. A 35% WR with poor R:R loses money.
@@ -20,7 +20,7 @@ REMOVED (from v2 — inflated win rates that were never verified):
   - All claims of 80%+ win rates (no futures pattern achieves this)
   - "Backtest-verified" labels that had no actual backtest behind them
 
-DATA SOURCE: AlgoView TimescaleDB, table: runs + run_metrics
+DATA SOURCE: Arctis TimescaleDB, table: runs + run_metrics
 INSTRUMENTS: NQH6, NQZ5, NQ (E-mini NASDAQ-100)
 PERIOD: August 2025 — March 2026
 TOTAL TRADES ANALYZED: 4,398
@@ -39,14 +39,14 @@ class PatternAnnotation:
     text: str
     detail: str
     confidence: str         # "high", "medium", "low"
-    win_rate: float | None  # AlgoView-calibrated win rate (None = unverified)
+    win_rate: float | None  # Arctis-calibrated win rate (None = unverified)
     category: str
     price: float
     target: float | None
     marker_type: str        # "arrow_up", "arrow_down", "circle", "label"
     color: str
     expiry_days: int = 3
-    profit_factor: float | None = None  # PF from AlgoView backtest (more important than WR)
+    profit_factor: float | None = None  # PF from Arctis backtest (more important than WR)
     sample_size: int | None = None      # number of trades the statistic is based on
 
 
@@ -102,7 +102,7 @@ def detect_patterns(
     volume_profile: dict | None = None,
     session_levels: dict | None = None,
 ) -> PatternResult:
-    """Detect patterns with AlgoView-calibrated statistics."""
+    """Detect patterns with Arctis-calibrated statistics."""
     annotations: list[PatternAnnotation] = []
     day_type = "unknown"
     day_bias = "neutral"
@@ -123,7 +123,7 @@ def detect_patterns(
     # ═══════════════════════════════════════════════════════════════
 
     # ── ORB BREAKOUT (15-Min Opening Range) ───────────────────────
-    # Source: daily_breakout strategy — AlgoView TimescaleDB
+    # Source: daily_breakout strategy — Arctis TimescaleDB
     # 48.4% WR, PF 1.62, R:R 1.71 (n=188 trades, NQH6/NQZ5)
     if today_bars and len(today_bars) >= 15:
         orb_bars = today_bars[:15]
@@ -140,7 +140,7 @@ def detect_patterns(
                 detail=(
                     f"15-Min Opening Range ({orb_low:.2f}-{orb_high:.2f}) nach oben gebrochen. "
                     f"Win Rate: 48% | Profit Factor: 1.62 | Based on 188 trades "
-                    f"(AlgoView, daily_breakout strategy, NQ Aug 2025-Mar 2026)."
+                    f"(Arctis, daily_breakout strategy, NQ Aug 2025-Mar 2026)."
                 ),
                 confidence="high",
                 win_rate=48.0,
@@ -161,7 +161,7 @@ def detect_patterns(
                 detail=(
                     f"15-Min Opening Range ({orb_low:.2f}-{orb_high:.2f}) nach unten gebrochen. "
                     f"Win Rate: 48% | Profit Factor: 1.62 | Based on 188 trades "
-                    f"(AlgoView, daily_breakout strategy, NQ Aug 2025-Mar 2026)."
+                    f"(Arctis, daily_breakout strategy, NQ Aug 2025-Mar 2026)."
                 ),
                 confidence="high",
                 win_rate=48.0,
@@ -175,7 +175,7 @@ def detect_patterns(
             ))
 
     # ── IB BREAK (60-Min Initial Balance) ─────────────────────────
-    # Source: daily_breakout strategy (IB and ORB combined) — AlgoView TimescaleDB
+    # Source: daily_breakout strategy (IB and ORB combined) — Arctis TimescaleDB
     # 48.4% WR, PF 1.62, R:R 1.71 (n=188 trades)
     if today_bars and len(today_bars) >= 60:
         ib_bars = today_bars[:60]
@@ -189,7 +189,7 @@ def detect_patterns(
             detail = (
                 f"Initial Balance ({ib_low:.2f}-{ib_high:.2f}) nur oben gebrochen. "
                 f"Win Rate: 48% | Profit Factor: 1.62 | Based on 188 trades "
-                f"(AlgoView, daily_breakout strategy, NQ Aug 2025-Mar 2026)."
+                f"(Arctis, daily_breakout strategy, NQ Aug 2025-Mar 2026)."
             )
             if dow == 3:
                 detail += " Donnerstag: leicht erhoehte IB-Breakout-Rate."
@@ -213,7 +213,7 @@ def detect_patterns(
             detail = (
                 f"Initial Balance ({ib_low:.2f}-{ib_high:.2f}) nur unten gebrochen. "
                 f"Win Rate: 48% | Profit Factor: 1.62 | Based on 188 trades "
-                f"(AlgoView, daily_breakout strategy, NQ Aug 2025-Mar 2026)."
+                f"(Arctis, daily_breakout strategy, NQ Aug 2025-Mar 2026)."
             )
             if dow == 3:
                 detail += " Donnerstag: leicht erhoehte IB-Breakout-Rate."
@@ -235,7 +235,7 @@ def detect_patterns(
             ))
 
     # ── 80% RULE / MBO CONFLUENCE (Value Area) ────────────────────
-    # Source: mbo_confluence_nq strategy — AlgoView TimescaleDB
+    # Source: mbo_confluence_nq strategy — Arctis TimescaleDB
     # 40.4% WR, PF 1.59, R:R 1.82 (n=1005 trades) — BEST STRATEGY
     # Profitable due to high R:R despite sub-50% WR
     if volume_profile and today:
@@ -257,7 +257,7 @@ def detect_patterns(
                         f"Open ueber VAH, Preis zurueck in Value Area. "
                         f"80% Wahrscheinlichkeit: Traverse zu VAL ({val:.2f}). "
                         f"Win Rate: 40% | Profit Factor: 1.59 | Based on 1,005 trades "
-                        f"(AlgoView, mbo_confluence_nq, NQ Aug 2025-Mar 2026). "
+                        f"(Arctis, mbo_confluence_nq, NQ Aug 2025-Mar 2026). "
                         f"Profitabel durch R:R 1.82 trotz unter 50% WR."
                     ),
                     confidence="high",
@@ -279,7 +279,7 @@ def detect_patterns(
                     detail=(
                         f"Open unter VAL, Preis zurueck in Value Area. Target: VAH ({vah:.2f}). "
                         f"Win Rate: 40% | Profit Factor: 1.59 | Based on 1,005 trades "
-                        f"(AlgoView, mbo_confluence_nq, NQ Aug 2025-Mar 2026). "
+                        f"(Arctis, mbo_confluence_nq, NQ Aug 2025-Mar 2026). "
                         f"Profitabel durch R:R 1.82 trotz unter 50% WR."
                     ),
                     confidence="medium",
@@ -294,7 +294,7 @@ def detect_patterns(
                 ))
 
     # ── LARGE GAP TREND DAY ───────────────────────────────────────
-    # No isolated AlgoView data for this setup — using daily_breakout as proxy
+    # No isolated Arctis data for this setup — using daily_breakout as proxy
     # Proxy: 48.4% WR, PF 1.62 (n=188); small sample, treat as context only
     if today and yesterday:
         gap = today["open"] - yesterday["close"]
@@ -310,7 +310,7 @@ def detect_patterns(
                 detail=(
                     f"Gap > 1% — nur 8% Fill-Rate. In Richtung des Gaps traden. "
                     f"Win Rate: 48% | Profit Factor: 1.62 | Proxy-Wert aus daily_breakout "
-                    f"(n=188 trades, kein isoliertes AlgoView-Dataset fuer Large-Gap-Tage)."
+                    f"(n=188 trades, kein isoliertes Arctis-Dataset fuer Large-Gap-Tage)."
                 ),
                 confidence="high",
                 win_rate=48.0,
@@ -426,11 +426,11 @@ def detect_patterns(
             marker_type="label", color=color,
         ))
 
-    # ── MULTI-DAY PATTERNS (Info only — no AlgoView data) ─────────
+    # ── MULTI-DAY PATTERNS (Info only — no Arctis data) ─────────
     day_m2 = _get_daily_ohlc(_get_day_bars(bars, -2))
     day_m3 = _get_daily_ohlc(_get_day_bars(bars, -3))
 
-    # Inside Day — no AlgoView backtest data, unverified
+    # Inside Day — no Arctis backtest data, unverified
     if today and yesterday:
         if today["high"] < yesterday["high"] and today["low"] > yesterday["low"]:
             annotations.append(PatternAnnotation(
@@ -446,7 +446,7 @@ def detect_patterns(
                 color="#00f0ff",
             ))
 
-    # NR4 — no AlgoView backtest data, unverified
+    # NR4 — no Arctis backtest data, unverified
     if today and yesterday and day_m2 and day_m3:
         ranges = [today["range"], yesterday["range"], day_m2["range"], day_m3["range"]]
         if today["range"] == min(ranges) and today["range"] < ranges[1]:

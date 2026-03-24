@@ -14,11 +14,11 @@ ALGOVIEW CALIBRATION — two strategies tracked, results differ significantly:
     Sample size:   30 trades
     NOTE: This variant is NOT profitable as a standalone signal.
 
-KEY INSIGHT: The Travis variant (stricter entry conditions, more confluence)
+KEY INSIGHT: The Arctis variant (stricter entry conditions, more confluence)
 produces a viable edge (PF 1.74). The standalone session-bias variant does not.
 Always use confluence confirmation — volume exhaustion + level confluence.
 
-DATA SOURCE: AlgoView TimescaleDB, NQ Aug 2025-Mar 2026
+DATA SOURCE: Arctis TimescaleDB, NQ Aug 2025-Mar 2026
 """
 
 from dataclasses import dataclass, field
@@ -59,8 +59,8 @@ class DoubleFakeResult:
                                 # "" = not detected
     attempts: list[AttemptInfo] = field(default_factory=list)
     confidence: str = "none"    # "high" | "medium" | "none"
-    # AlgoView-calibrated statistics — travis_double_fake_nq (n=48, NQ Aug 2025-Mar 2026)
-    # Only valid when confluence conditions match the Travis variant (volume + level confluence)
+    # Arctis-calibrated statistics — travis_double_fake_nq (n=48, NQ Aug 2025-Mar 2026)
+    # Only valid when confluence conditions match the Arctis variant (volume + level confluence)
     win_rate: float = 46.0          # 45.8% WR (travis_double_fake_nq)
     profit_factor: float = 1.74     # profitable with strict entry rules
     avg_rr: float = 1.98
@@ -106,7 +106,7 @@ def detect_double_fake(
       medium — velocity declined by 5-20%
       none   — fewer than 2 attempts or velocity did not decline
 
-    AlgoView statistics (travis_double_fake_nq, n=48, NQ Aug 2025-Mar 2026):
+    Arctis statistics (travis_double_fake_nq, n=48, NQ Aug 2025-Mar 2026):
       Win Rate: 46% | Profit Factor: 1.74 | Avg R:R: 1.98
       Small sample (n=48) — profitable but use with confluence confirmation.
       WARNING: standalone double-fake without confluence (kaans_session_bias_nq)
@@ -121,8 +121,8 @@ def detect_double_fake(
     Returns:
         DoubleFakeResult. ``detected=False`` when bars are insufficient or the
         pattern is absent. When detected, ``win_rate``, ``profit_factor``,
-        ``avg_rr``, and ``sample_size`` fields carry AlgoView-calibrated statistics
-        for the Travis variant (requires additional confluence to be valid).
+        ``avg_rr``, and ``sample_size`` fields carry Arctis-calibrated statistics
+        for the Arctis variant (requires additional confluence to be valid).
     """
     _no_result = DoubleFakeResult(detected=False, direction="", attempts=[], confidence="none")
 

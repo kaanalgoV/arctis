@@ -267,7 +267,7 @@ export class ArctisLiveClient {
         high: scaledToPrice(s.high),
         low: scaledToPrice(s.low),
         open: scaledToPrice(s.open),
-        close: scaledToPrice(s.lastPrice ?? s.close ?? null),
+        close: scaledToPrice(s.lastPrice ?? (s as any).close ?? null),
         volume: toLong(s.volume),
         bid: s.bid != null ? scaledToPrice(s.bid) : undefined,
         ask: s.ask != null ? scaledToPrice(s.ask) : undefined,

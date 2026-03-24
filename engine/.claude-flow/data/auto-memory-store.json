@@ -1,0 +1,939 @@
+[
+  {
+    "id": "mem-MEMORY-user-profile",
+    "key": "user-profile",
+    "content": "- GitHub: kaanalgoV (Org: algorivo)\n- Primary project: algorivo/algorivo-core\n- Default branch: **kaan** (always work on this branch)\n- Language preference: Deutsch\n- **Arbeitsweise:** 5 Claude Sessions parallel (iTerm2 Tabs) + Guardian",
+    "summary": "User Profile",
+    "namespace": "core",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/kaan_macbook/.claude/projects/-Users-kaan-macbook/memory/MEMORY.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774355481171
+  },
+  {
+    "id": "mem-MEMORY-session-management-v3--stand-2",
+    "key": "session-management-v3-stand-2026-03-07-",
+    "content": "- **`cl`** = Oeffnet 5 iTerm2 Tabs mit Claude + Resume-Kontext + Guardian Tab\n- **`cl1`** = Einzelnes Claude ohne Session-Setup\n- **`/save`** = Fortschritt in Resume-Datei speichern (VOR Session-Ende!)\n- **5 Sessions:** nexus, algoview, backtest, heatmap, app\n- **Git Worktrees:** algoview/backtest/heatmap als Worktrees von algorivo-core\n- **Config:** `~/.claude-sessions.conf`\n- **Templates:** `~/.claude-sessions/templates/<name>.md`\n- **Resume-Dateien:** `~/.claude-sessions/<name>.md`\n- **Script",
+    "summary": "Session Management v3 (Stand 2026-03-07)",
+    "namespace": "core",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/kaan_macbook/.claude/projects/-Users-kaan-macbook/memory/MEMORY.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774355481171
+  },
+  {
+    "id": "mem-MEMORY-algorivo-core-project",
+    "key": "algorivo-core-project",
+    "content": "- **Repo:** algorivo/algorivo-core (private)\n- **Location:** /Users/kaan_macbook/algorivo-core\n- **Branch:** kaan (merge target — NEVER run Vite here)\n- **Worktrees:** ~/worktrees/algoview (wt-algoview), ~/worktrees/backtest (wt-backtest), ~/worktrees/heatmap (wt-heatmap)\n- **Stack:** Rust backend (Axum, SQLx, TimescaleDB) + React/TypeScript frontend (Vite, Tailwind, SciChart)\n- **Frontend:** algorivo-web/ (pnpm, Vite port via VITE_DEV_PORT env var)",
+    "summary": "algorivo-core Project",
+    "namespace": "core",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/kaan_macbook/.claude/projects/-Users-kaan-macbook/memory/MEMORY.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774355481171
+  },
+  {
+    "id": "mem-MEMORY-worktree-architecture--stand-2",
+    "key": "worktree-architecture-stand-2026-03-07-",
+    "content": "- **Flow:** worktree → `wt-sync` → kaan → GitHub (unidirectional)\n- **REGEL:** NIEMALS Vite auf kaan starten — kaan ist NUR Merge-Target\n- **Port-Zuweisung:** algoview=25173, heatmap=25175, backtest=25176\n- **Scripts:** `wt-sync` (merge worktrees→kaan+push), `wt-dev` (start Vite per worktree)\n- **Vite Config:** `vite.config.ts` liest `VITE_DEV_PORT` env var (default 25173)\n- **wt-sync --status:** Zeigt ahead/behind/diverged fuer alle Worktrees\n- **wt-dev algoview:** Startet Vite auf :25173 aus d",
+    "summary": "Worktree Architecture (Stand 2026-03-07)",
+    "namespace": "core",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/kaan_macbook/.claude/projects/-Users-kaan-macbook/memory/MEMORY.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774355481171
+  },
+  {
+    "id": "mem-MEMORY-nexus-command-center",
+    "key": "nexus-command-center",
+    "content": "- **Location:** /Users/kaan_macbook/nexus-command-center\n- **Stack:** React 19, Vite 7, Hono API, Mastra Agent Engine, pnpm Workspaces\n- **Ports:** Web :4000, API :4001\n- **Guardian+Workspace Features:** /api/guardian/*, /api/workspace/*, Guardian.tsx, Workspace.tsx\n- **DB Tables:** guardian_metrics, guardian_alerts, guardian_commands, workspace_sessions, workspace_heartbeats, workspace_snapshots\n- **14 Agents:** Forgemaster, Weaver, Archon, Scribe, Oracle, Sage, Familiar, Sentinel, Warden, Nexu",
+    "summary": "NEXUS Command Center",
+    "namespace": "core",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/kaan_macbook/.claude/projects/-Users-kaan-macbook/memory/MEMORY.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774355481171
+  },
+  {
+    "id": "mem-MEMORY-bias-app",
+    "key": "bias-app",
+    "content": "- **Repo:** algorivo/bias (private)\n- **Location:** /Users/kaan_macbook/bias",
+    "summary": "BIAS App",
+    "namespace": "core",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/kaan_macbook/.claude/projects/-Users-kaan-macbook/memory/MEMORY.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774355481171
+  },
+  {
+    "id": "mem-MEMORY-development-environment",
+    "key": "development-environment",
+    "content": "- **DB:** TimescaleDB via Docker on port 5532\n- **API:** Local cargo run on port 23000 (NOT Docker for dev)\n- **Frontend:** Vite dev server on port 25173\n- **DB URL:** postgres://algorivo:algorivo_dev@localhost:5532/algorivo\n- **Rust:** ~/.cargo/bin/cargo (need PATH export)\n- **Node:** Installed via brew\n- **psql:** /opt/homebrew/opt/postgresql@16/bin/psql\n- **API Keys:** `~/algorivo-core/.keys/env.sh` (gitignored, source it)\n  - DATABENTO_API_KEY, OPENROUTER_API_KEY, Worker Config",
+    "summary": "Development Environment",
+    "namespace": "core",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/kaan_macbook/.claude/projects/-Users-kaan-macbook/memory/MEMORY.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774355481171
+  },
+  {
+    "id": "mem-MEMORY-projekt-uebersicht--5-sessions",
+    "key": "projekt-uebersicht-5-sessions-v3-stand-2026-03-07-",
+    "content": "| Session | Projekt | Verzeichnis | Branch |\n|---------|---------|-------------|--------|\n| nexus | NEXUS Command Center | ~/nexus-command-center | main |\n| algoview | AlgoView Frontend | ~/worktrees/algoview | wt-algoview |\n| backtest | Strategien & Backtest | ~/worktrees/backtest | wt-backtest |\n| heatmap | AlgoMap Heatmap | ~/worktrees/heatmap | wt-heatmap |\n| app | BIAS NQ Trading Edge | ~/bias | main |",
+    "summary": "Projekt-Uebersicht (5 Sessions v3, Stand 2026-03-07)",
+    "namespace": "core",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/kaan_macbook/.claude/projects/-Users-kaan-macbook/memory/MEMORY.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774355481171
+  },
+  {
+    "id": "mem-MEMORY-strategy-development",
+    "key": "strategy-development",
+    "content": "- See [double-fake-strategy.md](double-fake-strategy.md) for Double Fake v2 details\n- **Best config**: tp=100, min_fakes=3, buf=12, exh=50 -> PF=2.24, 63.6% win",
+    "summary": "Strategy Development",
+    "namespace": "core",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/kaan_macbook/.claude/projects/-Users-kaan-macbook/memory/MEMORY.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774355481171
+  },
+  {
+    "id": "mem-MEMORY-openclaw--clawdbot-",
+    "key": "openclaw-clawdbot-",
+    "content": "- **URL:** http://127.0.0.1:18789/chat?session=main\n- **Command:** `openclaw` (npm global)\n- **Hooks:** boot-md, session-memory\n- **Keyword:** \"oeffne clawdbot terminal\" = obige URL oeffnen",
+    "summary": "OpenClaw (Clawdbot)",
+    "namespace": "core",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/kaan_macbook/.claude/projects/-Users-kaan-macbook/memory/MEMORY.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774355481171
+  },
+  {
+    "id": "mem-MEMORY-rithmic-mobile-heatmap",
+    "key": "rithmic-mobile-heatmap",
+    "content": "- See [project_rithmic_heatmap.md](project_rithmic_heatmap.md) for project details\n- **Repo:** kaanalgoV/rithmic-mobile-heatmap (private)\n- **Location:** ~/rithmic-mobile-heatmap\n- **Status:** Phase 1 (Bootstrap) done, 132+ files, PR #1 open\n- **Stack:** Flutter + Python FastAPI + Protobuf Monorepo",
+    "summary": "Rithmic Mobile Heatmap",
+    "namespace": "core",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/kaan_macbook/.claude/projects/-Users-kaan-macbook/memory/MEMORY.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774355481171
+  },
+  {
+    "id": "mem-MEMORY-ralph-frontend-renaissance--st",
+    "key": "ralph-frontend-renaissance-stand-2026-03-20-",
+    "content": "- See [project_ralph_frontend_renaissance.md](project_ralph_frontend_renaissance.md) for full details\n- **PRD:** 140 Stories, 20 Epics, Ralph-kompatibel\n- **Stand:** 28/140 done (Epics 0-3), naechste: US-029 (Dashboard v2)\n- **Resume:** `~/.claude-sessions/algoview.md` hat vollen Loop-Kontext\n- **Autostart:** Algoview-Session liest Resume und setzt Loop autonom fort",
+    "summary": "Ralph Frontend Renaissance (Stand 2026-03-20)",
+    "namespace": "core",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/kaan_macbook/.claude/projects/-Users-kaan-macbook/memory/MEMORY.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774355481171
+  },
+  {
+    "id": "mem-MEMORY-critical--agent-prompt-quality",
+    "key": "critical-agent-prompt-quality",
+    "content": "- See [feedback_agent_prompts.md](feedback_agent_prompts.md) for details\n- **JEDER Agent-Prompt: mindestens 15.000 Zeichen**\n- Vollstaendiger Kontext, Code-Beispiele, exakte Datei-Pfade, negative Beispiele\n- Referenz-Screenshots beschreiben, vorherige Fehlversuche dokumentieren",
+    "summary": "CRITICAL: Agent Prompt Quality",
+    "namespace": "core",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/kaan_macbook/.claude/projects/-Users-kaan-macbook/memory/MEMORY.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774355481171
+  },
+  {
+    "id": "mem-MEMORY-code-alpha-swarm-session--stan",
+    "key": "code-alpha-swarm-session-stand-2026-03-21-",
+    "content": "- **Branch:** feat/code-alpha-consolidation (69+ commits), PR #110 open\n- **Swarm:** 4 Runden, 34+ Agents, Phasen P0-P7 (Architecture bis Polish)\n- **Debug-Runden:** clippy, Tests, TS-Schema, Hook-Konsolidierung\n- **Polishing:** Toolbar, Chart, Sidebar (einige Commits reverted wegen Breakage)\n- **Heatmap-Debug:** NQH6 Daten OK, aber NUR mit Release Build; Limit Orders haben Offset-Bug (P0)\n- **Scanner:** Endpoint gibt leeres Array — Bug offen\n- **Naechste Schritte:** Heatmap Offset fixieren (P0)",
+    "summary": "Code Alpha Swarm Session (Stand 2026-03-21)",
+    "namespace": "core",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/kaan_macbook/.claude/projects/-Users-kaan-macbook/memory/MEMORY.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774355481171
+  },
+  {
+    "id": "mem-MEMORY-arctis-project",
+    "key": "arctis-project",
+    "content": "- See [project_arctis.md](project_arctis.md) for full details\n- **Repo:** algorivo/arctis (private), Location: ~/arctis\n- **Unterkategorie von AlgoView** — gleiche Design-Qualitaet\n- **Design:** Arctic Frost (Ice Blue #5CB8F0 statt Green), AlgoView-Tokens\n- **Stand:** Brainstorming-Phase, CI/Dashboard-Mockups erstellt\n- **Feedback:** Siehe [feedback_design_quality.md](feedback_design_quality.md) und [feedback_no_emojis.md](feedback_no_emojis.md)",
+    "summary": "Arctis Project",
+    "namespace": "core",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/kaan_macbook/.claude/projects/-Users-kaan-macbook/memory/MEMORY.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774355481171
+  },
+  {
+    "id": "mem-MEMORY-skills---plugins",
+    "key": "skills-plugins",
+    "content": "- Global: superpowers v5.0.4 (14 skills)\n- Project: frontend-design, interface-design, react-best-practices, postgres-best-practices\n- Custom Commands: `/save` (Fortschritt speichern), `/resume` (Session laden)",
+    "summary": "Skills & Plugins",
+    "namespace": "core",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/kaan_macbook/.claude/projects/-Users-kaan-macbook/memory/MEMORY.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774355481171
+  },
+  {
+    "id": "mem-double-fake-strategy-status--profitable--2026-03-03",
+    "key": "status-profitable-2026-03-03-",
+    "content": "- Complete rewrite from tick-based to candle-based fake detection\n- Root cause of 0 trades: `max_recovery_bars` counted raw MBO events (millions/day), not candles",
+    "summary": "Status: PROFITABLE (2026-03-03)",
+    "namespace": "double-fake-strategy",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/kaan_macbook/.claude/projects/-Users-kaan-macbook/memory/double-fake-strategy.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774355481171
+  },
+  {
+    "id": "mem-double-fake-strategy-optimal-parameters--default-in",
+    "key": "optimal-parameters-default-in-code-",
+    "content": "| Parameter | Value | Notes |\n|-----------|-------|-------|\n| tp_ticks | 100 | $500/contract NQ |\n| sl_ticks | 40 | Fallback SL |\n| min_fakes | 3 | Triple fake > double fake |\n| sl_buffer_ticks | 12 | Beyond fake extreme |\n| max_penetration_ticks | 40 | Max fake depth |\n| max_recovery_bars | 5 | 5 minutes (1m candles) |\n| exhaustion_threshold | 50.0 | Min exhaustion % |\n| velocity_spike_mult | 0.0 | Disabled (hurt performance) |",
+    "summary": "Optimal Parameters (Default in Code)",
+    "namespace": "double-fake-strategy",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/kaan_macbook/.claude/projects/-Users-kaan-macbook/memory/double-fake-strategy.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774355481171
+  },
+  {
+    "id": "mem-double-fake-strategy-best-results--new-binary--jan-",
+    "key": "best-results-new-binary-jan-26-mar-3-nqh5-",
+    "content": "- **Default config**: 11 trades, 63.6% win, PF=2.24, +$19.15M net\n- **pen=60**: 13 trades, 61.5% win, PF=2.15, +$21.15M net (highest)\n- **TP=80**: 11 trades, 63.6% win, PF=1.78, +$12.15M\n- **min_fakes=2**: 12 trades, 50.0% win, PF=1.32, +$7.2M\n- TP=120 is the ONLY losing config",
+    "summary": "Best Results (New Binary, Jan 26 - Mar 3 NQH5)",
+    "namespace": "double-fake-strategy",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/kaan_macbook/.claude/projects/-Users-kaan-macbook/memory/double-fake-strategy.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774355481171
+  },
+  {
+    "id": "mem-double-fake-strategy-key-insights",
+    "key": "key-insights",
+    "content": "- Triple fake (min_fakes=3) dramatically outperforms double fake\n- Velocity spike filter (is_velocity_spike) hurts more than helps → disabled\n- Exhaustion score 50% vs 60% produces identical results\n- max_penetration=60 finds 2 more trades with slightly lower PF",
+    "summary": "Key Insights",
+    "namespace": "double-fake-strategy",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/kaan_macbook/.claude/projects/-Users-kaan-macbook/memory/double-fake-strategy.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774355481171
+  },
+  {
+    "id": "mem-double-fake-strategy-files",
+    "key": "files",
+    "content": "- Strategy: `crates/alg-engine/src/strategies/kaans_double_fake_nq.rs`\n- Factory: `crates/alg-strategy/src/factory.rs` (lines ~395-444)",
+    "summary": "Files",
+    "namespace": "double-fake-strategy",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/kaan_macbook/.claude/projects/-Users-kaan-macbook/memory/double-fake-strategy.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774355481171
+  },
+  {
+    "id": "mem-double-fake-strategy-travis-alignment",
+    "key": "travis-alignment",
+    "content": "- Travis: \"Velocity bei Fakeouts ist der Schlüsselindikator\"\n- Travis: \"Je markanter das H/L + nachlassende Velocity → wahrscheinlicher der Fakeout\"\n- Our exhaustion score captures this deceleration pattern\n- Triple fake aligns with \"mehrere Fakeouts analysieren\" recommendation",
+    "summary": "Travis Alignment",
+    "namespace": "double-fake-strategy",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/kaan_macbook/.claude/projects/-Users-kaan-macbook/memory/double-fake-strategy.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774355481171
+  },
+  {
+    "id": "mem-double-fake-strategy-auth-for-api-tests",
+    "key": "auth-for-api-tests",
+    "content": "- Login: POST /auth/login `{\"email\":\"e2e-test@algorivo.dev\",\"password\":\"E2eTestPassword123!\"}`\n- Response field: `access_token` (not `token`)\n- Runs endpoint: POST /runs (not /api/runs)\n- Run request: `{symbol, strategy, from, to, dataset_version, params}`",
+    "summary": "Auth for API Tests",
+    "namespace": "double-fake-strategy",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/kaan_macbook/.claude/projects/-Users-kaan-macbook/memory/double-fake-strategy.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774355481171
+  },
+  {
+    "id": "mem-feedback_agent_prompts----",
+    "key": "-",
+    "content": "name: Agent Prompts muessen extrem detailliert sein\ndescription: Subagent-Prompts muessen mindestens 15.000 Zeichen lang sein mit vollstaendigem Kontext, Code-Beispielen, exakten Datei-Referenzen und detaillierten Anweisungen\ntype: feedback\n---\n\nAgent-Prompts sind VIEL ZU OBERFLAECHLICH. Jeder gespawnte Agent braucht einen Masterprompt mit mindestens 15.000 Zeichen.\n\n**Why:** Oberflaechliche Prompts fuehren zu generischen, niedrig-qualitativen Ergebnissen. Der User hat das mehrfach bei Homepage-",
+    "summary": "---",
+    "namespace": "feedback_agent_prompts",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/kaan_macbook/.claude/projects/-Users-kaan-macbook/memory/feedback_agent_prompts.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774355481172
+  },
+  {
+    "id": "mem-feedback_design_quality----",
+    "key": "-",
+    "content": "name: Design Quality Standards\ndescription: Arctis/AlgoView designs must match Apple/TradingView quality - no generic AI look, bold and confident\ntype: feedback\n---\n\nDesign-Mockups muessen auf dem Niveau von AlgoView/Rithmiq/AlgoXpert sein. KEIN generisches AI-Design.\n\n**Design-DNA (aus bestehenden Produkten abgeleitet):**\n- Dark Theme: #0A0D12 Basis, Surfaces bis #2E3640\n- Bold Typography: Grosse Headings, confident, nicht timid\n- Rounded Cards: border-white/6, shadow-sm, spacious padding\n- Gre",
+    "summary": "---",
+    "namespace": "feedback_design_quality",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/kaan_macbook/.claude/projects/-Users-kaan-macbook/memory/feedback_design_quality.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774355481172
+  },
+  {
+    "id": "mem-feedback_expo_app_priority----",
+    "key": "-",
+    "content": "name: Expo App ist Prioritaet - Native Heatmap\ndescription: User will native Expo App als Hauptprodukt, nicht Flutter Web. GPU-beschleunigt, AlgoView Branding, 210 Tasks.\ntype: feedback\n---\n\nDie Expo React Native App ist jetzt die Hauptentwicklungsrichtung, nicht Flutter Web.\n\n**Why:** Flutter Web ist pixelig auf Mobile, Expo Go ermoeglicht sofortiges Testen auf dem echten Geraet. User will Bookmap-Qualitaet nativ auf iPhone.\n\n**How to apply:**\n- Alle Weiterentwicklung in apps/expo-app/\n- AlgoVi",
+    "summary": "---",
+    "namespace": "feedback_expo_app_priority",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/kaan_macbook/.claude/projects/-Users-kaan-macbook/memory/feedback_expo_app_priority.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774355481172
+  },
+  {
+    "id": "mem-feedback_heatmap_quality----",
+    "key": "-",
+    "content": "name: Heatmap muss wie Bookmap aussehen\ndescription: User erwartet 1:1 Bookmap-Qualitaet, nicht leeres Grid. Mock-Daten muessen sichtbar in der Heatmap gerendert werden.\ntype: feedback\n---\n\nDie Heatmap zeigt nur ein leeres Grid mit Preisachse und BBO-Linien aber KEINE Heatmap-Zellen, Bubbles oder Trades.\n\n**Why:** Der User hat eine kanonische Spec geschrieben die explizit Bookmap-Klasse Visualisierung verlangt. Ein leeres Grid ist unakzeptabel -- die Heatmap-Zellen mit Farbintensitaet sind das K",
+    "summary": "---",
+    "namespace": "feedback_heatmap_quality",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/kaan_macbook/.claude/projects/-Users-kaan-macbook/memory/feedback_heatmap_quality.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774355481172
+  },
+  {
+    "id": "mem-feedback_no_emojis----",
+    "key": "-",
+    "content": "name: No Emojis - Always Icons\ndescription: Never use emojis in UI/code - always use proper SVG icons and favicons instead\ntype: feedback\n---\n\nNie Emojis verwenden, sondern immer richtige Icons (SVG inline, Lucide-style) und Favicons.\n\n**Why:** Emojis wirken unprofessionell und inkonsistent across platforms. Icons sind skalierbar und passen zum Design-System.\n\n**How to apply:** In allen UI-Mockups, Components und Code: Lucide-style SVG Icons (24px viewBox, 2px stroke, round linecap/linejoin). Ke",
+    "summary": "---",
+    "namespace": "feedback_no_emojis",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/kaan_macbook/.claude/projects/-Users-kaan-macbook/memory/feedback_no_emojis.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774355481172
+  },
+  {
+    "id": "mem-feedback_quality_over_speed----",
+    "key": "-",
+    "content": "name: Qualitaet ueber Geschwindigkeit\ndescription: User will tiefgehende, qualitative Arbeit statt oberflaechliche 8-Phasen-Sprints. Agents produzieren zu viel Code der nicht funktioniert.\ntype: feedback\n---\n\nSTOPPE oberflaechliche Multi-Agent-Sprints. Die Strategie \"8 Agents parallel, jeder schreibt 500 Zeilen\" produziert kaputten Code.\n\n**Why:** Der User hat mehrfach Screenshots geschickt die zeigen dass die App fundamental kaputt ist -- invertiertes BBO, riesige Pixel-Bloecke, falsche Spalten",
+    "summary": "---",
+    "namespace": "feedback_quality_over_speed",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/kaan_macbook/.claude/projects/-Users-kaan-macbook/memory/feedback_quality_over_speed.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774355481173
+  },
+  {
+    "id": "mem-feedback_stop_testing_halfbaked----",
+    "key": "-",
+    "content": "name: Nie halbfertige Apps zum Testen geben\ndescription: User ist frustriert weil er staendig kaputte/halbfertige Versionen testen muss. Autonom fertig entwickeln, DANN zeigen.\ntype: feedback\n---\n\nNIEMALS dem User eine halbfertige App zum Testen geben.\n\n**Why:** Der User hat mehrfach Screenshots geschickt die zeigen dass die App nicht funktioniert -- pixeliges Rendering, falsche Preise, fehlende Achsen, kaputtes Layout. Jedes Mal musste er testen und Feedback geben statt dass ich es selbst verif",
+    "summary": "---",
+    "namespace": "feedback_stop_testing_halfbaked",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/kaan_macbook/.claude/projects/-Users-kaan-macbook/memory/feedback_stop_testing_halfbaked.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774355481173
+  },
+  {
+    "id": "mem-mbo-indicators-context-was-passiert-ist",
+    "key": "was-passiert-ist",
+    "content": "1. Templates in `algorivo-web/src/features/strategy-builder/templates.ts` wurden bereits umgeschrieben (alle bidirektional, Long+Short)\n2. Analyse: Alle 26 Indikatoren in `compile.rs` verarbeiten nur Pseudo-Candles, nicht echte MBO-Daten\n3. Design-Doc geschrieben: `docs/plans/2026-03-03-mbo-native-indicators-design.md`\n4. Travis-Wissen gesammelt: Velocity, BIAS (4 Säulen), BIAS Switch, Price Action, Consolidation",
+    "summary": "Was passiert ist",
+    "namespace": "mbo-indicators-context",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/kaan_macbook/.claude/projects/-Users-kaan-macbook/memory/mbo-indicators-context.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774355481173
+  },
+  {
+    "id": "mem-mbo-indicators-context-was-noch-zu-tun-ist--150-tasks",
+    "key": "was-noch-zu-tun-ist-150-tasks-",
+    "content": "- Phase 1: MboTradeContext + Trait (Tasks 1-20)\n- Phase 2: Velocity Indikator (Tasks 21-40)\n- Phase 3: ATR Enhanced (Tasks 41-50)\n- Phase 4: PriceAction NEU (Tasks 51-75)\n- Phase 5: Consolidation (Tasks 76-95)\n- Phase 6: BiasEngine Komplett-Überarbeitung (Tasks 96-130)\n- Phase 7: BiasSwitch NEU (Tasks 131-150)",
+    "summary": "Was noch zu tun ist (150 Tasks)",
+    "namespace": "mbo-indicators-context",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/kaan_macbook/.claude/projects/-Users-kaan-macbook/memory/mbo-indicators-context.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774355481173
+  },
+  {
+    "id": "mem-mbo-indicators-context-kern-dateien",
+    "key": "kern-dateien",
+    "content": "- **compile.rs**: `crates/alg-engine/src/schema/compile.rs` (9,892 Zeilen) — HAUPT-DATEI für alle Indikatoren\n- **engine.rs**: `crates/alg-engine/src/engine.rs` — Engine-Kern, apply_event\n- **types.rs**: `crates/alg-engine/src/schema/types.rs` — Schema-Typen\n- **runner.rs**: `crates/alg-backtest/src/runner.rs` — Backtest-Loop\n- **parquet.rs**: `crates/alg-backtest/src/reader/parquet.rs` — MBO Daten-Reader",
+    "summary": "Kern-Dateien",
+    "namespace": "mbo-indicators-context",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/kaan_macbook/.claude/projects/-Users-kaan-macbook/memory/mbo-indicators-context.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774355481173
+  },
+  {
+    "id": "mem-mbo-indicators-context-design-entscheidungen",
+    "key": "design-entscheidungen",
+    "content": "- MboTradeContext struct mit price, volume, side, timestamp_ns\n- Indikatoren bekommen echte Aggressor-Side statt close>=prev_close Proxy\n- Neue Indikatoren: PriceAction, BiasSwitch\n- BiasEngine: echte 4-Säulen-Berechnung (Charakteristik, Struktur, Dynamik, Kontext)\n- Velocity: Auction Speed mit Exhaustion Detection",
+    "summary": "Design-Entscheidungen",
+    "namespace": "mbo-indicators-context",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/kaan_macbook/.claude/projects/-Users-kaan-macbook/memory/mbo-indicators-context.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774355481173
+  },
+  {
+    "id": "mem-mbo-indicators-context-fortf-hrungs-command",
+    "key": "fortf-hrungs-command",
+    "content": "```bash\ncd ~/algorivo-core && claude --resume \"Implementiere den Plan aus docs/plans/2026-03-03-mbo-native-indicators-design.md. Start mit Phase 1: MboTradeContext. Push nach jedem abgeschlossenen Schritt auf GitHub. Keine Rückfragen, einfach umsetzen. Branch: kaan\"\n```",
+    "summary": "Fortführungs-Command",
+    "namespace": "mbo-indicators-context",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/kaan_macbook/.claude/projects/-Users-kaan-macbook/memory/mbo-indicators-context.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774355481173
+  },
+  {
+    "id": "mem-nexus-mega-session-2026-03-17----",
+    "key": "-",
+    "content": "name: nexus-mega-session-2026-03-17\ndescription: Massive autonome Session mit Gesamtanalyse, 3D Dashboard, Maestra-Merge, NX-002-008 Backlog, Pixel Office Polish, RalphLoop PRD\ntype: project\n---\n\nMega-Session am 2026-03-17 mit folgenden Ergebnissen:\n\n**Gesamtanalyse:** 6 parallele Agents analysierten algorivo-core (24 Crates), NEXUS (6 Packages, 14 Agents), BIAS (Skill-basiert), OpenClaw (Travis), Sessions (Guardian v3), Claude Config (97 Commands, 82 Agents, 217 Skills systemweit).\n\n**Dashboard",
+    "summary": "---",
+    "namespace": "nexus-mega-session-2026-03-17",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/kaan_macbook/.claude/projects/-Users-kaan-macbook/memory/nexus-mega-session-2026-03-17.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774355481173
+  },
+  {
+    "id": "mem-platform-analysis-platform-status-overview",
+    "key": "platform-status-overview",
+    "content": "| Area | Status | Completion |\n|------|--------|-----------|\n| Core Backtest Engine | Complete | 100% |\n| Live Trading | Partial | 70% |\n| Chart & Visualization | Complete | 95% |\n| Indicators | Complete | 90% |\n| Data Ingestion | Complete | 95% |\n| API Layer | Partial | 85% |\n| Frontend UI | Partial | 80% |\n| Observability | Partial | 70% |\n| Authentication | Partial | 75% |\n| Testing | Failing | 40% |",
+    "summary": "Platform Status Overview",
+    "namespace": "platform-analysis",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/kaan_macbook/.claude/projects/-Users-kaan-macbook/memory/platform-analysis.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774355481173
+  },
+  {
+    "id": "mem-platform-analysis-critical-issues",
+    "key": "critical-issues",
+    "content": "1. Test suite shows failed status - needs debugging\n2. Docker web build fails (TypeScript compilation error in pnpm build)\n3. Frontend .env was missing (fixed: VITE_API_URL=http://localhost:23000)\n4. CORS in docker-compose.yml missing localhost:25173\n5. API requires SQLX_OFFLINE=true to compile locally",
+    "summary": "Critical Issues",
+    "namespace": "platform-analysis",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/kaan_macbook/.claude/projects/-Users-kaan-macbook/memory/platform-analysis.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774355481173
+  },
+  {
+    "id": "mem-platform-analysis-open-pr",
+    "key": "open-pr",
+    "content": "- PR #38: feat/contract-specific-footprints (OPEN since 2026-03-01)",
+    "summary": "Open PR",
+    "namespace": "platform-analysis",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/kaan_macbook/.claude/projects/-Users-kaan-macbook/memory/platform-analysis.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774355481173
+  },
+  {
+    "id": "mem-platform-analysis-known-todos--backend-",
+    "key": "known-todos-backend-",
+    "content": "- Candle service perf optimization for long time ranges\n- Hot store dead-letter queue for failed updates\n- Databento subscription forwarding\n- Bracket order handling (live trading)\n- Per-client update intervals (live trading)\n- S3 cleanup for comments\n- Rithmic error handling (replace panics with proper errors)\n- Legacy data cleanup (root symbol directories)",
+    "summary": "Known TODOs (Backend)",
+    "namespace": "platform-analysis",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/kaan_macbook/.claude/projects/-Users-kaan-macbook/memory/platform-analysis.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774355481173
+  },
+  {
+    "id": "mem-platform-analysis-known-todos--frontend-",
+    "key": "known-todos-frontend-",
+    "content": "- Strategy detail edit/duplicate modals\n- Some render instruction types not yet implemented\n- P0 production safety: XSS prevention, CSRF, rate limiting\n- Session management hardening (token refresh, logout on 401)",
+    "summary": "Known TODOs (Frontend)",
+    "namespace": "platform-analysis",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/kaan_macbook/.claude/projects/-Users-kaan-macbook/memory/platform-analysis.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774355481173
+  },
+  {
+    "id": "mem-platform-analysis-recent-work--last-30-commits-",
+    "key": "recent-work-last-30-commits-",
+    "content": "- Drawing tools (bulletproof modifier, trend channels, pitchfork)\n- DoubleFakeExhaustion indicator (full stack)\n- Volume profile overlay with POC/VAH/VAL\n- Backtest progress bar with ETA\n- WebSocket for real-time run status\n- Metrics middleware\n- Tiered rate limiting\n- 18 trading indicators\n- Responsive sidebar\n- Enhanced global search",
+    "summary": "Recent Work (Last 30 Commits)",
+    "namespace": "platform-analysis",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/kaan_macbook/.claude/projects/-Users-kaan-macbook/memory/platform-analysis.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774355481173
+  },
+  {
+    "id": "mem-platform-analysis-start-db",
+    "key": "start-db",
+    "content": "docker compose up -d timescaledb",
+    "summary": "Start DB",
+    "namespace": "platform-analysis",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/kaan_macbook/.claude/projects/-Users-kaan-macbook/memory/platform-analysis.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774355481173
+  },
+  {
+    "id": "mem-platform-analysis-start-api--local-",
+    "key": "start-api-local-",
+    "content": "export PATH=\"$HOME/.cargo/bin:$PATH\"\nSQLX_OFFLINE=true DATABASE_URL=\"postgres://algorivo:algorivo_dev@localhost:5532/algorivo\" API_PORT=23000 CORS_ORIGINS=\"http://localhost:25173\" cargo run -p algorivo-api -- --migrate",
+    "summary": "Start API (local)",
+    "namespace": "platform-analysis",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/kaan_macbook/.claude/projects/-Users-kaan-macbook/memory/platform-analysis.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774355481173
+  },
+  {
+    "id": "mem-platform-analysis-start-frontend",
+    "key": "start-frontend",
+    "content": "cd algorivo-web && npx vite --host",
+    "summary": "Start Frontend",
+    "namespace": "platform-analysis",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/kaan_macbook/.claude/projects/-Users-kaan-macbook/memory/platform-analysis.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774355481173
+  },
+  {
+    "id": "mem-platform-analysis-start-worker",
+    "key": "start-worker",
+    "content": "SQLX_OFFLINE=true ALG_POSTGRES_URL=\"postgres://algorivo:algorivo_dev@localhost:5532/algorivo\" ALG_DATA_DIR=\"./data/parquet\" cargo run -p algorivo-worker\n```",
+    "summary": "Start Worker",
+    "namespace": "platform-analysis",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/kaan_macbook/.claude/projects/-Users-kaan-macbook/memory/platform-analysis.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774355481173
+  },
+  {
+    "id": "mem-project_arctis----",
+    "key": "-",
+    "content": "name: Arctis Project Context\ndescription: Arctis is a subcategory/subproduct of AlgoView - Trading Decision Support tool for ES/NQ/all futures\ntype: project\n---\n\nArctis ist eine **Unterkategorie von AlgoView** — kein eigenständiges Produkt.\n\n**Design-Anforderung:** Muss auf dem gleichen Qualitätsniveau wie AlgoView sein. Apple/TradingView-Niveau. Kein generisches AI-Design.\n\n**Technische Entscheidungen:**\n- Web-App first, Desktop (Tauri) später\n- Datenquelle: TimescaleDB direkt (localhost:5532) ",
+    "summary": "---",
+    "namespace": "project_arctis",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/kaan_macbook/.claude/projects/-Users-kaan-macbook/memory/project_arctis.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774355481173
+  },
+  {
+    "id": "mem-project_ralph_frontend_renaissance----",
+    "key": "-",
+    "content": "name: Ralph Frontend Renaissance PRD Loop\ndescription: AlgoView Frontend Renaissance - 140 User Stories Ralph Loop, Stand US-028 done, naechste US-029\ntype: project\n---",
+    "summary": "---",
+    "namespace": "project_ralph_frontend_renaissance",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/kaan_macbook/.claude/projects/-Users-kaan-macbook/memory/project_ralph_frontend_renaissance.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774355481173
+  },
+  {
+    "id": "mem-project_ralph_frontend_renaissance-ralph-frontend-renaissance-loo",
+    "key": "ralph-frontend-renaissance-loop",
+    "content": "**PRD Location:** `~/worktrees/algoview/tasks/prd-algoview-frontend-renaissance.md`\n**Tracker:** `~/worktrees/algoview/prd.json`\n**Progress:** `~/worktrees/algoview/progress.txt`\n**Specs:** `~/worktrees/algoview/docs/frontend/` (INVENTORY, PRINCIPLES, ARCHITECTURE_UI, QUALITY_GATES, design-tokens, typography, motion + original specs from PRD pack)\n\n**Why:** Komplette Frontend-Modernisierung von \"KI-generisch\" zu \"Premium Software / Trading Workstation\". 140 User Stories in 20 Epics.\n\n**How to ap",
+    "summary": "Ralph Frontend Renaissance Loop",
+    "namespace": "project_ralph_frontend_renaissance",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/kaan_macbook/.claude/projects/-Users-kaan-macbook/memory/project_ralph_frontend_renaissance.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774355481173
+  },
+  {
+    "id": "mem-project_rithmic_heatmap----",
+    "key": "-",
+    "content": "name: Rithmic Mobile Heatmap Projekt\ndescription: AlgoMap mobile orderbook heatmap - MBO-Daten-Fix abgeschlossen, EventProcessor rewrite, Expo/RN Stack\ntype: project\n---",
+    "summary": "---",
+    "namespace": "project_rithmic_heatmap",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/kaan_macbook/.claude/projects/-Users-kaan-macbook/memory/project_rithmic_heatmap.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774355481174
+  },
+  {
+    "id": "mem-project_rithmic_heatmap-projekt-status--stand-2026-03-",
+    "key": "projekt-status-stand-2026-03-21-",
+    "content": "**Repo:** kaanalgoV/rithmic-mobile-heatmap (private)\n**Location:** ~/rithmic-mobile-heatmap\n**Branch:** feat/backend-core-gateway (15+ Commits ahead)\n**Stack:** Expo SDK 54 + React Native + Zustand + Python FastAPI Gateway\n**Shipping Target:** apps/expo-app + services/gateway (Flutter-Linie eingefroren)",
+    "summary": "Projekt-Status (Stand 2026-03-21)",
+    "namespace": "project_rithmic_heatmap",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/kaan_macbook/.claude/projects/-Users-kaan-macbook/memory/project_rithmic_heatmap.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774355481174
+  },
+  {
+    "id": "mem-project_rithmic_heatmap-abgeschlossene-sprints",
+    "key": "abgeschlossene-sprints",
+    "content": "### Rescue-Sprint 1 (8+2 Commits)\n- R0-R4: Credentials, Archive, Live Gateway, Crosshair, EAS Config\n\n### UX-Sprint (4 Commits)\n- Inkrementeller Pan, View-Count 5000→2000, Colormap 11 Stops, Chunked Loading\n\n### MBO Data Fix (1 Commit, 139b456)\n**Root Cause gefunden:** Databento MBO-Daten (individual orders) wurden als L2 behandelt.\n8 Bugs behoben:\n1. EventProcessor: ACCUMULATE statt REPLACE, mit Decay (0.7) pro Column\n2. BBO: Trade-basiert (SELL→bid, BUY→ask) mit Crossing-Guard\n3. EVENTS_PER_CO",
+    "summary": "Abgeschlossene Sprints",
+    "namespace": "project_rithmic_heatmap",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/kaan_macbook/.claude/projects/-Users-kaan-macbook/memory/project_rithmic_heatmap.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774355481174
+  },
+  {
+    "id": "mem-project_rithmic_heatmap-technische-eckdaten",
+    "key": "technische-eckdaten",
+    "content": "- ES: ~1758 Events, ~51 Min, anchorTick≈27638 (Median), tickSize=0.25\n- NQ: ~2291 Events, ~2.5 Std, anchorTick≈100159 (Median), tickSize=0.25\n- EVENTS_PER_COLUMN=25, HALF_LEVELS=60 (121 Ticks/Column)\n- MAX_VISIBLE_CELLS=5000, BOOK_DECAY=0.7, MIN_BOOK_VOLUME=0.5\n- Gateway: POST /login, GET /instruments, WS /ws/stream?token=\n- System-Namen: \"Mock Replay\" | \"Rithmic Test\" | \"Rithmic 01\"",
+    "summary": "Technische Eckdaten",
+    "namespace": "project_rithmic_heatmap",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/kaan_macbook/.claude/projects/-Users-kaan-macbook/memory/project_rithmic_heatmap.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774355481174
+  },
+  {
+    "id": "mem-project_rithmic_heatmap-bekannte-offene-punkte",
+    "key": "bekannte-offene-punkte",
+    "content": "1. **Zeit-Achse** — Column-zu-Uhrzeit Mapping ist approximate (15:30 + col), nicht von echten Timestamps abgeleitet\n2. **Canvas-Renderer** — View-basiert, kein echtes GPU-Rendering (react-native-skia waere Upgrade)\n3. **Zeitformat** braucht echte ts_micros pro Column fuer korrektes Mapping",
+    "summary": "Bekannte Offene Punkte",
+    "namespace": "project_rithmic_heatmap",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/kaan_macbook/.claude/projects/-Users-kaan-macbook/memory/project_rithmic_heatmap.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774355481174
+  },
+  {
+    "id": "mem-MEMORY-strategy-development",
+    "key": "strategy-development",
+    "content": "- [traivend-strategy-rules.md](traivend-strategy-rules.md) — Travis/Traivend Ausbildung Regeln, Fakeout-Logik, Double Fake Benchmark\n- Session resume: ~/.claude-sessions/strategies.md",
+    "summary": "Strategy Development",
+    "namespace": "core",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/kaan_macbook/.claude/projects/-Users-kaan-macbook-algorivo-core/memory/MEMORY.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774355481174
+  },
+  {
+    "id": "mem-MEMORY-key-facts",
+    "key": "key-facts",
+    "content": "- 25 Strategien in crates/alg-engine/src/strategies/\n- Factory: crates/alg-strategy/src/factory.rs\n- Backtest CLI: `./target/release/algorivo-backtest run --strategy <ID> --params examples/backtest-params.json --from <TS> --to <TS> --data-path ./data/parquet`\n- NQH6 Daten: 118 Tage (2024-12-29 bis 2026-02-27), ~774M MBO Events\n- Travis MCP: `mcp__travis__ask_about_videos` fuer Traivend-Wissen, `mcp__travis__search_videos` fuer Suche",
+    "summary": "Key Facts",
+    "namespace": "core",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/kaan_macbook/.claude/projects/-Users-kaan-macbook-algorivo-core/memory/MEMORY.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774355481174
+  },
+  {
+    "id": "mem-traivend-strategy-rules-core-philosophy--kaan-aslan-",
+    "key": "core-philosophy-kaan-aslan-",
+    "content": "- \"Meine gesamte Trading-edge ist auf eine Sache aufgebaut: Kombination\"\n- \"Qualitaet vor Quantitaet\" — \"Viel hilft nicht viel im Trading\"\n- Handle mit Struktur, nicht Intuition\n- Asia baut Struktur, EU bestimmt Tendenz, US macht die Bewegung",
+    "summary": "Core Philosophy (Kaan Aslan)",
+    "namespace": "traivend-strategy-rules",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/kaan_macbook/.claude/projects/-Users-kaan-macbook-algorivo-core/memory/traivend-strategy-rules.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774355481174
+  },
+  {
+    "id": "mem-traivend-strategy-rules-fakeout-rules",
+    "key": "fakeout-rules",
+    "content": "- Markt MUSS schnell zurueckkommen nach False Breakout\n- Geschwindigkeit ist der entscheidende Faktor\n- 1-2 Fakes optimal, Double Fake = 2 Locations gefaked\n- Gegen Struktur braucht MEHR Bestaetigung\n- Konsolidierung nach Fakeout = zusaetzliche Bestaetigung\n- PrevDay H/L sind \"70-80% mit starker Gegenbewegung\" — excellent Fakeout Levels\n- Asia H/L + PrevDay H/L BEIDE verwenden (nicht nur Asia)\n- \"Nur Trades in Kontextrichtung mitnehmen\" — BUT context filter hurt backtests (R6)\n- Min 3 ticks pene",
+    "summary": "Fakeout Rules",
+    "namespace": "traivend-strategy-rules",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/kaan_macbook/.claude/projects/-Users-kaan-macbook-algorivo-core/memory/traivend-strategy-rules.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774355481174
+  },
+  {
+    "id": "mem-traivend-strategy-rules-warnsignale-gegen-fakeout----e",
+    "key": "warnsignale-gegen-fakeout-echter-breakout-",
+    "content": "- Markt kumuliert bereits vor dem Ausbruch\n- Keine vorherigen Strukturpunkte werden gebrochen\n- Markt stabilisiert sich zu hoeheren/tieferen Preisen\n- Langsamer, sauberer Ausbruch mit gleichbleibender Geschwindigkeit\n- Absorption an Tiefstpunkten",
+    "summary": "Warnsignale GEGEN Fakeout (= echter Breakout)",
+    "namespace": "traivend-strategy-rules",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/kaan_macbook/.claude/projects/-Users-kaan-macbook-algorivo-core/memory/traivend-strategy-rules.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774355481174
+  },
+  {
+    "id": "mem-traivend-strategy-rules-trade-frequency--travis-",
+    "key": "trade-frequency-travis-",
+    "content": "- Max 1-2 Trades/Tag fuer hoechste Qualitaet\n- \"Maximale Einschraenkung der Tradefrequenz\" vor Profitabilitaet\n- 40-50 Trades/Tag = definitiv zu viel\n- \"Ein Trade fertig\" Regel: erster Trade erfolgreich → Tag beenden",
+    "summary": "Trade Frequency (Travis)",
+    "namespace": "traivend-strategy-rules",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/kaan_macbook/.claude/projects/-Users-kaan-macbook-algorivo-core/memory/traivend-strategy-rules.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774355481174
+  },
+  {
+    "id": "mem-traivend-strategy-rules-asia-range",
+    "key": "asia-range",
+    "content": "- Preisbereich zwischen Asia High und Asia Low\n- Natuerliche Magnetpunkte fuer EU/US Sessions\n- EU/US laufen oft zuerst dorthin um Liquiditaeten abzuholen",
+    "summary": "Asia Range",
+    "namespace": "traivend-strategy-rules",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/kaan_macbook/.claude/projects/-Users-kaan-macbook-algorivo-core/memory/traivend-strategy-rules.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774355481174
+  },
+  {
+    "id": "mem-traivend-strategy-rules-session-zeiten",
+    "key": "session-zeiten",
+    "content": "- Asia: Struktur aufbauen, Range-lastig, geringe Liquiditaet\n- EU: 08:00-13:30 UTC, erhoehte Volatilitaet, bestimmt Tagesrichtung\n- US: Ab Cash Open, hoechste Velocity und Volumen",
+    "summary": "Session-Zeiten",
+    "namespace": "traivend-strategy-rules",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/kaan_macbook/.claude/projects/-Users-kaan-macbook-algorivo-core/memory/traivend-strategy-rules.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774355481174
+  },
+  {
+    "id": "mem-traivend-strategy-rules-trade-management",
+    "key": "trade-management",
+    "content": "- Stop-Loss nur in Richtung des Einstiegs bewegen, nie weg\n- Teilgewinne an strukturellen Levels\n- \"Den Trade atmen lassen\" = nicht bei jeder Gegenbewegung raus",
+    "summary": "Trade Management",
+    "namespace": "traivend-strategy-rules",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/kaan_macbook/.claude/projects/-Users-kaan-macbook-algorivo-core/memory/traivend-strategy-rules.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774355481174
+  },
+  {
+    "id": "mem-traivend-strategy-rules-double-fake-v2-benchmark--prof",
+    "key": "double-fake-v2-benchmark-profitabel-",
+    "content": "- min_fakes=3, tp=100, sl=40, buf=12, exh=50\n- Max 2 Trades/Tag (1 Long + 1 Short)\n- Ergebnis: PF=2.24, 63.6% Win, 11 Trades, +$19.15M",
+    "summary": "Double Fake v2 Benchmark (PROFITABEL)",
+    "namespace": "traivend-strategy-rules",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/kaan_macbook/.claude/projects/-Users-kaan-macbook-algorivo-core/memory/traivend-strategy-rules.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774355481174
+  },
+  {
+    "id": "mem-traivend-strategy-rules-fakeout-pro-v5-best--round-9--",
+    "key": "fakeout-pro-v5-best-round-9-2026-03-06-",
+    "content": "- Config: min_fakes=3, max_pen=25, sl_buf=8, exh=70, tp_atr=250%, max_trades=1\n- Filters: min_pen=3, min_bars_between=3, max_age=5, max_dist=10, price_confirm=true\n- MBO: 3/5 confluence (velocity+absorption+delta+imbalance+sweep)\n- Result: 28 trades, 40.9% WR, Avg Win $463, Avg Loss $202, PF~1.59, +$1,550\n- Max DD: $1,825, Largest Win: $2,550\n- KEY: tighter SL (buf=8 vs 12, pen=25 vs 40) improved R:R from 1.6 to 2.3",
+    "summary": "Fakeout Pro V5 BEST (Round 9, 2026-03-06)",
+    "namespace": "traivend-strategy-rules",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/kaan_macbook/.claude/projects/-Users-kaan-macbook-algorivo-core/memory/traivend-strategy-rules.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774355481174
+  },
+  {
+    "id": "mem-traivend-strategy-rules-optimization-lessons--2026-03-",
+    "key": "optimization-lessons-2026-03-06-",
+    "content": "- Context filter (trend direction) HURT results (R6) — removed\n- min_fakes=4 too strict (R7) — 3 is sweet spot\n- 3x ATR TP too wide (R8) — only V5 profited, 2.5x better\n- Tighter SL is the KEY lever: buf=8, max_pen=25 → Avg Loss halved\n- V5 (Full Confluence) consistently best — MBO filters select best setups\n- V1/V2 (candle-only / single MBO) unreliable\n- V3/V4 consistently worst performers",
+    "summary": "Optimization Lessons (2026-03-06)",
+    "namespace": "traivend-strategy-rules",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/kaan_macbook/.claude/projects/-Users-kaan-macbook-algorivo-core/memory/traivend-strategy-rules.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774355481174
+  },
+  {
+    "id": "mem-traivend-strategy-rules-mbo-indicator-bugs--fixed-2026",
+    "key": "mbo-indicator-bugs-fixed-2026-03-06-",
+    "content": "- velocity exhaustion: checked `e > 0` → only bullish, never sell-side\n  FIX: Buy → exhaustion == -1 (bearish exh), Sell → exhaustion == 1\n- book_imbalance: `trend == Some(1)` fallback always fires\n  FIX: removed trend fallback, require imbalance >= 50\n- delta confidence: threshold 20 too low → raised to 50",
+    "summary": "MBO Indicator Bugs (Fixed 2026-03-06)",
+    "namespace": "traivend-strategy-rules",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/kaan_macbook/.claude/projects/-Users-kaan-macbook-algorivo-core/memory/traivend-strategy-rules.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774355481174
+  },
+  {
+    "id": "mem-MEMORY-key-facts",
+    "key": "key-facts",
+    "content": "- pnpm monorepo, 5 packages: shared, agents, api, web, clawdbot\n- Mastra v1.9.0 for agent orchestration (agents need `id` field, tools use `execute: async (input) =>`)\n- API: Hono on port 4001, SQLite WAL mode, execution queue (max 3 concurrent)\n- Web: React 19 + Vite 7, Zustand stores, \"Arcane Tech\" dark theme\n- Plugin: `~/.claude/plugins/nexus-orchestrator/` (4 skills, no shell scripts)\n- Design doc: `docs/plans/2026-03-06-nexus-hybrid-orchestration-design.md`",
+    "summary": "Key Facts",
+    "namespace": "core",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/kaan_macbook/.claude/projects/-Users-kaan-macbook-nexus-command-center/memory/MEMORY.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774355481175
+  },
+  {
+    "id": "mem-MEMORY-build-notes",
+    "key": "build-notes",
+    "content": "- `pnpm run build` builds all 5 packages via Turborepo\n- Agents need `ANTHROPIC_API_KEY` env var for real execution\n- DB migration in `db.ts`: indexes must come AFTER column migration\n- If DB errors on startup, delete `packages/api/data/nexus.db` for clean state",
+    "summary": "Build Notes",
+    "namespace": "core",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/kaan_macbook/.claude/projects/-Users-kaan-macbook-nexus-command-center/memory/MEMORY.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774355481175
+  },
+  {
+    "id": "mem-MEMORY-completed-phases",
+    "key": "completed-phases",
+    "content": "- Phase A: API Hardening (health/ready/contract, queue, middleware, SSE resumption)\n- Phase B: Plugin Skills (nexus-exec, deploy, status, task - all curl-based)\n- Phase C: Network Execution (central + feature-team networks)\n- Phase D: Dashboard (KPIBar, QueueBar, ExecutionFeed, TokenChart, metrics polling)\n- Phase E: E2E tested (pipeline works end-to-end, fails at LLM call without API key)",
+    "summary": "Completed Phases",
+    "namespace": "core",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/kaan_macbook/.claude/projects/-Users-kaan-macbook-nexus-command-center/memory/MEMORY.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774355481175
+  },
+  {
+    "id": "mem-MEMORY-remaining-work",
+    "key": "remaining-work",
+    "content": "- Add ANTHROPIC_API_KEY for real agent execution\n- ClawdBot integration with execution pipeline\n- Remove claude-flow from MCP config (if still configured)",
+    "summary": "Remaining Work",
+    "namespace": "core",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/kaan_macbook/.claude/projects/-Users-kaan-macbook-nexus-command-center/memory/MEMORY.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774355481175
+  },
+  {
+    "id": "insight-1774358768330-a09w",
+    "key": "frequent-edit-unknown",
+    "content": "File unknown was edited 155 times this session — likely a hot path worth monitoring.",
+    "summary": "Frequently edited: unknown (155x)",
+    "namespace": "insights",
+    "type": "procedural",
+    "metadata": {
+      "sourceFile": "unknown",
+      "editCount": 155,
+      "autoGenerated": true
+    },
+    "createdAt": 1774358768330
+  }
+]

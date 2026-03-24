@@ -53,11 +53,42 @@ async def get_strategies():
             ORDER BY perf.total_trades DESC NULLS LAST, sd.name ASC
         """)).fetchall()
 
+        # Rename internal strategy names to Arctis branding
+        _NAME_MAP = {
+            "Kaan's Session BIAS V2 (NQ)": "Arctis Session BIAS",
+            "Kaan's Double Fake Exhaustion v2 (NQ)": "Arctis Double Fake",
+            "Kaan's Opening Range Breakout (NQ)": "Arctis Opening Range",
+            "Kaan's Front Run (NQ)": "Arctis Front Run",
+            "Kaan's Gap Fill (NQ)": "Arctis Gap Fill",
+            "Kaan's Hit and Run (NQ)": "Arctis Hit and Run",
+            "Kaan's Liquidity Sweep (NQ)": "Arctis Liquidity Sweep",
+            "Kaan's Midpoint Reclaim (NQ)": "Arctis Midpoint Reclaim",
+            "Kaan's Momentum Ignition (NQ)": "Arctis Momentum Ignition",
+            "Kaan's Triple Drive Exhaustion (NQ)": "Arctis Triple Drive",
+            "Kaan's VWAP Bounce (NQ)": "Arctis VWAP Bounce",
+            "Kaan's Balance Breakout (NQ)": "Arctis Balance Breakout",
+            "Kaan's Velocity Engine (NQ)": "Arctis Velocity Engine",
+            "Travis Double Fake (NQ)": "Arctis PDH/PDL Double Fake",
+            "Travis Session Breakout (NQ)": "Arctis Session Breakout",
+            "Travis Velocity Reversal (NQ)": "Arctis Velocity Reversal",
+            "MBO Confluence (NQ)": "Arctis Confluence",
+            "Traivend Silver Bullet": "Arctis Silver Bullet",
+            "Traivend Confluence Scorer": "Arctis Multi-Factor Scorer",
+            "Traivend FVG Retest": "Arctis FVG Retest",
+            "Traivend Smart Money Reversal": "Arctis Smart Money Reversal",
+            "Fakeout Pro V5: Full Kaan": "Arctis Fakeout Pro",
+            "Fakeout Pro V1: Multi-Level": "Arctis Fakeout v1",
+            "Fakeout Pro V2: MBO Velocity": "Arctis Fakeout v2",
+            "Fakeout Pro V3: Absorption": "Arctis Fakeout v3",
+            "Fakeout Pro V4: Sweep Reclaim": "Arctis Fakeout v4",
+        }
+
         strategies = []
         for row in rows:
+            display_name = _NAME_MAP.get(row.name, row.name)
             strategies.append({
                 "id": row.id,
-                "name": row.name,
+                "name": display_name,
                 "description": row.description or "",
                 "category": row.category or "other",
                 "enabled": row.enabled,

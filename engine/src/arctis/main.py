@@ -155,6 +155,7 @@ from arctis.routes.zones import router as zones_router
 from arctis.routes.signals import router as signals_router
 from arctis.routes.strategies import router as strategies_router
 from arctis.routes.radar import router as radar_router
+from arctis.routes.live import router as live_router
 app.include_router(analysis_router)
 app.include_router(probability_router)
 app.include_router(risk_router)
@@ -165,6 +166,7 @@ app.include_router(zones_router)
 app.include_router(signals_router)
 app.include_router(strategies_router)
 app.include_router(radar_router)
+app.include_router(live_router)
 
 
 @app.get("/health")
@@ -313,8 +315,11 @@ async def get_bars(
         bars_list = sim.get_bars()
     else:
         from arctis.db import fetch_bars_as_models
+        # Match days to timeframe so chart and indicators cover the same range
+        tf_days = {"1min": 5, "5min": 14, "15min": 30, "30min": 30, "1h": 60}
+        days = tf_days.get(timeframe, 30)
         try:
-            bars_list = fetch_bars_as_models(market=market, days=30, timeframe=timeframe)
+            bars_list = fetch_bars_as_models(market=market, days=days, timeframe=timeframe)
         except KeyError as e:
             return JSONResponse(status_code=404, content={"error": str(e)})
         except Exception as e:

@@ -19,7 +19,7 @@ function Pill({ label, isActive, onClick }: PillProps) {
       onClick={onClick}
       whileTap={{ scale: 0.94 }}
       className={cn(
-        'relative px-2 py-0.5 rounded-[var(--radius-sm)]',
+        'relative px-2 py-1 min-h-[28px] rounded-[var(--radius-sm)]',
         'font-mono text-[11px] leading-none',
         'transition-colors duration-120',
         'outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent)]',

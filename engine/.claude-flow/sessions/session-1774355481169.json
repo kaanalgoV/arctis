@@ -1,0 +1,14 @@
+{
+  "id": "session-1774355481169",
+  "startedAt": "2026-03-24T12:31:21.169Z",
+  "cwd": "/Users/kaan_macbook/arctis/engine",
+  "context": {},
+  "metrics": {
+    "edits": 30,
+    "commands": 0,
+    "tasks": 0,
+    "errors": 0
+  },
+  "endedAt": "2026-03-24T13:26:08.344Z",
+  "duration": 3287175
+}

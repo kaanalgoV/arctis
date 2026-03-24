@@ -809,17 +809,18 @@ export function BiasPanel({ data, loading = false }: BiasPanelProps) {
     return <BiasPanelSkeleton />
   }
 
-  if (!data) {
+  if (!data || !data.bias_state || !data.bias_state.state) {
     return <EmptyState />
   }
 
-  const hasComponents = Object.keys(data.bias_state.components).length > 0
-  const hasNakedPocs = data.naked_pocs?.some((p) => p.naked)
+  const components = data.bias_state.components ?? {}
+  const hasComponents = Object.keys(components).length > 0
+  const hasNakedPocs = data.naked_pocs?.some((p: any) => p.naked)
 
   return (
     <AnimatePresence mode="wait">
       <motion.div
-        key={data.bias_state.state + data.bias_state.score}
+        key={(data.bias_state.state ?? 'unknown') + (data.bias_state.score ?? 0)}
         initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -4 }}
@@ -827,13 +828,13 @@ export function BiasPanel({ data, loading = false }: BiasPanelProps) {
         className="flex flex-col gap-2.5"
       >
         {/* 1. Bias State Header */}
-        <BiasHeader state={data.bias_state} score={data.bias_state.score} />
+        <BiasHeader state={data.bias_state} score={data.bias_state.score ?? 0} />
 
         {/* 2. Components Grid */}
         {hasComponents && (
           <>
             <Divider />
-            <ComponentsGrid components={data.bias_state.components} />
+            <ComponentsGrid components={components} />
           </>
         )}
 
@@ -893,7 +894,7 @@ export function BiasPanel({ data, loading = false }: BiasPanelProps) {
         )}
 
         {/* 8. Key Levels */}
-        {data.key_levels.length > 0 && (
+        {data.key_levels && data.key_levels.length > 0 && (
           <>
             <Divider />
             <KeyLevelsList levels={data.key_levels} />

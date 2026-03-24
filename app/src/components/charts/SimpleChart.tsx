@@ -134,6 +134,8 @@ export interface SimpleChartProps {
 
 interface OverlaySeries {
   vwap: ISeriesApi<'Line'> | null
+  vwapUpper1: ISeriesApi<'Line'> | null
+  vwapLower1: ISeriesApi<'Line'> | null
   ema9: ISeriesApi<'Line'> | null
   ema21: ISeriesApi<'Line'> | null
   ema50: ISeriesApi<'Line'> | null
@@ -179,6 +181,8 @@ export function SimpleChart({
   // Overlay series refs
   const overlayRef = useRef<OverlaySeries>({
     vwap: null,
+    vwapUpper1: null,
+    vwapLower1: null,
     ema9: null,
     ema21: null,
     ema50: null,
@@ -228,7 +232,7 @@ export function SimpleChart({
       width: containerRef.current.clientWidth,
       height: containerRef.current.clientHeight,
       layout: {
-        background: { type: ColorType.Solid, color: '#0A0D12' },
+        background: { type: ColorType.Solid, color: '#0b1018' },
         textColor: '#6E7681',
         fontFamily: "'JetBrains Mono', monospace",
         fontSize: 10,
@@ -239,13 +243,13 @@ export function SimpleChart({
       },
       crosshair: {
         mode: CrosshairMode.Normal,
-        vertLine: { color: '#21262D', style: 3, width: 1, labelBackgroundColor: '#222830' },
-        horzLine: { color: '#21262D', style: 3, width: 1, labelBackgroundColor: '#222830' },
+        vertLine: { color: '#1e3a5f', style: 3, width: 1, labelBackgroundColor: '#0d1520' },
+        horzLine: { color: '#1e3a5f', style: 3, width: 1, labelBackgroundColor: '#0d1520' },
       },
       rightPriceScale: {
-        borderColor: '#272F3A',
+        borderColor: '#172030',
         autoScale: true,
-        scaleMargins: { top: 0.1, bottom: 0.2 },
+        scaleMargins: { top: 0.08, bottom: 0.22 },
       },
       timeScale: { borderColor: '#272F3A', timeVisible: true, secondsVisible: false },
     })
@@ -253,12 +257,12 @@ export function SimpleChart({
 
     // ── Candlesticks ──────────────────────────────────────────────────────────
     const candleSeries = chart.addSeries(CandlestickSeries, {
-      upColor: '#008757',
-      downColor: '#EF4136',
-      borderUpColor: '#008757',
-      borderDownColor: '#EF4136',
-      wickUpColor: '#008757',
-      wickDownColor: '#EF4136',
+      upColor: '#5AAED8',
+      downColor: '#d4d4d8',
+      borderUpColor: '#5AAED8',
+      borderDownColor: '#d4d4d8',
+      wickUpColor: '#5AAED8',
+      wickDownColor: '#a1a1aa',
     })
     candleRef.current = candleSeries
 
@@ -275,33 +279,53 @@ export function SimpleChart({
 
     // ── VWAP overlay series — single white line, no SD bands ─────────────────
     const vwapSeries = chart.addSeries(LineSeries, {
-      color: 'rgba(255,255,255,0.7)',
-      lineWidth: 1,
+      color: 'rgba(90,174,216,0.6)',
+      lineWidth: 2,
       priceLineVisible: false,
       lastValueVisible: false,
       visible: false,
     })
     overlayRef.current.vwap = vwapSeries
 
-    // ── EMA ribbon series ─────────────────────────────────────────────────────
-    const ema9Series = chart.addSeries(LineSeries, {
-      color: '#34D399',
+    // ── VWAP 1-SD band series ─────────────────────────────────────────────────
+    const vwapUpper1Series = chart.addSeries(LineSeries, {
+      color: 'rgba(90,174,216,0.3)',
       lineWidth: 1,
       lineStyle: LineStyle.Dashed,
+      priceLineVisible: false,
+      lastValueVisible: false,
+      visible: false,
+    })
+    const vwapLower1Series = chart.addSeries(LineSeries, {
+      color: 'rgba(90,174,216,0.3)',
+      lineWidth: 1,
+      lineStyle: LineStyle.Dashed,
+      priceLineVisible: false,
+      lastValueVisible: false,
+      visible: false,
+    })
+    overlayRef.current.vwapUpper1 = vwapUpper1Series
+    overlayRef.current.vwapLower1 = vwapLower1Series
+
+    // ── EMA ribbon series ─────────────────────────────────────────────────────
+    const ema9Series = chart.addSeries(LineSeries, {
+      color: '#5AAED8',
+      lineWidth: 1,
+      lineStyle: LineStyle.Solid,
       priceLineVisible: false,
       lastValueVisible: false,
       visible: false,
     })
     const ema21Series = chart.addSeries(LineSeries, {
-      color: '#58A6FF',
+      color: '#7CC5E8',
       lineWidth: 1,
-      lineStyle: LineStyle.Dashed,
+      lineStyle: LineStyle.Solid,
       priceLineVisible: false,
       lastValueVisible: false,
       visible: false,
     })
     const ema50Series = chart.addSeries(LineSeries, {
-      color: '#A855F7',
+      color: '#64748b',
       lineWidth: 1,
       lineStyle: LineStyle.Dashed,
       priceLineVisible: false,
@@ -350,6 +374,8 @@ export function SimpleChart({
       drawingLineRefs.current.clear()
       overlayRef.current = {
         vwap: null,
+        vwapUpper1: null,
+        vwapLower1: null,
         ema9: null, ema21: null, ema50: null,
       }
       isFirstLoadRef.current = true
@@ -379,7 +405,7 @@ export function SimpleChart({
       bars.map((b) => ({
         time: b.timestamp as any,
         value: b.volume,
-        color: b.close >= b.open ? 'rgba(0,135,87,0.3)' : 'rgba(239,65,54,0.3)',
+        color: b.close >= b.open ? 'rgba(90,174,216,0.25)' : 'rgba(212,212,216,0.18)',
       }))
     )
 
@@ -427,9 +453,18 @@ export function SimpleChart({
     if (visible && vwapData) {
       const sorted = [...vwapData].sort((a, b) => a.timestamp - b.timestamp)
       ov.vwap.setData(sorted.map((v) => ({ time: v.timestamp as any, value: v.vwap })))
+
+      // SD bands (1-sigma upper/lower) — only if data contains the fields
+      const hasBands = sorted.length > 0 && sorted[0].upper_1 != null && sorted[0].lower_1 != null
+      if (hasBands && ov.vwapUpper1 && ov.vwapLower1) {
+        ov.vwapUpper1.setData(sorted.map((v) => ({ time: v.timestamp as any, value: v.upper_1 })))
+        ov.vwapLower1.setData(sorted.map((v) => ({ time: v.timestamp as any, value: v.lower_1 })))
+      }
     }
 
     ov.vwap.applyOptions({ visible })
+    if (ov.vwapUpper1) ov.vwapUpper1.applyOptions({ visible })
+    if (ov.vwapLower1) ov.vwapLower1.applyOptions({ visible })
   }, [showVwap, vwapData])
 
   // ── EMA data + visibility ─────────────────────────────────────────────────
@@ -487,7 +522,7 @@ export function SimpleChart({
       if (sl.prev_high != null) {
         lines.push(candle.createPriceLine({
           price: sl.prev_high,
-          color: '#008757',
+          color: 'rgba(90,174,216,0.65)',
           lineWidth: 1,
           lineStyle: LineStyle.Dashed,
           axisLabelVisible: true,
@@ -497,7 +532,7 @@ export function SimpleChart({
       if (sl.prev_low != null) {
         lines.push(candle.createPriceLine({
           price: sl.prev_low,
-          color: '#EF4136',
+          color: 'rgba(248,113,113,0.6)',
           lineWidth: 1,
           lineStyle: LineStyle.Dashed,
           axisLabelVisible: true,

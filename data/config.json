@@ -1,0 +1,10 @@
+{
+  "account_size": 50000.0,
+  "risk_percent": 1.0,
+  "daily_loss_limit": 1000.0,
+  "max_daily_trades": 10,
+  "tick_value_es": 12.5,
+  "tick_size_es": 0.25,
+  "tick_value_nq": 5.0,
+  "tick_size_nq": 0.25
+}

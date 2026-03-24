@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils'
 import type { OverlayKey } from '@/components/charts/ChartToolbar'
 import { useSettingsStore } from '@/store/settings'
 import { config } from '@/lib/config'
+import { ConnectionPanel } from '@/components/settings/ConnectionPanel'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -484,6 +485,27 @@ function ConnectionTab({ status }: { status: ConnectionStatus }) {
         >
           {engineUrl.replace(/^https?:\/\/[^:]+/, '')}
         </span>
+      </div>
+
+      {/* ── Data Connection ── */}
+      <div
+        className="pt-2"
+        style={{ borderTop: '1px solid var(--color-border-subtle)', marginTop: 4 }}
+      >
+        <span
+          style={{
+            display: 'block',
+            fontSize: 11,
+            color: 'var(--color-text-muted)',
+            fontFamily: 'var(--font-mono)',
+            textTransform: 'uppercase',
+            letterSpacing: '0.06em',
+            marginBottom: 10,
+          }}
+        >
+          Data Connection
+        </span>
+        <ConnectionPanel />
       </div>
     </div>
   )

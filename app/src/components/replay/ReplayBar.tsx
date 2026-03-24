@@ -31,7 +31,7 @@ export interface ReplayBarProps {
 
 // ── Speed options ─────────────────────────────────────────────────────────────
 
-const SPEED_OPTIONS = [0.5, 1, 2, 5, 10] as const
+const SPEED_OPTIONS = [1, 5, 10] as const
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
@@ -49,7 +49,7 @@ function TransportButton({ onClick, children, label, disabled = false }: Transpo
       disabled={disabled}
       aria-label={label}
       className={cn(
-        'flex items-center justify-center w-5 h-5 rounded',
+        'flex items-center justify-center w-8 h-8 rounded',
         'text-[var(--color-text-muted)]',
         'hover:text-[var(--color-text-secondary)] hover:bg-white/[0.04]',
         'transition-colors duration-100',
@@ -217,7 +217,7 @@ export function ReplayBar({
             key={s}
             onClick={() => onSpeedChange?.(s)}
             className={cn(
-              'px-1.5 py-0.5 rounded',
+              'px-1.5 py-0.5 rounded cursor-pointer',
               'font-mono text-[10px] leading-none',
               'transition-colors duration-100',
               'outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent)]',
@@ -226,7 +226,7 @@ export function ReplayBar({
                 : 'text-[var(--color-text-muted)] hover:bg-white/[0.04] hover:text-[var(--color-text-secondary)]',
             )}
           >
-            {s === 0.5 ? '½' : s}x
+            {s}x
           </button>
         ))}
       </div>
@@ -240,7 +240,7 @@ export function ReplayBar({
           onClick={() => onDateChange?.('prev')}
           aria-label="Previous day"
           className={cn(
-            'flex items-center justify-center w-4 h-4 rounded',
+            'flex items-center justify-center w-7 h-7 rounded',
             'text-[var(--color-text-muted)]',
             'hover:text-[var(--color-text-secondary)] hover:bg-white/[0.04]',
             'transition-colors duration-100',
@@ -270,7 +270,7 @@ export function ReplayBar({
           onClick={() => onDateChange?.('next')}
           aria-label="Next day"
           className={cn(
-            'flex items-center justify-center w-4 h-4 rounded',
+            'flex items-center justify-center w-7 h-7 rounded',
             'text-[var(--color-text-muted)]',
             'hover:text-[var(--color-text-secondary)] hover:bg-white/[0.04]',
             'transition-colors duration-100',

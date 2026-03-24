@@ -339,6 +339,18 @@ export default function App() {
   // ── Last bar close ─────────────────────────────────────────────────────────
   const lastClose = bars.at(-1)?.close
 
+  // ── Current price: prefer live price when available, fall back to lastClose ──
+  const livePrice: number | null = (() => {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const mod = require('@/live') as { useLiveStore?: { getState: () => { lastPrice: number | null } } }
+      return mod.useLiveStore?.getState?.()?.lastPrice ?? null
+    } catch {
+      return null
+    }
+  })()
+  const currentPrice = livePrice ?? lastClose ?? null
+
   // ── Overlay toggle state ───────────────────────────────────────────────────
   const [activeOverlays, setActiveOverlays] = useState<Set<OverlayKey>>(
     () => new Set<OverlayKey>(['vwap', 'ema', 'volume', 'vp'])
@@ -437,8 +449,8 @@ export default function App() {
   const arctisPattern = (patternsData as PatternsAPIData | null)?.annotations.at(-1)?.pattern ?? undefined
   const arctisBias = (biasData as BiasData | null)?.bias_state?.state ?? undefined
 
-  // ── Price ─────────────────────────────────────────────────────────────────
-  const price = lastClose ?? null
+  // ── Price (used in Topbar + document title; prefers live over lastClose) ───
+  const price = currentPrice
 
   // ── Dynamic document title ─────────────────────────────────────────────────
   useEffect(() => {
@@ -698,7 +710,7 @@ export default function App() {
             <ArctisPanel
               currentPattern={arctisPattern}
               currentBias={arctisBias}
-              currentPrice={lastClose}
+              currentPrice={currentPrice ?? undefined}
             />
           </RightPanelSection>
         </div>

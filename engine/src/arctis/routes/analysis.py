@@ -214,9 +214,13 @@ async def get_warnings(
 async def get_indicators(
     market: Market = Query(...),
     timeframe: Timeframe = Query(default=Timeframe.M1),
-    days: int = Query(default=30, ge=1, le=365),
+    days: int | None = Query(default=None, ge=1, le=365),
 ):
     """Return VWAP, EMA, RSI, Volume Profile, Session Levels."""
+    # Auto-select days based on timeframe to keep response size reasonable
+    if days is None:
+        tf_days = {"1min": 5, "5min": 14, "15min": 30, "30min": 30, "1h": 60}
+        days = tf_days.get(timeframe.value, 30)
     try:
         bars = _load_bars(market, timeframe, days=days)
     except HTTPException:
@@ -231,20 +235,25 @@ async def get_indicators(
     daily_profiles = build_daily_volume_profiles(bars)
     session_lvls = calculate_session_levels(bars)
 
+    # Send ALL indicator points so VWAP/EMA cover the entire chart range.
+    vwap_out = vwap_list
+    ema_out = ema_list
+    rsi_out = rsi_list
+
     return {
         "market": market.value,
         "timeframe": timeframe.value,
         "vwap": [
             {"timestamp": v.timestamp, "vwap": v.vwap, "upper_1": v.upper_1, "lower_1": v.lower_1, "upper_2": v.upper_2, "lower_2": v.lower_2}
-            for v in vwap_list
+            for v in vwap_out
         ],
         "ema": [
             {"timestamp": e.timestamp, "ema9": e.ema9, "ema21": e.ema21, "ema50": e.ema50, "alignment": e.alignment}
-            for e in ema_list
+            for e in ema_out
         ],
         "rsi": [
             {"timestamp": r.timestamp, "rsi": r.rsi, "divergence": r.divergence}
-            for r in rsi_list
+            for r in rsi_out
         ],
         "volume_profile": {
             "poc": vol_profile.poc,
