@@ -5,33 +5,13 @@ import type { Bar } from '../types/contracts'
 
 type WsMessageType = 'subscribed' | 'snapshot' | 'bar' | 'heartbeat' | 'error' | 'replay_state'
 
-// ---------------------------------------------------------------------------
-// Live store integration — graceful: if the live module doesn't exist yet,
-// we fall back silently to DB polling.
-// ---------------------------------------------------------------------------
-
-interface LiveStoreSnapshot {
-  isConnected: boolean
-  candles: Bar[]
-  lastPrice: number | null
-  latencyMs: number
-}
-
-function tryGetLiveStore(): LiveStoreSnapshot | null {
-  try {
-    // Dynamic require so TS won't fail if the module doesn't exist yet
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const mod = require('../live') as { useLiveStore?: { getState: () => LiveStoreSnapshot } }
-    return mod.useLiveStore?.getState?.() ?? null
-  } catch {
-    return null
-  }
-}
+// Live store integration disabled — was causing render loop.
+// Re-enable when live service (port 28081) is stable.
 
 // ---------------------------------------------------------------------------
 
 export function useMarketData(options?: { pauseWs?: boolean }) {
-  const { symbol, timeframe, days, setWsStatus, setLastBarTs, setDataSource } = useMarketStore()
+  const { symbol, timeframe, days, setWsStatus, setLastBarTs } = useMarketStore()
   // Read engineUrl at render time so changes in settings propagate
   const engineUrl = useSettingsStore((s) => s.engineUrl)
   const wsUrl = engineUrl.replace(/^http/, 'ws')
@@ -128,9 +108,7 @@ export function useMarketData(options?: { pauseWs?: boolean }) {
     }
 
     ws.onclose = () => {
-      setWsStatus('disconnected')
       wsRef.current = null
-      // Exponential backoff reconnect
       const delay = Math.min(1000 * Math.pow(2, reconnectAttempt.current), 30000)
       reconnectAttempt.current++
       setWsStatus('reconnecting')
@@ -172,15 +150,9 @@ export function useMarketData(options?: { pauseWs?: boolean }) {
   // Falls back to DB bars when live is not available.
   // ---------------------------------------------------------------------------
 
-  const liveSnapshot = tryGetLiveStore()
-  const liveActive = liveSnapshot !== null && liveSnapshot.isConnected && liveSnapshot.candles.length > 0
+  // Live store integration disabled — causes render loop.
+  // When live service (port 28081) is properly running, re-enable.
+  // For now, always use DB bars.
 
-  // Update dataSource in market store to reflect current source
-  useEffect(() => {
-    setDataSource(liveActive ? 'live' : 'db')
-  }, [liveActive, setDataSource])
-
-  const activeBars = liveActive ? liveSnapshot.candles : bars
-
-  return { bars: activeBars, isLoading, error, lastHeartbeat, reload: loadBars }
+  return { bars, isLoading, error, lastHeartbeat, reload: loadBars }
 }
