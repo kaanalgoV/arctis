@@ -120,10 +120,36 @@ export function useMarketData(options?: { pauseWs?: boolean }) {
     }
   }, [symbol, setWsStatus, setLastBarTs, wsUrl])
 
-  // Load bars on symbol/timeframe change
+  // Load bars on symbol/timeframe change + poll every 5s for live updates
   useEffect(() => {
     loadBars()
-  }, [loadBars])
+    const pollId = setInterval(async () => {
+      try {
+        const url = `${engineUrl}/api/db/bars?symbol=${symbol}&days=1&timeframe=${timeframe}`
+        const res = await fetch(url)
+        if (!res.ok) return
+        const data = await res.json()
+        const freshBars: Bar[] = data.bars || []
+        if (freshBars.length === 0) return
+        setBars(prev => {
+          if (prev.length === 0) return freshBars
+          const lastPrev = prev[prev.length - 1]
+          const latest = freshBars[freshBars.length - 1]
+          // Update last bar if same timestamp
+          if (latest.timestamp === lastPrev.timestamp) {
+            if (latest.close !== lastPrev.close) return [...prev.slice(0, -1), latest]
+            return prev
+          }
+          // Append new bars
+          const newBars = freshBars.filter(b => b.timestamp > lastPrev.timestamp)
+          return newBars.length > 0 ? [...prev, ...newBars] : prev
+        })
+        const latest = freshBars[freshBars.length - 1]
+        setLastBarTs(latest.timestamp)
+      } catch { /* silent */ }
+    }, 5_000)
+    return () => clearInterval(pollId)
+  }, [symbol, timeframe, days, engineUrl, setLastBarTs])
 
   // Connect WS after initial load
   useEffect(() => {
@@ -144,57 +170,7 @@ export function useMarketData(options?: { pauseWs?: boolean }) {
     }
   }, [symbol, options?.pauseWs]) // Reconnect on symbol change or pause toggle
 
-  // ---------------------------------------------------------------------------
-  // Live feed integration: check live store on every render tick.
-  // If live is connected and has candles, prefer live data.
-  // Falls back to DB bars when live is not available.
-  // ---------------------------------------------------------------------------
-
-  // Silent poll-refresh: check for new bars every 5s from DB
-  // Only appends/updates the LAST bar — doesn't replace entire array (avoids chart jump)
-  const lastBarTsRef = useRef<number>(0)
-
-  useEffect(() => {
-    if (options?.pauseWs) return
-    const interval = setInterval(async () => {
-      try {
-        // Only fetch last 1 day to get newest bars quickly
-        const url = `${engineUrl}/api/db/bars?symbol=${symbol}&days=1&timeframe=${timeframe}`
-        const res = await fetch(url)
-        if (!res.ok) return
-        const data = await res.json()
-        const freshBars: Bar[] = data.bars || []
-        if (freshBars.length === 0) return
-
-        const latestBar = freshBars[freshBars.length - 1]
-        if (latestBar.timestamp <= lastBarTsRef.current) return // No new data
-
-        lastBarTsRef.current = latestBar.timestamp
-        setLastBarTs(latestBar.timestamp)
-
-        setBars(prev => {
-          if (prev.length === 0) return freshBars
-
-          const lastPrev = prev[prev.length - 1]
-          if (latestBar.timestamp === lastPrev.timestamp) {
-            // Update last bar (same candle, new close/high/low)
-            if (latestBar.close !== lastPrev.close || latestBar.high !== lastPrev.high || latestBar.low !== lastPrev.low) {
-              return [...prev.slice(0, -1), latestBar]
-            }
-            return prev // No change
-          }
-
-          // Find new bars to append (bars after our last known timestamp)
-          const newBars = freshBars.filter(b => b.timestamp > lastPrev.timestamp)
-          if (newBars.length > 0) {
-            return [...prev, ...newBars]
-          }
-          return prev
-        })
-      } catch { /* silent fail */ }
-    }, 5_000)
-    return () => clearInterval(interval)
-  }, [symbol, timeframe, engineUrl, setLastBarTs, options?.pauseWs])
+  // (Poll-refresh is now integrated into the loadBars useEffect above)
 
   return { bars, isLoading, error, lastHeartbeat, reload: loadBars }
 }
