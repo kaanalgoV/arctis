@@ -203,59 +203,12 @@ async def rithmic_login(
             url=url,
         )
 
-        # Connect to ticker + history plants
-        await client.connect(plants=[SysInfraType.TICKER_PLANT, SysInfraType.HISTORY_PLANT])
+        # Connect to ticker plant (live tick streaming)
+        await client.connect(plants=[SysInfraType.TICKER_PLANT])
 
-        # ── Backfill: fetch last 5 days of 1-min bars from Rithmic history ──
-        from arctis.db import get_engine as _get_engine
-        backfill_engine = _get_engine()
-        for symbol, exchange in _INSTRUMENTS:
-            try:
-                logger.info("Backfilling %s — fetching last 5 days from Rithmic history...", symbol)
-                from async_rithmic.enums import TimeBarType
-                hist_bars = await asyncio.wait_for(
-                    client.get_time_bar_replay(
-                        symbol=symbol,
-                        exchange=exchange,
-                        bar_type=TimeBarType.MINUTE_BAR,
-                        bar_type_periods=1,
-                        start_date=datetime.now(timezone.utc) - timedelta(days=5),
-                        end_date=datetime.now(timezone.utc),
-                    ),
-                    timeout=30.0,
-                )
-                if hist_bars:
-                    count = 0
-                    for hb in hist_bars:
-                        try:
-                            bar_dt = hb.get("bar_end_datetime") or hb.get("datetime")
-                            if bar_dt and bar_dt.tzinfo is None:
-                                bar_dt = bar_dt.replace(tzinfo=timezone.utc)
-                            if not bar_dt:
-                                continue
-                            o = float(hb.get("open_price", 0) or hb.get("open", 0))
-                            h = float(hb.get("high_price", 0) or hb.get("high", 0))
-                            l = float(hb.get("low_price", 0) or hb.get("low", 0))
-                            c = float(hb.get("close_price", 0) or hb.get("close", 0))
-                            v = int(hb.get("volume", 0) or 0)
-                            if c == 0:
-                                continue
-                            with backfill_engine.begin() as conn:
-                                conn.execute(text("""
-                                    INSERT INTO candles (ts, symbol, timeframe, o, h, l, c, volume)
-                                    VALUES (:ts, :sym, '1m', :o, :h, :l, :c, :v)
-                                    ON CONFLICT (ts, symbol, timeframe) DO NOTHING
-                                """), {"ts": bar_dt, "sym": symbol, "o": o, "h": h, "l": l, "c": c, "v": v})
-                            count += 1
-                        except Exception:
-                            pass
-                    logger.info("Backfilled %s: %d bars written", symbol, count)
-                else:
-                    logger.warning("No history bars returned for %s", symbol)
-            except asyncio.TimeoutError:
-                logger.warning("Backfill timeout for %s — continuing with live only", symbol)
-            except Exception:
-                logger.exception("Backfill failed for %s — continuing with live only", symbol)
+        # NOTE: Historical backfill not supported by async_rithmic library.
+        # Historical data comes from existing DB (imported via AlgoView/Databento).
+        # Live ticks fill forward from the point of connection.
 
         # ── Subscribe to last trade ticks for live streaming ──
         for symbol, exchange in _INSTRUMENTS:
