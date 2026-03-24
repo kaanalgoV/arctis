@@ -242,7 +242,7 @@ export function SimpleChart({
         vertLine: { color: '#21262D', style: 3, width: 1, labelBackgroundColor: '#222830' },
         horzLine: { color: '#21262D', style: 3, width: 1, labelBackgroundColor: '#222830' },
       },
-      rightPriceScale: { borderColor: '#272F3A' },
+      rightPriceScale: { borderColor: '#272F3A', autoScale: true },
       timeScale: { borderColor: '#272F3A', timeVisible: true, secondsVisible: false },
     })
     chartRef.current = chart
@@ -265,6 +265,7 @@ export function SimpleChart({
     })
     chart.priceScale('volume').applyOptions({
       scaleMargins: { top: 0.8, bottom: 0 },
+      visible: false,
     })
     volumeSeriesRef.current = volumeSeries
 
@@ -376,12 +377,9 @@ export function SimpleChart({
       }))
     )
 
-    // fitContent on first load OR when bar count jumps significantly (mode switch)
-    const prevCountRef = bars.length
-    if (isFirstLoadRef.current || prevCountRef < 5) {
-      chartRef.current?.timeScale().fitContent()
-      isFirstLoadRef.current = false
-    }
+    // Always fitContent after setData to ensure proper scaling
+    chartRef.current?.timeScale().fitContent()
+    isFirstLoadRef.current = false
   }, [bars])
 
   // ── VWAP data + visibility ─────────────────────────────────────────────────
