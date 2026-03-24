@@ -5,8 +5,33 @@ import type { Bar } from '../types/contracts'
 
 type WsMessageType = 'subscribed' | 'snapshot' | 'bar' | 'heartbeat' | 'error' | 'replay_state'
 
+// ---------------------------------------------------------------------------
+// Live store integration — graceful: if the live module doesn't exist yet,
+// we fall back silently to DB polling.
+// ---------------------------------------------------------------------------
+
+interface LiveStoreSnapshot {
+  isConnected: boolean
+  candles: Bar[]
+  lastPrice: number | null
+  latencyMs: number
+}
+
+function tryGetLiveStore(): LiveStoreSnapshot | null {
+  try {
+    // Dynamic require so TS won't fail if the module doesn't exist yet
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const mod = require('../live') as { useLiveStore?: { getState: () => LiveStoreSnapshot } }
+    return mod.useLiveStore?.getState?.() ?? null
+  } catch {
+    return null
+  }
+}
+
+// ---------------------------------------------------------------------------
+
 export function useMarketData(options?: { pauseWs?: boolean }) {
-  const { symbol, timeframe, days, setWsStatus, setLastBarTs } = useMarketStore()
+  const { symbol, timeframe, days, setWsStatus, setLastBarTs, setDataSource } = useMarketStore()
   // Read engineUrl at render time so changes in settings propagate
   const engineUrl = useSettingsStore((s) => s.engineUrl)
   const wsUrl = engineUrl.replace(/^http/, 'ws')
@@ -141,5 +166,21 @@ export function useMarketData(options?: { pauseWs?: boolean }) {
     }
   }, [symbol, options?.pauseWs]) // Reconnect on symbol change or pause toggle
 
-  return { bars, isLoading, error, lastHeartbeat, reload: loadBars }
+  // ---------------------------------------------------------------------------
+  // Live feed integration: check live store on every render tick.
+  // If live is connected and has candles, prefer live data.
+  // Falls back to DB bars when live is not available.
+  // ---------------------------------------------------------------------------
+
+  const liveSnapshot = tryGetLiveStore()
+  const liveActive = liveSnapshot !== null && liveSnapshot.isConnected && liveSnapshot.candles.length > 0
+
+  // Update dataSource in market store to reflect current source
+  useEffect(() => {
+    setDataSource(liveActive ? 'live' : 'db')
+  }, [liveActive, setDataSource])
+
+  const activeBars = liveActive ? liveSnapshot.candles : bars
+
+  return { bars: activeBars, isLoading, error, lastHeartbeat, reload: loadBars }
 }

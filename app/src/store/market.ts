@@ -20,6 +20,8 @@ export interface MarketState {
   lastBarTs: number | null
   /** Markets fetched from /api/markets on app init */
   markets: MarketInfo[]
+  /** Tracks whether chart bars are sourced from live feed or DB polling */
+  dataSource: 'db' | 'live'
 
   setMarket: (market: string) => void
   setTimeframe: (tf: Timeframe) => void
@@ -28,6 +30,7 @@ export interface MarketState {
   setWsStatus: (status: WsStatus) => void
   setLastBarTs: (ts: number) => void
   setMarkets: (markets: MarketInfo[]) => void
+  setDataSource: (s: 'db' | 'live') => void
   /**
    * Resolves the front-month symbol for a given root.
    * Checks fetched markets first, then falls back to static map.
@@ -43,6 +46,7 @@ export const useMarketStore = create<MarketState>((set, get) => ({
   wsStatus: 'disconnected',
   lastBarTs: null,
   markets: [],
+  dataSource: 'db',
 
   setMarket: (market) => {
     const resolved = get().resolveSymbol(market)
@@ -54,6 +58,7 @@ export const useMarketStore = create<MarketState>((set, get) => ({
   setWsStatus: (wsStatus) => set({ wsStatus }),
   setLastBarTs: (lastBarTs) => set({ lastBarTs }),
   setMarkets: (markets) => set({ markets }),
+  setDataSource: (dataSource) => set({ dataSource }),
 
   resolveSymbol: (root: string): string => {
     const { markets } = get()
