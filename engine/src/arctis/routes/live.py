@@ -46,9 +46,10 @@ _SERVER_SYSTEM_NAMES: dict[str, str] = {
 }
 
 # Instruments to subscribe to (symbol, exchange)
+# Must use specific contract symbols, not root symbols
 _INSTRUMENTS = [
-    ("NQ", "CME"),
-    ("ES", "CME"),
+    ("NQM6", "CME"),
+    ("ESM6", "CME"),
 ]
 
 
