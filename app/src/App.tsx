@@ -698,6 +698,7 @@ export default function App() {
             <ArctisPanel
               currentPattern={arctisPattern}
               currentBias={arctisBias}
+              currentPrice={lastClose}
             />
           </RightPanelSection>
         </div>

@@ -44,11 +44,11 @@ const QUICK_ACTIONS = [
 
 // ─── API call ────────────────────────────────────────────────────────────────
 
-async function askArctis(question: string, market: string, timeframe: string): Promise<ArctisResponse> {
+async function askArctis(question: string, market: string, timeframe: string, currentPrice?: number): Promise<ArctisResponse> {
   const res = await fetch(`${config.apiBase}/api/arctis/ask`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ question, market, timeframe }),
+    body: JSON.stringify({ question, market, timeframe, current_price: currentPrice }),
   })
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   return res.json() as Promise<ArctisResponse>
@@ -144,7 +144,8 @@ function TypingIndicator() {
 
 export function ArctisPanel({
   className,
-}: ArctisPanelProps) {
+  currentPrice,
+}: ArctisPanelProps & { currentPrice?: number }) {
   const { market, timeframe } = useMarketStore()
   const [input, setInput] = useState('')
   const [messages, setMessages] = useState<ChatMessage[]>([])
@@ -172,7 +173,7 @@ export function ArctisPanel({
     setIsLoading(true)
 
     try {
-      const resp = await askArctis(question.trim(), market, timeframe)
+      const resp = await askArctis(question.trim(), market, timeframe, currentPrice)
       const aiMsg: ChatMessage = {
         id: `ai-${Date.now()}`,
         role: 'ai',

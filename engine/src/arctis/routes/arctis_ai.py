@@ -323,10 +323,22 @@ async def ask_arctis(body: dict) -> dict:
     """Arctis AI — context-aware chatbot with full engine access."""
     question: str = body.get("question", "")
     market: str = body.get("market", "NQ")
-    # Always use 1min for most accurate current price, regardless of chart timeframe
+    frontend_price: float | None = body.get("current_price")
     timeframe = "1min"
 
     ctx = _build_full_context(market, timeframe)
+
+    # Override price with frontend's live price if provided (always more current)
+    if frontend_price and ctx.get("status") == "ok":
+        ctx["price"] = frontend_price
+        # Recalculate today change based on live price
+        if ctx.get("today_open"):
+            ctx["today_change"] = round(frontend_price - ctx["today_open"], 2)
+            ctx["today_change_pct"] = round((ctx["today_change"] / ctx["today_open"] * 100) if ctx["today_open"] else 0, 2)
+        if ctx.get("today_high") and frontend_price > ctx["today_high"]:
+            ctx["today_high"] = frontend_price
+        if ctx.get("today_low") and frontend_price < ctx["today_low"]:
+            ctx["today_low"] = frontend_price
     results = _answer_question(question, ctx)
 
     return {"question": question, "results": results, "context": ctx}
