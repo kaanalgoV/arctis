@@ -1,4 +1,4 @@
-import { useEffect, useRef, useMemo, useState } from 'react'
+import { useEffect, useRef, useMemo, useState, useCallback } from 'react'
 import {
   createChart,
   createSeriesMarkers,
@@ -19,6 +19,7 @@ import type { Drawing } from '@/hooks/useDrawings'
 import type { TradeSignal } from '../../hooks/useSignals'
 import { VolumeProfileOverlay } from './VolumeProfileOverlay'
 import { calculateVolumeProfile } from '@/lib/volume-profile'
+import { CHART_TOKENS } from '@/lib/chart-tokens'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -216,11 +217,30 @@ export function SimpleChart({
   }, [showVp, bars])
 
   // Visible price range for overlay coordinate mapping
-  const visiblePriceRange = useMemo(() => {
-    if (bars.length === 0) return { high: 0, low: 0 }
-    return {
-      high: bars.reduce((max, b) => Math.max(max, b.high), -Infinity),
-      low: bars.reduce((min, b) => Math.min(min, b.low), Infinity),
+  const [visiblePriceRange, setVisiblePriceRange] = useState({ high: 0, low: 0 })
+
+  // Update visible price range from chart's visible logical range
+  const updateVisibleRange = useCallback(() => {
+    const chart = chartRef.current
+    const candle = candleRef.current
+    if (!chart || !candle || bars.length === 0) return
+
+    const logicalRange = chart.timeScale().getVisibleLogicalRange()
+    if (!logicalRange) return
+
+    const from = Math.max(0, Math.floor(logicalRange.from))
+    const to = Math.min(bars.length - 1, Math.ceil(logicalRange.to))
+
+    let high = -Infinity
+    let low = Infinity
+    for (let i = from; i <= to; i++) {
+      if (bars[i]) {
+        high = Math.max(high, bars[i].high)
+        low = Math.min(low, bars[i].low)
+      }
+    }
+    if (high > low) {
+      setVisiblePriceRange({ high, low })
     }
   }, [bars])
 
@@ -232,37 +252,42 @@ export function SimpleChart({
       width: containerRef.current.clientWidth,
       height: containerRef.current.clientHeight,
       layout: {
-        background: { type: ColorType.Solid, color: '#0b1018' },
+        background: { type: ColorType.Solid, color: CHART_TOKENS.paper },
         textColor: '#6E7681',
         fontFamily: "'JetBrains Mono', monospace",
         fontSize: 10,
       },
       grid: {
         vertLines: { visible: false },
-        horzLines: { visible: false },
+        horzLines: { visible: true, color: 'rgba(255,255,255,0.02)', style: 3 },
       },
       crosshair: {
         mode: CrosshairMode.Normal,
-        vertLine: { color: '#1e3a5f', style: 3, width: 1, labelBackgroundColor: '#0d1520' },
-        horzLine: { color: '#1e3a5f', style: 3, width: 1, labelBackgroundColor: '#0d1520' },
+        vertLine: { color: CHART_TOKENS.crosshair.line, style: 3, width: 1, labelBackgroundColor: CHART_TOKENS.crosshair.labelBackground },
+        horzLine: { color: CHART_TOKENS.crosshair.line, style: 3, width: 1, labelBackgroundColor: CHART_TOKENS.crosshair.labelBackground },
       },
       rightPriceScale: {
-        borderColor: '#172030',
+        borderColor: 'var(--color-border-subtle)',
         autoScale: true,
-        scaleMargins: { top: 0.08, bottom: 0.22 },
+        scaleMargins: { top: 0.05, bottom: 0.12 },
       },
-      timeScale: { borderColor: '#272F3A', timeVisible: true, secondsVisible: false },
+      timeScale: {
+        borderColor: 'var(--color-border-subtle)',
+        timeVisible: true,
+        secondsVisible: false,
+        rightOffset: 5,
+      },
     })
     chartRef.current = chart
 
     // ── Candlesticks ──────────────────────────────────────────────────────────
     const candleSeries = chart.addSeries(CandlestickSeries, {
-      upColor: '#5AAED8',
-      downColor: '#d4d4d8',
-      borderUpColor: '#5AAED8',
-      borderDownColor: '#d4d4d8',
-      wickUpColor: '#5AAED8',
-      wickDownColor: '#a1a1aa',
+      upColor: CHART_TOKENS.candle.bull,
+      downColor: CHART_TOKENS.candle.bear,
+      borderUpColor: CHART_TOKENS.candle.bull,
+      borderDownColor: CHART_TOKENS.candle.bear,
+      wickUpColor: CHART_TOKENS.candle.bull,
+      wickDownColor: CHART_TOKENS.candle.bear,
     })
     candleRef.current = candleSeries
 
@@ -279,7 +304,7 @@ export function SimpleChart({
 
     // ── VWAP overlay series — single white line, no SD bands ─────────────────
     const vwapSeries = chart.addSeries(LineSeries, {
-      color: 'rgba(90,174,216,0.6)',
+      color: CHART_TOKENS.overlay.vwap,
       lineWidth: 2,
       priceLineVisible: false,
       lastValueVisible: false,
@@ -289,7 +314,7 @@ export function SimpleChart({
 
     // ── VWAP 1-SD band series ─────────────────────────────────────────────────
     const vwapUpper1Series = chart.addSeries(LineSeries, {
-      color: 'rgba(90,174,216,0.3)',
+      color: CHART_TOKENS.overlay.vwapBand,
       lineWidth: 1,
       lineStyle: LineStyle.Dashed,
       priceLineVisible: false,
@@ -297,7 +322,7 @@ export function SimpleChart({
       visible: false,
     })
     const vwapLower1Series = chart.addSeries(LineSeries, {
-      color: 'rgba(90,174,216,0.3)',
+      color: CHART_TOKENS.overlay.vwapBand,
       lineWidth: 1,
       lineStyle: LineStyle.Dashed,
       priceLineVisible: false,
@@ -342,6 +367,11 @@ export function SimpleChart({
 
     // Notify parent that chart is ready
     onChartReady?.(chart)
+
+    // ── Subscribe to visible range changes (for VP overlay) ─────────────────
+    chart.timeScale().subscribeVisibleLogicalRangeChange(() => {
+      updateVisibleRange()
+    })
 
     // ── ResizeObserver ────────────────────────────────────────────────────────
     const ro = new ResizeObserver(() => {
@@ -405,7 +435,7 @@ export function SimpleChart({
       bars.map((b) => ({
         time: b.timestamp as any,
         value: b.volume,
-        color: b.close >= b.open ? 'rgba(90,174,216,0.25)' : 'rgba(212,212,216,0.18)',
+        color: b.close >= b.open ? CHART_TOKENS.overlay.volume.bull : CHART_TOKENS.overlay.volume.bear,
       }))
     )
 
@@ -414,34 +444,30 @@ export function SimpleChart({
       const prevCount = prevBarCountRef.current
       const newCount = bars.length
 
-      // Show last ~200 bars on initial load (± ~3000 ticks for NQ at 15min)
-      // User can then zoom/pan manually
-      const VISIBLE_BARS = 200
-
-      if (isFirstLoadRef.current || (prevCount === 0 && newCount > 0) || Math.abs(newCount - prevCount) > 50) {
-        // Initial load, mode switch, or big data change: show last N bars
-        if (newCount > VISIBLE_BARS) {
-          const from = bars[newCount - VISIBLE_BARS].timestamp
-          const to = bars[newCount - 1].timestamp
-          chart.timeScale().setVisibleRange({
-            from: from as any,
-            to: to as any,
+      if (prevCount === 0 && newCount > 0) {
+        // First load: zoom to show last N bars
+        const visible = Math.min(newCount, newCount > 500 ? 120 : 80)
+        if (newCount > visible) {
+          chart.timeScale().setVisibleLogicalRange({
+            from: newCount - visible,
+            to: newCount + 5,
           })
         } else {
           chart.timeScale().fitContent()
         }
         isFirstLoadRef.current = false
-      } else if (newCount > prevCount && newCount <= 30) {
-        // During early replay (few bars): fit
-        chart.timeScale().fitContent()
-      } else {
-        // Normal incremental update: scroll to show latest bar, keep zoom
+      } else if (newCount > prevCount) {
+        // New bars arrived: scroll right to keep latest bar visible
         chart.timeScale().scrollToRealTime()
       }
+      // Same count but updated last bar (live candle): no scroll needed,
+      // setData already updated the candle visually
 
       prevBarCountRef.current = newCount
     }
-  }, [bars])
+
+    requestAnimationFrame(() => updateVisibleRange())
+  }, [bars, updateVisibleRange])
 
   // ── VWAP data + visibility ─────────────────────────────────────────────────
   useEffect(() => {
@@ -722,7 +748,7 @@ export function SimpleChart({
 
     const orHigh = candle.createPriceLine({
       price: openingRange.high,
-      color: 'rgba(92, 184, 240, 0.4)',
+      color: 'rgba(92, 184, 240, 0.7)',
       lineWidth: 1,
       lineStyle: LineStyle.Dashed,
       axisLabelVisible: true,
@@ -730,7 +756,7 @@ export function SimpleChart({
     })
     const orLow = candle.createPriceLine({
       price: openingRange.low,
-      color: 'rgba(92, 184, 240, 0.4)',
+      color: 'rgba(92, 184, 240, 0.7)',
       lineWidth: 1,
       lineStyle: LineStyle.Dashed,
       axisLabelVisible: true,
@@ -888,9 +914,43 @@ export function SimpleChart({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [signals])
 
+  const handleRecenter = useCallback(() => {
+    const chart = chartRef.current
+    if (!chart || bars.length === 0) return
+    const n = bars.length
+    const visible = n > 500 ? 120 : Math.min(n, 80)
+    if (n > visible) {
+      chart.timeScale().setVisibleLogicalRange({ from: n - visible, to: n + 5 })
+    } else {
+      chart.timeScale().fitContent()
+    }
+  }, [bars])
+
   return (
     <div className={className} style={{ position: 'relative', width: '100%', height: '100%' }}>
-      <div ref={containerRef} style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }} />
+      {/* Subtle radial gradient — sits beneath the LWC canvas, adds depth */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background: 'radial-gradient(ellipse at 50% 0%, rgba(92,184,240,0.03) 0%, transparent 60%)',
+          zIndex: 0,
+        }}
+      />
+      <div ref={containerRef} style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0, zIndex: 1 }} />
+
+      {/* Re-center button — top right corner */}
+      <button
+        type="button"
+        onClick={handleRecenter}
+        title="Zum aktuellen Preis zentrieren"
+        className="absolute top-2 right-14 z-10 flex items-center justify-center w-8 h-8 rounded-[var(--radius-sm)] bg-[var(--color-surface-raised)]/80 backdrop-blur-sm text-[var(--color-text-muted)] hover:bg-[var(--color-surface-elevated)] hover:text-[var(--color-text-primary)] transition-all duration-150 cursor-pointer border border-[var(--color-border-subtle)]"
+        aria-label="Re-center chart"
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="3" />
+          <path d="M12 2v4m0 12v4M2 12h4m12 0h4" />
+        </svg>
+      </button>
       {computedVP && chartSize.height > 0 && (
         <VolumeProfileOverlay
           bins={computedVP.bins}
