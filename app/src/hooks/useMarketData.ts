@@ -127,12 +127,16 @@ export function useMarketData(options?: { pauseWs?: boolean }) {
     }
   }, [symbol, setWsStatus, setLastBarTs, wsUrl])
 
-  // Load bars on symbol/timeframe change + poll every 5s for latest candle
+  // Load bars + fast price poll (1s) + slow bar refresh (15s)
   useEffect(() => {
     loadBars()
+    let tickCount = 0
+
     const pollId = setInterval(async () => {
       try {
-        // 1. Get real-time tick price (sub-second fresh)
+        tickCount++
+
+        // EVERY 1s: Get live tick price and update last candle's close
         const priceRes = await fetch(`${engineUrl}/api/live/price?symbol=${symbol}`)
         let tickPrice: number | null = null
         if (priceRes.ok) {
@@ -140,26 +144,27 @@ export function useMarketData(options?: { pauseWs?: boolean }) {
           if (priceData.price) tickPrice = priceData.price
         }
 
-        // 2. Fetch bars in display timeframe
+        if (tickPrice) {
+          // Update last bar's close with live tick — instant visual update
+          setBars(prev => {
+            if (prev.length === 0) return prev
+            const last = prev[prev.length - 1]
+            if (last.close === tickPrice) return prev // No change
+            const updated = { ...last, close: tickPrice, high: Math.max(last.high, tickPrice), low: Math.min(last.low, tickPrice) }
+            return [...prev.slice(0, -1), updated]
+          })
+          setLastBarTs(Math.floor(Date.now() / 1000))
+        }
+
+        // EVERY 15s: Full bar refresh (picks up new completed bars)
+        if (tickCount % 15 !== 0) return
+
         const url = `${engineUrl}/api/db/bars?symbol=${symbol}&days=1&timeframe=${timeframe}`
         const res = await fetch(url)
         if (!res.ok) return
         const data = await res.json()
         const freshBars: Bar[] = data.bars || []
         if (freshBars.length === 0) return
-
-        // 3. Override last bar's close with live tick price (if available)
-        if (tickPrice) {
-          const latest = { ...freshBars[freshBars.length - 1] }
-          latest.close = tickPrice
-          latest.high = Math.max(latest.high, tickPrice)
-          latest.low = Math.min(latest.low, tickPrice)
-          freshBars[freshBars.length - 1] = latest
-          setLastBarTs(latest.timestamp)
-        } else {
-          const latest = freshBars[freshBars.length - 1]
-          setLastBarTs(latest.timestamp)
-        }
 
         // MERGE: keep the full dataset, only update/append bars from the poll
         setBars(prev => {
@@ -178,7 +183,7 @@ export function useMarketData(options?: { pauseWs?: boolean }) {
           return [...prev.slice(0, cutoffIdx), ...freshBars]
         })
       } catch { /* silent */ }
-    }, 5_000)
+    }, 1_000)  // 1s poll for near-realtime chart updates
     return () => clearInterval(pollId)
   }, [symbol, timeframe, days, engineUrl, setLastBarTs])
 
