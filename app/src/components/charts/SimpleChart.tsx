@@ -413,59 +413,71 @@ export function SimpleChart({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // ── Data update: runs when bars change, does NOT recreate chart ────────────
+  // ── Data update: setData on first load, update() for live ticks ───────────
   const prevBarCountRef = useRef(0)
+  const dataInitializedRef = useRef(false)
 
   useEffect(() => {
     const candleSeries = candleRef.current
     const volumeSeries = volumeSeriesRef.current
-    if (!candleSeries || !volumeSeries || bars.length === 0) return
-
-    candleSeries.setData(
-      bars.map((b) => ({
-        time: b.timestamp as any,
-        open: b.open,
-        high: b.high,
-        low: b.low,
-        close: b.close,
-      }))
-    )
-
-    volumeSeries.setData(
-      bars.map((b) => ({
-        time: b.timestamp as any,
-        value: b.volume,
-        color: b.close >= b.open ? CHART_TOKENS.overlay.volume.bull : CHART_TOKENS.overlay.volume.bear,
-      }))
-    )
-
     const chart = chartRef.current
-    if (chart) {
-      const prevCount = prevBarCountRef.current
-      const newCount = bars.length
+    if (!candleSeries || !volumeSeries || !chart || bars.length === 0) return
 
-      if (prevCount === 0 && newCount > 0) {
-        // First load: zoom to show last N bars
-        const visible = Math.min(newCount, newCount > 500 ? 120 : 80)
-        if (newCount > visible) {
-          chart.timeScale().setVisibleLogicalRange({
-            from: newCount - visible,
-            to: newCount + 5,
-          })
-        } else {
-          chart.timeScale().fitContent()
-        }
-        isFirstLoadRef.current = false
-      } else if (newCount > prevCount) {
-        // New bars arrived: scroll right to keep latest bar visible
-        chart.timeScale().scrollToRealTime()
+    const newCount = bars.length
+    const prevCount = prevBarCountRef.current
+
+    if (!dataInitializedRef.current || prevCount === 0) {
+      // FIRST LOAD: setData with all bars, then zoom to end
+      candleSeries.setData(
+        bars.map((b) => ({
+          time: b.timestamp as any,
+          open: b.open, high: b.high, low: b.low, close: b.close,
+        }))
+      )
+      volumeSeries.setData(
+        bars.map((b) => ({
+          time: b.timestamp as any,
+          value: b.volume,
+          color: b.close >= b.open ? CHART_TOKENS.overlay.volume.bull : CHART_TOKENS.overlay.volume.bear,
+        }))
+      )
+      // Zoom to last N bars
+      const visible = Math.min(newCount, newCount > 500 ? 120 : 80)
+      if (newCount > visible) {
+        chart.timeScale().setVisibleLogicalRange({
+          from: newCount - visible,
+          to: newCount + 5,
+        })
+      } else {
+        chart.timeScale().fitContent()
       }
-      // Same count but updated last bar (live candle): no scroll needed,
-      // setData already updated the candle visually
+      dataInitializedRef.current = true
+      isFirstLoadRef.current = false
+    } else {
+      // INCREMENTAL UPDATE: use update() for last bar — keeps scroll position
+      const lastBar = bars[bars.length - 1]
+      candleSeries.update({
+        time: lastBar.timestamp as any,
+        open: lastBar.open, high: lastBar.high, low: lastBar.low, close: lastBar.close,
+      })
+      volumeSeries.update({
+        time: lastBar.timestamp as any,
+        value: lastBar.volume,
+        color: lastBar.close >= lastBar.open ? CHART_TOKENS.overlay.volume.bull : CHART_TOKENS.overlay.volume.bear,
+      })
 
-      prevBarCountRef.current = newCount
+      // If new bars were appended (count grew), also add the second-to-last
+      // This handles the case where a new 15min candle started
+      if (newCount > prevCount && newCount >= 2) {
+        const prevBar = bars[bars.length - 2]
+        candleSeries.update({
+          time: prevBar.timestamp as any,
+          open: prevBar.open, high: prevBar.high, low: prevBar.low, close: prevBar.close,
+        })
+      }
     }
 
+    prevBarCountRef.current = newCount
     requestAnimationFrame(() => updateVisibleRange())
   }, [bars, updateVisibleRange])
 
