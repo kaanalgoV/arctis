@@ -29,10 +29,10 @@ _rithmic_info: dict | None = None  # stores username / server for status
 _SERVER_URLS: dict[str, str] = {
     "Rithmic Paper Trading": "wss://rituz00100.rithmic.com:443",
     "Rithmic Test": "wss://rituz00100.rithmic.com:443",
-    "Rithmic 01": "wss://rithmic01.rithmic.com:443",
-    "Rithmic 04": "wss://rithmic04.rithmic.com:443",
-    "Rithmic 06": "wss://rithmic06.rithmic.com:443",
-    "Rithmic 08": "wss://rithmic08.rithmic.com:443",
+    "Rithmic 01": "wss://ritpz23010.rithmic.com:443",
+    "Rithmic 04": "wss://ritpz23010.rithmic.com:443",
+    "Rithmic 06": "wss://ritpz23010.rithmic.com:443",
+    "Rithmic 08": "wss://ritpz23010.rithmic.com:443",
 }
 
 # Which system_name string Rithmic expects for each server
