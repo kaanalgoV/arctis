@@ -375,7 +375,8 @@ async def ask_arctis(body: dict) -> dict:
     """Arctis AI — context-aware chatbot with full engine access."""
     question: str = body.get("question", "")
     market: str = body.get("market", "NQ")
-    timeframe: str = body.get("timeframe", "1min")
+    # Always use 1min for most accurate current price, regardless of chart timeframe
+    timeframe = "1min"
 
     ctx = _build_full_context(market, timeframe)
     results = _answer_question(question, ctx)
