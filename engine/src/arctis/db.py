@@ -29,15 +29,19 @@ def get_engine():
 # Map Market enum values to DB symbols (front-month contracts)
 # Updated dynamically by _build_symbol_map() on first call
 _SYMBOL_MAP: dict[str, str] | None = None
+_SYMBOL_MAP_TS: float = 0.0
+_SYMBOL_MAP_TTL: float = 4 * 3600  # Re-check every 4 hours (handles contract rollover)
 
 
 def _build_symbol_map() -> dict[str, str]:
     """Build market->symbol map from DB, picking the contract with most recent data per root.
 
+    Cached with a 4-hour TTL so contract rollovers are picked up without restart.
     Raises RuntimeError if the DB is unreachable — callers must handle this explicitly.
     """
-    global _SYMBOL_MAP
-    if _SYMBOL_MAP is not None:
+    global _SYMBOL_MAP, _SYMBOL_MAP_TS
+    import time as _time
+    if _SYMBOL_MAP is not None and (_time.time() - _SYMBOL_MAP_TS) < _SYMBOL_MAP_TTL:
         return _SYMBOL_MAP
 
     query = """
@@ -57,6 +61,7 @@ def _build_symbol_map() -> dict[str, str]:
             roots[root] = (sym, row["latest"])
 
     _SYMBOL_MAP = {root: sym for root, (sym, _) in roots.items()}
+    _SYMBOL_MAP_TS = _time.time()
     return _SYMBOL_MAP
 
 
@@ -171,7 +176,7 @@ def aggregate_bars(bars: list[OHLCVBar], timeframe: str) -> list[OHLCVBar]:
         "low": "min",
         "close": "last",
         "volume": "sum",
-    }).dropna()
+    }).dropna(subset=["timestamp"])  # Keep incomplete current bar, only drop truly empty buckets
 
     return [
         OHLCVBar(
