@@ -166,6 +166,7 @@ export function buildDayVolumeProfiles(
   bars: Bar[],
   dailyProfiles?: DailyVolumeProfile[] | null,
   binCount = DEFAULT_BIN_COUNT,
+  maxDays = 3,  // Only compute VP for last N days (performance)
 ): DayVolumeProfile[] {
   if (bars.length === 0) return []
 
@@ -192,7 +193,12 @@ export function buildDayVolumeProfiles(
 
   const result: DayVolumeProfile[] = []
 
+  // Only process the last N days for performance (VP with 60 bins * 30 days = 1800 annotations)
+  const dayKeys = [...dayGroups.keys()].sort()
+  const recentDays = new Set(dayKeys.slice(-maxDays))
+
   for (const [dateStr, group] of dayGroups) {
+    if (!recentDays.has(dateStr)) continue // Skip old days
     const { indices } = group
     if (indices.length === 0) continue
 
@@ -205,7 +211,6 @@ export function buildDayVolumeProfiles(
     if (profile) result.push(profile)
   }
 
-  // Sort ascending by startIndex (same order as bars)
   result.sort((a, b) => a.startIndex - b.startIndex)
 
   return result
