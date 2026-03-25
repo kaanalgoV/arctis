@@ -85,9 +85,9 @@ export function StatusBar({
     <footer
       className={cn(
         'flex items-center h-full w-full px-3',
-        'bg-[var(--color-surface-primary)]',
+        'bg-[var(--color-surface-void)]',
         'border-t border-[var(--color-border-subtle)]',
-        'font-mono text-[10px] text-[var(--color-text-muted)]',
+        'font-mono text-[var(--text-2xs,10px)] text-[var(--color-text-muted)]',
       )}
     >
       {/* Left: Connection status or REPLAY badge or LIVE badge */}
@@ -95,7 +95,7 @@ export function StatusBar({
         {isReplayActive ? (
           <>
             <span
-              className="px-1.5 py-0.5 rounded font-mono text-[9px] font-semibold leading-none tracking-wide"
+              className="px-1.5 py-0.5 rounded font-mono text-[var(--text-2xs,10px)] font-semibold leading-none tracking-wide"
               style={{ background: 'rgba(251,191,36,0.15)', color: '#FBBF24' }}
             >
               REPLAY
@@ -115,20 +115,44 @@ export function StatusBar({
           </>
         ) : liveFeed ? (
           <>
+            {/* Provider badge — slightly different style per provider */}
             <span
-              className="px-1.5 py-0.5 rounded font-mono text-[9px] font-semibold leading-none tracking-wide"
-              style={{ background: 'rgba(var(--color-profit-rgb, 34,197,94),0.15)', color: 'var(--color-profit)' }}
+              className="flex items-center gap-1 px-1.5 py-0.5 rounded font-mono font-semibold leading-none tracking-wide"
+              style={{
+                fontSize: 10,
+                background: liveProvider === 'rithmic'
+                  ? 'rgba(92,184,240,0.15)'
+                  : liveProvider === 'databento'
+                  ? 'rgba(0,135,87,0.12)'
+                  : 'rgba(239,65,54,0.12)',
+                color: liveProvider === 'rithmic'
+                  ? 'var(--color-accent)'
+                  : liveProvider === 'databento'
+                  ? 'var(--color-profit)'
+                  : 'var(--color-loss)',
+              }}
             >
-              LIVE
+              <span
+                className="w-1.5 h-1.5 rounded-full shrink-0 animate-pulse"
+                style={{
+                  backgroundColor: liveProvider === 'rithmic'
+                    ? 'var(--color-accent)'
+                    : liveProvider === 'databento'
+                    ? 'var(--color-profit)'
+                    : 'var(--color-loss)',
+                }}
+              />
+              {liveProvider === 'rithmic' ? 'RITHMIC' : liveProvider === 'databento' ? 'DATABENTO' : 'LIVE'}
             </span>
-            <span
-              className="w-1.5 h-1.5 rounded-full shrink-0 animate-pulse"
-              style={{ backgroundColor: 'var(--color-profit)' }}
-            />
-            <span className="text-[var(--color-border)] mx-0.5 leading-none">|</span>
-            <span className="leading-none" style={{ color: 'var(--color-profit)' }}>
-              {liveProvider === 'rithmic' ? 'RITHMIC' : liveProvider === 'databento' ? 'DATABENTO' : 'OFFLINE'}
-            </span>
+            {/* Last tick — shown when we have a live bar timestamp */}
+            {lastBarTs != null && (
+              <>
+                <span className="text-[var(--color-border)] mx-0.5 leading-none">|</span>
+                <span className="leading-none" style={{ color: 'var(--color-accent)', fontSize: 10 }}>
+                  Tick: {lastBarDisplay}
+                </span>
+              </>
+            )}
           </>
         ) : (
           <>
@@ -140,7 +164,7 @@ export function StatusBar({
             <span className="leading-none text-[var(--color-text-muted)]">
               Latency:{' '}
               <span className="text-[var(--color-text-muted)]">
-                {effectiveLatencyMs}ms
+                {isConnected ? `${effectiveLatencyMs}ms` : '—'}
               </span>
             </span>
           </>
@@ -157,13 +181,13 @@ export function StatusBar({
                   style={{ backgroundColor: 'var(--color-profit)' }}
                 />
                 <span
-                  className="font-mono text-[9px] font-semibold leading-none tracking-wide"
+                  className="font-mono text-[var(--text-2xs,10px)] font-semibold leading-none tracking-wide"
                   style={{ color: 'var(--color-profit)' }}
                 >
                   LIVE
                 </span>
                 {liveLatency !== null && (
-                  <span className="text-[var(--color-text-muted)] leading-none text-[9px]">
+                  <span className="text-[var(--color-text-muted)] leading-none text-[var(--text-2xs,10px)]">
                     {liveLatency}ms
                   </span>
                 )}
@@ -175,7 +199,7 @@ export function StatusBar({
                   style={{ backgroundColor: '#F0A500' }}
                 />
                 <span
-                  className="font-mono text-[9px] font-semibold leading-none tracking-wide"
+                  className="font-mono text-[var(--text-2xs,10px)] font-semibold leading-none tracking-wide"
                   style={{ color: '#F0A500' }}
                 >
                   DB
@@ -186,12 +210,8 @@ export function StatusBar({
         )}
       </div>
 
-      {/* Center: Symbol + bar count + last bar timestamp */}
+      {/* Center: Bar count + last bar timestamp */}
       <div className="flex-1 flex items-center justify-center min-w-0 gap-2">
-        <span className="leading-none text-[var(--color-text-muted)]">
-          {symbol}
-        </span>
-        <span className="text-[var(--color-border)]">|</span>
         <span className="leading-none truncate">
           {barsLoaded} bars loaded
           <span className="text-[var(--color-border)] mx-1.5">|</span>

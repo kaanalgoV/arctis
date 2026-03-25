@@ -1,19 +1,54 @@
 import { useState, useEffect, useRef } from 'react'
+import { config } from '@/lib/config'
 
-const ENGINE_URL = 'http://127.0.0.1:8001'
+const ENGINE_URL = config.apiBase
 const POLL_INTERVAL_MS = 5000
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export type SetupStatus =
   | 'candidate'
+  | 'qualified'
   | 'armed'
   | 'triggered'
+  | 'in_position'
+  | 'partial_taken'
+  | 'exited'
+  // Legacy / backward-compatible aliases
   | 'partial_tp1'
   | 'stopped'
+  | 'completed'
+  // Terminal
   | 'invalidated'
   | 'expired'
-  | 'completed'
+
+// Chart artifact types forwarded from the engine
+export interface HLineArtifact {
+  type: 'hline'
+  price: number
+  color: string
+  dash: 'solid' | 'dashed' | 'dotted'
+  label: string
+}
+
+export interface BandArtifact {
+  type: 'band'
+  low: number
+  high: number
+  color: string
+  border: string
+}
+
+export type ChartArtifact = HLineArtifact | BandArtifact
+
+export interface ChartArtifacts {
+  entry_zone?: BandArtifact
+  entry_trigger?: HLineArtifact
+  stop?: HLineArtifact
+  tp1?: HLineArtifact
+  tp2?: HLineArtifact
+  [key: string]: ChartArtifact | undefined
+}
 
 export interface SetupData {
   setup_id: string
@@ -25,7 +60,9 @@ export interface SetupData {
   thesis: string
   why_now: string
   why_here: string
+  status_reason: string
   invalidation_reason: string
+  // Price levels
   entry_zone_low: number
   entry_zone_high: number
   entry_trigger_price: number
@@ -33,14 +70,25 @@ export interface SetupData {
   tp1_price: number
   tp2_price: number
   risk_reward: number
+  // Context
   confidence: 'high' | 'medium' | 'low'
+  bias_direction: string
+  confluence_score: number
   evidence: string[]
+  source_modules: string[]
+  // Chart annotation artifacts
+  chart_artifacts: ChartArtifacts
+  // Timestamps
   created_ts: number
+  qualified_ts: number
   armed_ts: number
   entry_ts: number
   exit_ts: number
   exit_reason: string
-  source_modules: string[]
+  // Outcomes
+  entry_price: number | null
+  exit_price: number | null
+  pnl_ticks: number | null
 }
 
 export interface SetupsResponse {
@@ -53,6 +101,7 @@ export interface SetupsResponse {
 // ── Terminal states (historical, dimmed in UI) ────────────────────────────────
 
 export const TERMINAL_STATUSES: SetupStatus[] = [
+  'exited',
   'stopped',
   'invalidated',
   'expired',

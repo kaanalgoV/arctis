@@ -1,0 +1,893 @@
+{
+  "version": 1,
+  "updatedAt": 1774384192913,
+  "nodeCount": 69,
+  "nodes": {
+    "mem-MEMORY-user-profile": {
+      "id": "mem-MEMORY-user-profile",
+      "category": "core",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774384192900
+    },
+    "mem-MEMORY-session-management-v3--stand-2": {
+      "id": "mem-MEMORY-session-management-v3--stand-2",
+      "category": "core",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774384192900
+    },
+    "mem-MEMORY-algorivo-core-project": {
+      "id": "mem-MEMORY-algorivo-core-project",
+      "category": "core",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774384192900
+    },
+    "mem-MEMORY-worktree-architecture--stand-2": {
+      "id": "mem-MEMORY-worktree-architecture--stand-2",
+      "category": "core",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774384192900
+    },
+    "mem-MEMORY-nexus-command-center": {
+      "id": "mem-MEMORY-nexus-command-center",
+      "category": "core",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774384192900
+    },
+    "mem-MEMORY-bias-app": {
+      "id": "mem-MEMORY-bias-app",
+      "category": "core",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774384192900
+    },
+    "mem-MEMORY-development-environment": {
+      "id": "mem-MEMORY-development-environment",
+      "category": "core",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774384192900
+    },
+    "mem-MEMORY-projekt-uebersicht--5-sessions": {
+      "id": "mem-MEMORY-projekt-uebersicht--5-sessions",
+      "category": "core",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774384192900
+    },
+    "mem-MEMORY-strategy-development": {
+      "id": "mem-MEMORY-strategy-development",
+      "category": "core",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774384192905
+    },
+    "mem-MEMORY-openclaw--clawdbot-": {
+      "id": "mem-MEMORY-openclaw--clawdbot-",
+      "category": "core",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774384192900
+    },
+    "mem-MEMORY-rithmic-mobile-heatmap": {
+      "id": "mem-MEMORY-rithmic-mobile-heatmap",
+      "category": "core",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774384192900
+    },
+    "mem-MEMORY-ralph-frontend-renaissance--st": {
+      "id": "mem-MEMORY-ralph-frontend-renaissance--st",
+      "category": "core",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774384192900
+    },
+    "mem-MEMORY-critical--agent-prompt-quality": {
+      "id": "mem-MEMORY-critical--agent-prompt-quality",
+      "category": "core",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774384192900
+    },
+    "mem-MEMORY-code-alpha-swarm-session--stan": {
+      "id": "mem-MEMORY-code-alpha-swarm-session--stan",
+      "category": "core",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774384192900
+    },
+    "mem-MEMORY-arctis-project": {
+      "id": "mem-MEMORY-arctis-project",
+      "category": "core",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774384192900
+    },
+    "mem-MEMORY-skills---plugins": {
+      "id": "mem-MEMORY-skills---plugins",
+      "category": "core",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774384192900
+    },
+    "mem-double-fake-strategy-status--profitable--2026-03-03": {
+      "id": "mem-double-fake-strategy-status--profitable--2026-03-03",
+      "category": "double-fake-strategy",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774384192901
+    },
+    "mem-double-fake-strategy-optimal-parameters--default-in": {
+      "id": "mem-double-fake-strategy-optimal-parameters--default-in",
+      "category": "double-fake-strategy",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774384192901
+    },
+    "mem-double-fake-strategy-best-results--new-binary--jan-": {
+      "id": "mem-double-fake-strategy-best-results--new-binary--jan-",
+      "category": "double-fake-strategy",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774384192901
+    },
+    "mem-double-fake-strategy-key-insights": {
+      "id": "mem-double-fake-strategy-key-insights",
+      "category": "double-fake-strategy",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774384192901
+    },
+    "mem-double-fake-strategy-files": {
+      "id": "mem-double-fake-strategy-files",
+      "category": "double-fake-strategy",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774384192901
+    },
+    "mem-double-fake-strategy-travis-alignment": {
+      "id": "mem-double-fake-strategy-travis-alignment",
+      "category": "double-fake-strategy",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774384192901
+    },
+    "mem-double-fake-strategy-auth-for-api-tests": {
+      "id": "mem-double-fake-strategy-auth-for-api-tests",
+      "category": "double-fake-strategy",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774384192901
+    },
+    "mem-feedback_agent_prompts----": {
+      "id": "mem-feedback_agent_prompts----",
+      "category": "feedback_agent_prompts",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774384192901
+    },
+    "mem-feedback_design_quality----": {
+      "id": "mem-feedback_design_quality----",
+      "category": "feedback_design_quality",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774384192901
+    },
+    "mem-feedback_expo_app_priority----": {
+      "id": "mem-feedback_expo_app_priority----",
+      "category": "feedback_expo_app_priority",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774384192902
+    },
+    "mem-feedback_heatmap_quality----": {
+      "id": "mem-feedback_heatmap_quality----",
+      "category": "feedback_heatmap_quality",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774384192902
+    },
+    "mem-feedback_no_emojis----": {
+      "id": "mem-feedback_no_emojis----",
+      "category": "feedback_no_emojis",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774384192902
+    },
+    "mem-feedback_quality_over_speed----": {
+      "id": "mem-feedback_quality_over_speed----",
+      "category": "feedback_quality_over_speed",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774384192903
+    },
+    "mem-feedback_stop_testing_halfbaked----": {
+      "id": "mem-feedback_stop_testing_halfbaked----",
+      "category": "feedback_stop_testing_halfbaked",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774384192903
+    },
+    "mem-mbo-indicators-context-was-passiert-ist": {
+      "id": "mem-mbo-indicators-context-was-passiert-ist",
+      "category": "mbo-indicators-context",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774384192903
+    },
+    "mem-mbo-indicators-context-was-noch-zu-tun-ist--150-tasks": {
+      "id": "mem-mbo-indicators-context-was-noch-zu-tun-ist--150-tasks",
+      "category": "mbo-indicators-context",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774384192903
+    },
+    "mem-mbo-indicators-context-kern-dateien": {
+      "id": "mem-mbo-indicators-context-kern-dateien",
+      "category": "mbo-indicators-context",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774384192903
+    },
+    "mem-mbo-indicators-context-design-entscheidungen": {
+      "id": "mem-mbo-indicators-context-design-entscheidungen",
+      "category": "mbo-indicators-context",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774384192903
+    },
+    "mem-mbo-indicators-context-fortf-hrungs-command": {
+      "id": "mem-mbo-indicators-context-fortf-hrungs-command",
+      "category": "mbo-indicators-context",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774384192903
+    },
+    "mem-nexus-mega-session-2026-03-17----": {
+      "id": "mem-nexus-mega-session-2026-03-17----",
+      "category": "nexus-mega-session-2026-03-17",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774384192904
+    },
+    "mem-platform-analysis-platform-status-overview": {
+      "id": "mem-platform-analysis-platform-status-overview",
+      "category": "platform-analysis",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774384192904
+    },
+    "mem-platform-analysis-critical-issues": {
+      "id": "mem-platform-analysis-critical-issues",
+      "category": "platform-analysis",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774384192904
+    },
+    "mem-platform-analysis-open-pr": {
+      "id": "mem-platform-analysis-open-pr",
+      "category": "platform-analysis",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774384192904
+    },
+    "mem-platform-analysis-known-todos--backend-": {
+      "id": "mem-platform-analysis-known-todos--backend-",
+      "category": "platform-analysis",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774384192904
+    },
+    "mem-platform-analysis-known-todos--frontend-": {
+      "id": "mem-platform-analysis-known-todos--frontend-",
+      "category": "platform-analysis",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774384192904
+    },
+    "mem-platform-analysis-recent-work--last-30-commits-": {
+      "id": "mem-platform-analysis-recent-work--last-30-commits-",
+      "category": "platform-analysis",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774384192904
+    },
+    "mem-platform-analysis-start-db": {
+      "id": "mem-platform-analysis-start-db",
+      "category": "platform-analysis",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774384192904
+    },
+    "mem-platform-analysis-start-api--local-": {
+      "id": "mem-platform-analysis-start-api--local-",
+      "category": "platform-analysis",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774384192904
+    },
+    "mem-platform-analysis-start-frontend": {
+      "id": "mem-platform-analysis-start-frontend",
+      "category": "platform-analysis",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774384192904
+    },
+    "mem-platform-analysis-start-worker": {
+      "id": "mem-platform-analysis-start-worker",
+      "category": "platform-analysis",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774384192904
+    },
+    "mem-project_arctis----": {
+      "id": "mem-project_arctis----",
+      "category": "project_arctis",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774384192904
+    },
+    "mem-project_ralph_frontend_renaissance----": {
+      "id": "mem-project_ralph_frontend_renaissance----",
+      "category": "project_ralph_frontend_renaissance",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774384192904
+    },
+    "mem-project_ralph_frontend_renaissance-ralph-frontend-renaissance-loo": {
+      "id": "mem-project_ralph_frontend_renaissance-ralph-frontend-renaissance-loo",
+      "category": "project_ralph_frontend_renaissance",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774384192904
+    },
+    "mem-project_rithmic_heatmap----": {
+      "id": "mem-project_rithmic_heatmap----",
+      "category": "project_rithmic_heatmap",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774384192905
+    },
+    "mem-project_rithmic_heatmap-projekt-status--stand-2026-03-": {
+      "id": "mem-project_rithmic_heatmap-projekt-status--stand-2026-03-",
+      "category": "project_rithmic_heatmap",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774384192905
+    },
+    "mem-project_rithmic_heatmap-abgeschlossene-sprints": {
+      "id": "mem-project_rithmic_heatmap-abgeschlossene-sprints",
+      "category": "project_rithmic_heatmap",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774384192905
+    },
+    "mem-project_rithmic_heatmap-technische-eckdaten": {
+      "id": "mem-project_rithmic_heatmap-technische-eckdaten",
+      "category": "project_rithmic_heatmap",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774384192905
+    },
+    "mem-project_rithmic_heatmap-bekannte-offene-punkte": {
+      "id": "mem-project_rithmic_heatmap-bekannte-offene-punkte",
+      "category": "project_rithmic_heatmap",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774384192905
+    },
+    "mem-MEMORY-key-facts": {
+      "id": "mem-MEMORY-key-facts",
+      "category": "core",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774384192906
+    },
+    "mem-traivend-strategy-rules-core-philosophy--kaan-aslan-": {
+      "id": "mem-traivend-strategy-rules-core-philosophy--kaan-aslan-",
+      "category": "traivend-strategy-rules",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774384192905
+    },
+    "mem-traivend-strategy-rules-fakeout-rules": {
+      "id": "mem-traivend-strategy-rules-fakeout-rules",
+      "category": "traivend-strategy-rules",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774384192905
+    },
+    "mem-traivend-strategy-rules-warnsignale-gegen-fakeout----e": {
+      "id": "mem-traivend-strategy-rules-warnsignale-gegen-fakeout----e",
+      "category": "traivend-strategy-rules",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774384192905
+    },
+    "mem-traivend-strategy-rules-trade-frequency--travis-": {
+      "id": "mem-traivend-strategy-rules-trade-frequency--travis-",
+      "category": "traivend-strategy-rules",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774384192905
+    },
+    "mem-traivend-strategy-rules-asia-range": {
+      "id": "mem-traivend-strategy-rules-asia-range",
+      "category": "traivend-strategy-rules",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774384192905
+    },
+    "mem-traivend-strategy-rules-session-zeiten": {
+      "id": "mem-traivend-strategy-rules-session-zeiten",
+      "category": "traivend-strategy-rules",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774384192905
+    },
+    "mem-traivend-strategy-rules-trade-management": {
+      "id": "mem-traivend-strategy-rules-trade-management",
+      "category": "traivend-strategy-rules",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774384192905
+    },
+    "mem-traivend-strategy-rules-double-fake-v2-benchmark--prof": {
+      "id": "mem-traivend-strategy-rules-double-fake-v2-benchmark--prof",
+      "category": "traivend-strategy-rules",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774384192905
+    },
+    "mem-traivend-strategy-rules-fakeout-pro-v5-best--round-9--": {
+      "id": "mem-traivend-strategy-rules-fakeout-pro-v5-best--round-9--",
+      "category": "traivend-strategy-rules",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774384192905
+    },
+    "mem-traivend-strategy-rules-optimization-lessons--2026-03-": {
+      "id": "mem-traivend-strategy-rules-optimization-lessons--2026-03-",
+      "category": "traivend-strategy-rules",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774384192905
+    },
+    "mem-traivend-strategy-rules-mbo-indicator-bugs--fixed-2026": {
+      "id": "mem-traivend-strategy-rules-mbo-indicator-bugs--fixed-2026",
+      "category": "traivend-strategy-rules",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774384192905
+    },
+    "mem-MEMORY-build-notes": {
+      "id": "mem-MEMORY-build-notes",
+      "category": "core",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774384192906
+    },
+    "mem-MEMORY-completed-phases": {
+      "id": "mem-MEMORY-completed-phases",
+      "category": "core",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774384192906
+    },
+    "mem-MEMORY-remaining-work": {
+      "id": "mem-MEMORY-remaining-work",
+      "category": "core",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774384192906
+    }
+  },
+  "edges": [
+    {
+      "sourceId": "mem-MEMORY-user-profile",
+      "targetId": "mem-MEMORY-session-management-v3--stand-2",
+      "type": "temporal",
+      "weight": 0.5
+    },
+    {
+      "sourceId": "mem-MEMORY-session-management-v3--stand-2",
+      "targetId": "mem-MEMORY-algorivo-core-project",
+      "type": "temporal",
+      "weight": 0.5
+    },
+    {
+      "sourceId": "mem-MEMORY-algorivo-core-project",
+      "targetId": "mem-MEMORY-worktree-architecture--stand-2",
+      "type": "temporal",
+      "weight": 0.5
+    },
+    {
+      "sourceId": "mem-MEMORY-worktree-architecture--stand-2",
+      "targetId": "mem-MEMORY-nexus-command-center",
+      "type": "temporal",
+      "weight": 0.5
+    },
+    {
+      "sourceId": "mem-MEMORY-nexus-command-center",
+      "targetId": "mem-MEMORY-bias-app",
+      "type": "temporal",
+      "weight": 0.5
+    },
+    {
+      "sourceId": "mem-MEMORY-bias-app",
+      "targetId": "mem-MEMORY-development-environment",
+      "type": "temporal",
+      "weight": 0.5
+    },
+    {
+      "sourceId": "mem-MEMORY-development-environment",
+      "targetId": "mem-MEMORY-projekt-uebersicht--5-sessions",
+      "type": "temporal",
+      "weight": 0.5
+    },
+    {
+      "sourceId": "mem-MEMORY-projekt-uebersicht--5-sessions",
+      "targetId": "mem-MEMORY-strategy-development",
+      "type": "temporal",
+      "weight": 0.5
+    },
+    {
+      "sourceId": "mem-MEMORY-strategy-development",
+      "targetId": "mem-MEMORY-openclaw--clawdbot-",
+      "type": "temporal",
+      "weight": 0.5
+    },
+    {
+      "sourceId": "mem-MEMORY-openclaw--clawdbot-",
+      "targetId": "mem-MEMORY-rithmic-mobile-heatmap",
+      "type": "temporal",
+      "weight": 0.5
+    },
+    {
+      "sourceId": "mem-MEMORY-rithmic-mobile-heatmap",
+      "targetId": "mem-MEMORY-ralph-frontend-renaissance--st",
+      "type": "temporal",
+      "weight": 0.5
+    },
+    {
+      "sourceId": "mem-MEMORY-ralph-frontend-renaissance--st",
+      "targetId": "mem-MEMORY-critical--agent-prompt-quality",
+      "type": "temporal",
+      "weight": 0.5
+    },
+    {
+      "sourceId": "mem-MEMORY-critical--agent-prompt-quality",
+      "targetId": "mem-MEMORY-code-alpha-swarm-session--stan",
+      "type": "temporal",
+      "weight": 0.5
+    },
+    {
+      "sourceId": "mem-MEMORY-code-alpha-swarm-session--stan",
+      "targetId": "mem-MEMORY-arctis-project",
+      "type": "temporal",
+      "weight": 0.5
+    },
+    {
+      "sourceId": "mem-MEMORY-arctis-project",
+      "targetId": "mem-MEMORY-skills---plugins",
+      "type": "temporal",
+      "weight": 0.5
+    },
+    {
+      "sourceId": "mem-double-fake-strategy-status--profitable--2026-03-03",
+      "targetId": "mem-double-fake-strategy-optimal-parameters--default-in",
+      "type": "temporal",
+      "weight": 0.5
+    },
+    {
+      "sourceId": "mem-double-fake-strategy-optimal-parameters--default-in",
+      "targetId": "mem-double-fake-strategy-best-results--new-binary--jan-",
+      "type": "temporal",
+      "weight": 0.5
+    },
+    {
+      "sourceId": "mem-double-fake-strategy-best-results--new-binary--jan-",
+      "targetId": "mem-double-fake-strategy-key-insights",
+      "type": "temporal",
+      "weight": 0.5
+    },
+    {
+      "sourceId": "mem-double-fake-strategy-key-insights",
+      "targetId": "mem-double-fake-strategy-files",
+      "type": "temporal",
+      "weight": 0.5
+    },
+    {
+      "sourceId": "mem-double-fake-strategy-files",
+      "targetId": "mem-double-fake-strategy-travis-alignment",
+      "type": "temporal",
+      "weight": 0.5
+    },
+    {
+      "sourceId": "mem-double-fake-strategy-travis-alignment",
+      "targetId": "mem-double-fake-strategy-auth-for-api-tests",
+      "type": "temporal",
+      "weight": 0.5
+    },
+    {
+      "sourceId": "mem-mbo-indicators-context-was-passiert-ist",
+      "targetId": "mem-mbo-indicators-context-was-noch-zu-tun-ist--150-tasks",
+      "type": "temporal",
+      "weight": 0.5
+    },
+    {
+      "sourceId": "mem-mbo-indicators-context-was-noch-zu-tun-ist--150-tasks",
+      "targetId": "mem-mbo-indicators-context-kern-dateien",
+      "type": "temporal",
+      "weight": 0.5
+    },
+    {
+      "sourceId": "mem-mbo-indicators-context-kern-dateien",
+      "targetId": "mem-mbo-indicators-context-design-entscheidungen",
+      "type": "temporal",
+      "weight": 0.5
+    },
+    {
+      "sourceId": "mem-mbo-indicators-context-design-entscheidungen",
+      "targetId": "mem-mbo-indicators-context-fortf-hrungs-command",
+      "type": "temporal",
+      "weight": 0.5
+    },
+    {
+      "sourceId": "mem-platform-analysis-platform-status-overview",
+      "targetId": "mem-platform-analysis-critical-issues",
+      "type": "temporal",
+      "weight": 0.5
+    },
+    {
+      "sourceId": "mem-platform-analysis-critical-issues",
+      "targetId": "mem-platform-analysis-open-pr",
+      "type": "temporal",
+      "weight": 0.5
+    },
+    {
+      "sourceId": "mem-platform-analysis-open-pr",
+      "targetId": "mem-platform-analysis-known-todos--backend-",
+      "type": "temporal",
+      "weight": 0.5
+    },
+    {
+      "sourceId": "mem-platform-analysis-known-todos--backend-",
+      "targetId": "mem-platform-analysis-known-todos--frontend-",
+      "type": "temporal",
+      "weight": 0.5
+    },
+    {
+      "sourceId": "mem-platform-analysis-known-todos--frontend-",
+      "targetId": "mem-platform-analysis-recent-work--last-30-commits-",
+      "type": "temporal",
+      "weight": 0.5
+    },
+    {
+      "sourceId": "mem-platform-analysis-recent-work--last-30-commits-",
+      "targetId": "mem-platform-analysis-start-db",
+      "type": "temporal",
+      "weight": 0.5
+    },
+    {
+      "sourceId": "mem-platform-analysis-start-db",
+      "targetId": "mem-platform-analysis-start-api--local-",
+      "type": "temporal",
+      "weight": 0.5
+    },
+    {
+      "sourceId": "mem-platform-analysis-start-api--local-",
+      "targetId": "mem-platform-analysis-start-frontend",
+      "type": "temporal",
+      "weight": 0.5
+    },
+    {
+      "sourceId": "mem-platform-analysis-start-frontend",
+      "targetId": "mem-platform-analysis-start-worker",
+      "type": "temporal",
+      "weight": 0.5
+    },
+    {
+      "sourceId": "mem-project_ralph_frontend_renaissance----",
+      "targetId": "mem-project_ralph_frontend_renaissance-ralph-frontend-renaissance-loo",
+      "type": "temporal",
+      "weight": 0.5
+    },
+    {
+      "sourceId": "mem-project_rithmic_heatmap----",
+      "targetId": "mem-project_rithmic_heatmap-projekt-status--stand-2026-03-",
+      "type": "temporal",
+      "weight": 0.5
+    },
+    {
+      "sourceId": "mem-project_rithmic_heatmap-projekt-status--stand-2026-03-",
+      "targetId": "mem-project_rithmic_heatmap-abgeschlossene-sprints",
+      "type": "temporal",
+      "weight": 0.5
+    },
+    {
+      "sourceId": "mem-project_rithmic_heatmap-abgeschlossene-sprints",
+      "targetId": "mem-project_rithmic_heatmap-technische-eckdaten",
+      "type": "temporal",
+      "weight": 0.5
+    },
+    {
+      "sourceId": "mem-project_rithmic_heatmap-technische-eckdaten",
+      "targetId": "mem-project_rithmic_heatmap-bekannte-offene-punkte",
+      "type": "temporal",
+      "weight": 0.5
+    },
+    {
+      "sourceId": "mem-MEMORY-strategy-development",
+      "targetId": "mem-MEMORY-key-facts",
+      "type": "temporal",
+      "weight": 0.5
+    },
+    {
+      "sourceId": "mem-traivend-strategy-rules-core-philosophy--kaan-aslan-",
+      "targetId": "mem-traivend-strategy-rules-fakeout-rules",
+      "type": "temporal",
+      "weight": 0.5
+    },
+    {
+      "sourceId": "mem-traivend-strategy-rules-fakeout-rules",
+      "targetId": "mem-traivend-strategy-rules-warnsignale-gegen-fakeout----e",
+      "type": "temporal",
+      "weight": 0.5
+    },
+    {
+      "sourceId": "mem-traivend-strategy-rules-warnsignale-gegen-fakeout----e",
+      "targetId": "mem-traivend-strategy-rules-trade-frequency--travis-",
+      "type": "temporal",
+      "weight": 0.5
+    },
+    {
+      "sourceId": "mem-traivend-strategy-rules-trade-frequency--travis-",
+      "targetId": "mem-traivend-strategy-rules-asia-range",
+      "type": "temporal",
+      "weight": 0.5
+    },
+    {
+      "sourceId": "mem-traivend-strategy-rules-asia-range",
+      "targetId": "mem-traivend-strategy-rules-session-zeiten",
+      "type": "temporal",
+      "weight": 0.5
+    },
+    {
+      "sourceId": "mem-traivend-strategy-rules-session-zeiten",
+      "targetId": "mem-traivend-strategy-rules-trade-management",
+      "type": "temporal",
+      "weight": 0.5
+    },
+    {
+      "sourceId": "mem-traivend-strategy-rules-trade-management",
+      "targetId": "mem-traivend-strategy-rules-double-fake-v2-benchmark--prof",
+      "type": "temporal",
+      "weight": 0.5
+    },
+    {
+      "sourceId": "mem-traivend-strategy-rules-double-fake-v2-benchmark--prof",
+      "targetId": "mem-traivend-strategy-rules-fakeout-pro-v5-best--round-9--",
+      "type": "temporal",
+      "weight": 0.5
+    },
+    {
+      "sourceId": "mem-traivend-strategy-rules-fakeout-pro-v5-best--round-9--",
+      "targetId": "mem-traivend-strategy-rules-optimization-lessons--2026-03-",
+      "type": "temporal",
+      "weight": 0.5
+    },
+    {
+      "sourceId": "mem-traivend-strategy-rules-optimization-lessons--2026-03-",
+      "targetId": "mem-traivend-strategy-rules-mbo-indicator-bugs--fixed-2026",
+      "type": "temporal",
+      "weight": 0.5
+    },
+    {
+      "sourceId": "mem-MEMORY-key-facts",
+      "targetId": "mem-MEMORY-build-notes",
+      "type": "temporal",
+      "weight": 0.5
+    },
+    {
+      "sourceId": "mem-MEMORY-build-notes",
+      "targetId": "mem-MEMORY-completed-phases",
+      "type": "temporal",
+      "weight": 0.5
+    },
+    {
+      "sourceId": "mem-MEMORY-completed-phases",
+      "targetId": "mem-MEMORY-remaining-work",
+      "type": "temporal",
+      "weight": 0.5
+    },
+    {
+      "sourceId": "mem-double-fake-strategy-optimal-parameters--default-in",
+      "targetId": "mem-double-fake-strategy-key-insights",
+      "type": "similar",
+      "weight": 0.31976744186046513
+    },
+    {
+      "sourceId": "mem-platform-analysis-start-api--local-",
+      "targetId": "mem-platform-analysis-start-worker",
+      "type": "similar",
+      "weight": 0.4367816091954023
+    }
+  ],
+  "pageRanks": {
+    "mem-MEMORY-user-profile": 0.004741450258964939,
+    "mem-MEMORY-session-management-v3--stand-2": 0.008771684270074626,
+    "mem-MEMORY-algorivo-core-project": 0.01219738191186305,
+    "mem-MEMORY-worktree-architecture--stand-2": 0.015109231339948542,
+    "mem-MEMORY-nexus-command-center": 0.01758430693782411,
+    "mem-MEMORY-bias-app": 0.019688116785000355,
+    "mem-MEMORY-development-environment": 0.02147634814808988,
+    "mem-MEMORY-projekt-uebersicht--5-sessions": 0.022996340656607325,
+    "mem-MEMORY-strategy-development": 0.024288333787609265,
+    "mem-MEMORY-openclaw--clawdbot-": 0.01506399187086152,
+    "mem-MEMORY-rithmic-mobile-heatmap": 0.01754583320941502,
+    "mem-MEMORY-ralph-frontend-renaissance--st": 0.019655372862940446,
+    "mem-MEMORY-critical--agent-prompt-quality": 0.02144847780643831,
+    "mem-MEMORY-code-alpha-swarm-session--stan": 0.02297263592564786,
+    "mem-MEMORY-arctis-project": 0.024268380081990285,
+    "mem-MEMORY-skills---plugins": 0.02536963035346819,
+    "mem-double-fake-strategy-status--profitable--2026-03-03": 0.004741450258964939,
+    "mem-double-fake-strategy-optimal-parameters--default-in": 0.008771684270074626,
+    "mem-double-fake-strategy-best-results--new-binary--jan-": 0.008469416085413994,
+    "mem-double-fake-strategy-key-insights": 0.01566842363146064,
+    "mem-double-fake-strategy-files": 0.018059617959780543,
+    "mem-double-fake-strategy-travis-alignment": 0.020092136575454982,
+    "mem-double-fake-strategy-auth-for-api-tests": 0.021819770265482902,
+    "mem-feedback_agent_prompts----": 0.004741450258964939,
+    "mem-feedback_design_quality----": 0.004741450258964939,
+    "mem-feedback_expo_app_priority----": 0.004741450258964939,
+    "mem-feedback_heatmap_quality----": 0.004741450258964939,
+    "mem-feedback_no_emojis----": 0.004741450258964939,
+    "mem-feedback_quality_over_speed----": 0.004741450258964939,
+    "mem-feedback_stop_testing_halfbaked----": 0.004741450258964939,
+    "mem-mbo-indicators-context-was-passiert-ist": 0.004741450258964939,
+    "mem-mbo-indicators-context-was-noch-zu-tun-ist--150-tasks": 0.008771684270074626,
+    "mem-mbo-indicators-context-kern-dateien": 0.01219738191186305,
+    "mem-mbo-indicators-context-design-entscheidungen": 0.015109231339948542,
+    "mem-mbo-indicators-context-fortf-hrungs-command": 0.01758430693782411,
+    "mem-nexus-mega-session-2026-03-17----": 0.004741450258964939,
+    "mem-platform-analysis-platform-status-overview": 0.004741450258964939,
+    "mem-platform-analysis-critical-issues": 0.008771684270074626,
+    "mem-platform-analysis-open-pr": 0.01219738191186305,
+    "mem-platform-analysis-known-todos--backend-": 0.015109231339948542,
+    "mem-platform-analysis-known-todos--frontend-": 0.01758430693782411,
+    "mem-platform-analysis-recent-work--last-30-commits-": 0.019688116785000355,
+    "mem-platform-analysis-start-db": 0.02147634814808988,
+    "mem-platform-analysis-start-api--local-": 0.022996340656607325,
+    "mem-platform-analysis-start-frontend": 0.0145148920232871,
+    "mem-platform-analysis-start-worker": 0.026852550640738528,
+    "mem-project_arctis----": 0.004741450258964939,
+    "mem-project_ralph_frontend_renaissance----": 0.004741450258964939,
+    "mem-project_ralph_frontend_renaissance-ralph-frontend-renaissance-loo": 0.008771684270074626,
+    "mem-project_rithmic_heatmap----": 0.004741450258964939,
+    "mem-project_rithmic_heatmap-projekt-status--stand-2026-03-": 0.008771684270074626,
+    "mem-project_rithmic_heatmap-abgeschlossene-sprints": 0.01219738191186305,
+    "mem-project_rithmic_heatmap-technische-eckdaten": 0.015109231339948542,
+    "mem-project_rithmic_heatmap-bekannte-offene-punkte": 0.01758430693782411,
+    "mem-MEMORY-key-facts": 0.01506399187086152,
+    "mem-traivend-strategy-rules-core-philosophy--kaan-aslan-": 0.004741450258964939,
+    "mem-traivend-strategy-rules-fakeout-rules": 0.008771684270074626,
+    "mem-traivend-strategy-rules-warnsignale-gegen-fakeout----e": 0.01219738191186305,
+    "mem-traivend-strategy-rules-trade-frequency--travis-": 0.015109231339948542,
+    "mem-traivend-strategy-rules-asia-range": 0.01758430693782411,
+    "mem-traivend-strategy-rules-session-zeiten": 0.019688116785000355,
+    "mem-traivend-strategy-rules-trade-management": 0.02147634814808988,
+    "mem-traivend-strategy-rules-double-fake-v2-benchmark--prof": 0.022996340656607325,
+    "mem-traivend-strategy-rules-fakeout-pro-v5-best--round-9--": 0.024288333787609265,
+    "mem-traivend-strategy-rules-optimization-lessons--2026-03-": 0.025386533482758104,
+    "mem-traivend-strategy-rules-mbo-indicator-bugs--fixed-2026": 0.026319982148755413,
+    "mem-MEMORY-build-notes": 0.01754583320941502,
+    "mem-MEMORY-completed-phases": 0.019655372862940446,
+    "mem-MEMORY-remaining-work": 0.02144847780643831
+  }
+}

@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion'
-import { RefreshCw, TrendingUp, TrendingDown, Minus, ArrowRight, Activity, Zap } from 'lucide-react'
+import { RefreshCw, TrendingUp, TrendingDown, Minus, ArrowRight, Activity, Zap, Lightbulb } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useRadar, type RadarMarket } from '@/hooks/useRadar'
 
@@ -75,6 +75,33 @@ function scoreGlow(score: number): string {
   if (score >= 60) return 'rgba(0, 135, 87, 0.2)'
   if (score >= 30) return 'rgba(245, 166, 35, 0.15)'
   return 'rgba(239, 65, 54, 0.15)'
+}
+
+// ── Radar Card Skeleton ────────────────────────────────────────────────────────
+
+function RadarCardSkeleton({ index }: { index: number }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ delay: index * 0.06 }}
+      className="rounded-xl border border-[var(--color-border-subtle)] overflow-hidden"
+      style={{ background: 'var(--color-surface-secondary)', height: 260 }}
+    >
+      <div className="flex flex-col gap-4 p-5">
+        <div className="flex justify-between">
+          <div className="flex flex-col gap-2">
+            <div className="h-5 w-16 rounded bg-white/[0.06] animate-pulse" />
+            <div className="h-3 w-24 rounded bg-white/[0.04] animate-pulse" />
+          </div>
+          <div className="h-12 w-14 rounded-lg bg-white/[0.06] animate-pulse" />
+        </div>
+        <div className="h-4 w-full rounded bg-white/[0.04] animate-pulse" />
+        <div className="h-16 rounded-lg bg-white/[0.04] animate-pulse" />
+        <div className="h-8 rounded-lg bg-white/[0.06] animate-pulse" />
+      </div>
+    </motion.div>
+  )
 }
 
 // ── Spinner ────────────────────────────────────────────────────────────────────
@@ -401,6 +428,136 @@ function RadarCard({ market, index, onOpen }: RadarCardProps) {
   )
 }
 
+// ── "What's important now?" Card ─────────────────────────────────────────────
+
+interface WhatsMattersBullet {
+  text: string
+  type: 'signal' | 'warning' | 'info'
+}
+
+function deriveWhatsImportant(markets: RadarMarket[]): WhatsMattersBullet[] {
+  const bullets: WhatsMattersBullet[] = []
+
+  if (markets.length === 0) return bullets
+
+  // Best opportunity
+  const top = markets.reduce((best, m) => m.opportunity_score > best.opportunity_score ? m : best, markets[0])
+  if (top.opportunity_score >= 60) {
+    bullets.push({
+      text: `${top.root} is the highest-opportunity market right now (score ${top.opportunity_score})`,
+      type: 'signal',
+    })
+  }
+
+  // Active signals summary
+  const totalSignals = markets.reduce((sum, m) => sum + m.active_signals, 0)
+  const longCount = markets.filter(m => m.bias_state.toLowerCase().includes('long')).length
+  const shortCount = markets.filter(m => m.bias_state.toLowerCase().includes('short')).length
+  if (totalSignals > 0) {
+    const dir = longCount > shortCount ? 'long-biased' : shortCount > longCount ? 'short-biased' : 'mixed'
+    bullets.push({
+      text: `${totalSignals} active signal${totalSignals !== 1 ? 's' : ''} across ${markets.length} markets — ${dir}`,
+      type: totalSignals > 3 ? 'signal' : 'info',
+    })
+  }
+
+  // Warning: high-score market with short bias
+  const shortBiasHigh = markets.find(
+    m => m.opportunity_score >= 50 && (m.bias_state === 'short' || m.bias_state === 'range_short'),
+  )
+  if (shortBiasHigh) {
+    bullets.push({
+      text: `${shortBiasHigh.root} has a short bias with elevated opportunity — watch for downside setups`,
+      type: 'warning',
+    })
+  }
+
+  // Session context
+  const activeSessions = [...new Set(markets.map(m => m.session))].filter(s => s !== 'closed' && s !== 'unknown')
+  if (activeSessions.length > 0) {
+    const sessionMap: Record<string, string> = {
+      ny_open: 'NY Open (high volatility)',
+      midday: 'Midday (reduced volatility)',
+      power_hour: 'Power Hour (closing momentum)',
+      premarket: 'Pre-Market (limited liquidity)',
+      after_hours: 'After Hours (thin market)',
+    }
+    const desc = sessionMap[activeSessions[0]] ?? activeSessions[0]
+    bullets.push({ text: `Current session: ${desc}`, type: 'info' })
+  }
+
+  // Low opportunity: nothing actionable
+  if (top.opportunity_score < 30 && totalSignals === 0) {
+    bullets.push({ text: 'No high-probability setups detected — stand aside', type: 'info' })
+  }
+
+  return bullets.slice(0, 4)
+}
+
+const BULLET_ICON_COLOR: Record<WhatsMattersBullet['type'], string> = {
+  signal: 'var(--color-profit)',
+  warning: '#F5A623',
+  info: 'var(--color-accent)',
+}
+
+function WhatsImportantCard({ markets }: { markets: RadarMarket[] }) {
+  const bullets = deriveWhatsImportant(markets)
+  if (bullets.length === 0) return null
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
+      className="flex flex-col gap-3 p-4 rounded-2xl"
+      style={{
+        background: 'var(--color-surface-secondary)',
+        border: '1px solid rgba(92,184,240,0.15)',
+        boxShadow: '0 2px 16px rgba(92,184,240,0.06)',
+      }}
+    >
+      {/* Header */}
+      <div className="flex items-center gap-2">
+        <div
+          className="flex items-center justify-center rounded-lg"
+          style={{
+            width: 24,
+            height: 24,
+            background: 'rgba(92,184,240,0.12)',
+            border: '1px solid rgba(92,184,240,0.25)',
+          }}
+        >
+          <Lightbulb size={12} color="var(--color-accent)" strokeWidth={2} />
+        </div>
+        <span
+          className="font-sans font-semibold uppercase tracking-[0.08em]"
+          style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}
+        >
+          What's important now
+        </span>
+      </div>
+
+      {/* Bullet list */}
+      <div className="flex flex-col gap-2">
+        {bullets.map((b, i) => (
+          <div key={i} className="flex items-start gap-2.5">
+            <div
+              className="rounded-full flex-shrink-0 mt-[5px]"
+              style={{ width: 5, height: 5, background: BULLET_ICON_COLOR[b.type] }}
+            />
+            <span
+              className="font-mono leading-snug"
+              style={{ fontSize: 10, color: 'var(--color-text-secondary)' }}
+            >
+              {b.text}
+            </span>
+          </div>
+        ))}
+      </div>
+    </motion.div>
+  )
+}
+
 // ── Empty State ────────────────────────────────────────────────────────────────
 
 function EmptyState({ isLoading, error }: { isLoading: boolean; error: string | null }) {
@@ -447,6 +604,7 @@ function EmptyState({ isLoading, error }: { isLoading: boolean; error: string | 
 
 export function DashboardPage({ onNavigateToChart, onOpenInWorkspace }: DashboardPageProps) {
   const { markets, isLoading, error, lastScan, refresh } = useRadar(10000)
+  const isStale = lastScan ? (Date.now() - lastScan.getTime()) > 30000 : true
 
   function handleOpenInWorkspace(root: string) {
     if (onOpenInWorkspace) {
@@ -547,8 +705,8 @@ export function DashboardPage({ onNavigateToChart, onOpenInWorkspace }: Dashboar
             style={{
               width: 6,
               height: 6,
-              background: 'var(--color-profit)',
-              boxShadow: '0 0 6px rgba(0, 135, 87, 0.6)',
+              background: isStale ? 'var(--color-text-muted)' : 'var(--color-profit)',
+              boxShadow: isStale ? 'none' : '0 0 6px var(--color-profit)',
             }}
           />
           <span
@@ -559,12 +717,19 @@ export function DashboardPage({ onNavigateToChart, onOpenInWorkspace }: Dashboar
           </span>
         </motion.div>
 
+        {/* What's important now */}
+        {!isLoading && markets.length > 0 && (
+          <WhatsImportantCard markets={markets} />
+        )}
+
         {/* Market cards or empty state */}
         <AnimatePresence mode="wait">
           {!isLoading && markets.length === 0 ? (
             <EmptyState isLoading={isLoading} error={error} />
           ) : isLoading && markets.length === 0 ? (
-            <EmptyState isLoading={isLoading} error={null} />
+            <div className="flex flex-col gap-4">
+              {[0, 1, 2].map(i => <RadarCardSkeleton key={i} index={i} />)}
+            </div>
           ) : (
             <div className="flex flex-col gap-4">
               {markets.map((market, i) => (

@@ -1,4 +1,6 @@
+import { useState } from 'react'
 import { motion } from 'framer-motion'
+import { ChevronUp, ChevronDown } from 'lucide-react'
 import type { PatternsAPIData } from '@/components/panels/PatternsPanel'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -37,8 +39,8 @@ function directionLabel(direction: string): string {
 
 function confidenceColor(confidence: string): string {
   const c = confidence.toLowerCase()
-  if (c === 'high') return 'var(--color-profit)'
-  if (c === 'low') return 'var(--color-loss)'
+  if (c === 'high') return 'var(--color-accent)'
+  if (c === 'medium' || c === 'med') return 'var(--color-warning)'
   return 'var(--color-text-muted)'
 }
 
@@ -131,9 +133,9 @@ function PatternRow({
           style={{
             background:
               direction === 'long'
-                ? 'rgba(0, 135, 87, 0.12)'
+                ? 'var(--color-profit-muted)'
                 : direction === 'short'
-                ? 'rgba(239, 65, 54, 0.12)'
+                ? 'var(--color-loss-muted)'
                 : 'var(--color-surface-raised)',
             border: `1px solid ${directionColor(direction)}40`,
           }}
@@ -149,20 +151,38 @@ function PatternRow({
 
       {/* Win rate */}
       <td className="py-3 px-2">
-        <span
-          className="font-mono tabular-nums font-semibold"
-          style={{
-            fontSize: 13,
-            color:
-              winRate != null && winRate >= 55
-                ? 'var(--color-profit)'
-                : winRate != null && winRate < 35
-                ? 'var(--color-loss)'
-                : 'var(--color-text-secondary)',
-          }}
-        >
-          {formatWinRate(winRate)}
-        </span>
+        <div className="flex flex-col gap-0.5">
+          <span
+            className="font-mono tabular-nums font-semibold"
+            style={{
+              fontSize: 13,
+              color:
+                winRate != null && winRate >= 55
+                  ? 'var(--color-profit)'
+                  : winRate != null && winRate < 35
+                  ? 'var(--color-loss)'
+                  : 'var(--color-text-secondary)',
+            }}
+          >
+            {formatWinRate(winRate)}
+          </span>
+          {winRate != null && (
+            <div className="h-[2px] mt-1 rounded-full overflow-hidden" style={{ background: 'var(--color-surface-elevated)' }}>
+              <div
+                className="h-full rounded-full"
+                style={{
+                  width: `${Math.min(100, winRate > 1 ? winRate : winRate * 100)}%`,
+                  background:
+                    winRate >= 55
+                      ? 'var(--color-profit)'
+                      : winRate < 35
+                      ? 'var(--color-loss)'
+                      : 'var(--color-text-secondary)',
+                }}
+              />
+            </div>
+          )}
+        </div>
       </td>
 
       {/* Profit Factor */}
@@ -195,12 +215,20 @@ function PatternRow({
 
       {/* Confidence */}
       <td className="py-3 px-2">
-        <span
-          className="font-mono uppercase"
-          style={{ fontSize: 10, color: confidenceColor(confidence), letterSpacing: '0.06em' }}
+        <div
+          className="inline-flex items-center px-1.5 py-0.5 rounded"
+          style={{
+            background: `${confidenceColor(confidence)}15`,
+            border: `1px solid ${confidenceColor(confidence)}30`,
+          }}
         >
-          {confidence || '--'}
-        </span>
+          <span
+            className="font-mono uppercase font-bold"
+            style={{ fontSize: 9, color: confidenceColor(confidence), letterSpacing: '0.08em' }}
+          >
+            {confidence || '--'}
+          </span>
+        </div>
       </td>
 
       {/* Timestamp */}
@@ -316,8 +344,35 @@ function SummaryBar({ data }: SummaryBarProps) {
 
 // ── Main Component ─────────────────────────────────────────────────────────────
 
+type SortKey = 'timestamp' | 'winRate' | 'profitFactor' | 'confidence'
+
 export function PatternsPage({ data }: PatternsPageProps) {
   const annotations = data?.annotations ?? []
+  const [sortBy, setSortBy] = useState<SortKey>('timestamp')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
+
+  function handleSort(key: SortKey) {
+    if (sortBy === key) {
+      setSortDir(d => d === 'desc' ? 'asc' : 'desc')
+    } else {
+      setSortBy(key)
+      setSortDir('desc')
+    }
+  }
+
+  const sorted = [...annotations].sort((a, b) => {
+    const m = sortDir === 'desc' ? -1 : 1
+    switch (sortBy) {
+      case 'winRate': return m * ((a.win_rate ?? 0) - (b.win_rate ?? 0))
+      case 'profitFactor': return m * (((a as any).profit_factor ?? 0) - ((b as any).profit_factor ?? 0))
+      case 'timestamp': return m * (a.timestamp - b.timestamp)
+      case 'confidence': {
+        const o = { high: 3, medium: 2, med: 2, low: 1 }
+        return m * ((o[a.confidence?.toLowerCase() as keyof typeof o] ?? 0) - (o[b.confidence?.toLowerCase() as keyof typeof o] ?? 0))
+      }
+      default: return 0
+    }
+  })
 
   return (
     <div
@@ -383,20 +438,32 @@ export function PatternsPage({ data }: PatternsPageProps) {
                     Direction
                   </span>
                 </th>
-                <th className="py-2 px-2 text-left">
+                <th className="py-2 px-2 text-left cursor-pointer select-none" onClick={() => handleSort('winRate')}>
                   <span
-                    className="font-mono uppercase tracking-widest"
-                    style={{ fontSize: 9, color: 'var(--color-text-muted)' }}
+                    className="inline-flex items-center gap-1 font-mono uppercase tracking-widest"
+                    style={{ fontSize: 9, color: sortBy === 'winRate' ? 'var(--color-accent)' : 'var(--color-text-muted)' }}
                   >
                     Win Rate
+                    {sortBy === 'winRate'
+                      ? sortDir === 'desc'
+                        ? <ChevronDown size={9} strokeWidth={2.5} />
+                        : <ChevronUp size={9} strokeWidth={2.5} />
+                      : null
+                    }
                   </span>
                 </th>
-                <th className="py-2 px-2 text-left">
+                <th className="py-2 px-2 text-left cursor-pointer select-none" onClick={() => handleSort('profitFactor')}>
                   <span
-                    className="font-mono uppercase tracking-widest"
-                    style={{ fontSize: 9, color: 'var(--color-text-muted)' }}
+                    className="inline-flex items-center gap-1 font-mono uppercase tracking-widest"
+                    style={{ fontSize: 9, color: sortBy === 'profitFactor' ? 'var(--color-accent)' : 'var(--color-text-muted)' }}
                   >
                     PF
+                    {sortBy === 'profitFactor'
+                      ? sortDir === 'desc'
+                        ? <ChevronDown size={9} strokeWidth={2.5} />
+                        : <ChevronUp size={9} strokeWidth={2.5} />
+                      : null
+                    }
                   </span>
                 </th>
                 <th className="py-2 px-2 text-left">
@@ -407,26 +474,38 @@ export function PatternsPage({ data }: PatternsPageProps) {
                     Trades
                   </span>
                 </th>
-                <th className="py-2 px-2 text-left">
+                <th className="py-2 px-2 text-left cursor-pointer select-none" onClick={() => handleSort('confidence')}>
                   <span
-                    className="font-mono uppercase tracking-widest"
-                    style={{ fontSize: 9, color: 'var(--color-text-muted)' }}
+                    className="inline-flex items-center gap-1 font-mono uppercase tracking-widest"
+                    style={{ fontSize: 9, color: sortBy === 'confidence' ? 'var(--color-accent)' : 'var(--color-text-muted)' }}
                   >
                     Confidence
+                    {sortBy === 'confidence'
+                      ? sortDir === 'desc'
+                        ? <ChevronDown size={9} strokeWidth={2.5} />
+                        : <ChevronUp size={9} strokeWidth={2.5} />
+                      : null
+                    }
                   </span>
                 </th>
-                <th className="py-2 pl-2 pr-4 text-left">
+                <th className="py-2 pl-2 pr-4 text-left cursor-pointer select-none" onClick={() => handleSort('timestamp')}>
                   <span
-                    className="font-mono uppercase tracking-widest"
-                    style={{ fontSize: 9, color: 'var(--color-text-muted)' }}
+                    className="inline-flex items-center gap-1 font-mono uppercase tracking-widest"
+                    style={{ fontSize: 9, color: sortBy === 'timestamp' ? 'var(--color-accent)' : 'var(--color-text-muted)' }}
                   >
                     Time
+                    {sortBy === 'timestamp'
+                      ? sortDir === 'desc'
+                        ? <ChevronDown size={9} strokeWidth={2.5} />
+                        : <ChevronUp size={9} strokeWidth={2.5} />
+                      : null
+                    }
                   </span>
                 </th>
               </tr>
             </thead>
             <tbody>
-              {annotations.map((ann, idx) => (
+              {sorted.map((ann, idx) => (
                 <PatternRow
                   key={`${ann.pattern}-${ann.timestamp}-${idx}`}
                   index={idx}

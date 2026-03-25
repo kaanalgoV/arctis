@@ -1,15 +1,17 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
+import { Routes, Route } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useMarketData } from '@/hooks/useMarketData'
 import { useAnalysis } from '@/hooks/useAnalysis'
 import { useReplay } from '@/hooks/useReplay'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
+import { useSessionClock } from '@/hooks/useSessionClock'
 import { useMarketStore } from '@/store/market'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { Topbar } from '@/components/layout/Topbar'
 import { HudStrip } from '@/components/layout/HudStrip'
 import { StatusBar } from '@/components/layout/StatusBar'
-import { RightPanelSection, RightPanelDivider } from '@/components/layout/RightPanel'
+import { RightPanel, RightPanelSection, RightPanelDivider } from '@/components/layout/RightPanel'
 import {
   SessionPanel,
   ConfluencePanel,
@@ -19,6 +21,8 @@ import {
   ArctisPanel,
   SignalsPanel,
 } from '@/components/panels'
+import { SetupLifecyclePanel } from '@/components/panels/SetupLifecyclePanel'
+import { useSetups } from '@/hooks/useSetups'
 import type { ConfluenceAPIData } from '@/components/panels/ConfluencePanel'
 import type { PatternsAPIData } from '@/components/panels/PatternsPanel'
 import type { SessionAPIData } from '@/components/panels/SessionPanel'
@@ -26,26 +30,28 @@ import type { FeedItem } from '@/components/panels/FeedPanel'
 import type { BiasData } from '@/components/panels/BiasPanel'
 import type { SignalsAPIData } from '@/components/panels/SignalsPanel'
 import { SettingsPanel } from '@/components/settings/SettingsPanel'
-import type { ChartZone } from '@/components/charts/SimpleChart'
 import type { OverlayKey } from '@/components/charts/ChartToolbar'
-import { useDrawings } from '@/hooks/useDrawings'
 import type { OHLCVBar } from '@/types/market'
 import type { IndicatorData, VolumeData, TradingConfig } from '@/types/analysis'
 import { TF_DISPLAY, TIMEFRAMES } from '@/types/contracts'
 import type { Timeframe, MarketInfo } from '@/types/contracts'
 import { PanelSkeleton } from '@/components/ui/Skeleton'
 import { cn } from '@/lib/utils'
-import type { IChartApi } from 'lightweight-charts'
+// SciChart chart doesn't expose IChartApi — use unknown for now
+type IChartApi = unknown
 import { DashboardPage } from '@/pages/DashboardPage'
 import { ChartPage } from '@/pages/ChartPage'
 import { PatternsPage } from '@/pages/PatternsPage'
+import { LandingPage } from '@/pages/LandingPage'
 import { useSettingsStore } from '@/store/settings'
+import { useLiveStore } from '@/live'
 
 const SESSION_DISPLAY: Record<string, string> = {
   pre_market: 'Pre-Mkt',
   premarket: 'Pre-Mkt',
   ny_open: 'NY Open',
   midday: 'Midday',
+  afternoon: 'Afternoon',
   power_hour: 'Power Hr',
   after_hours: 'After Hrs',
   overnight: 'Overnight',
@@ -202,7 +208,7 @@ function buildFeedItems(
     .map((x) => x.item)
 }
 
-export default function App() {
+function AppShell() {
   // ── Zustand store ──────────────────────────────────────────────────────────
   const {
     market,
@@ -212,10 +218,18 @@ export default function App() {
     setMarket: storeSetMarket,
     setTimeframe: storeSetTimeframe,
     setMarkets: storeSetMarkets,
+    setDataSource: storeSetDataSource,
   } = useMarketStore()
 
   // ── Settings store — engineUrl used for direct fetch calls in App ─────────
   const engineUrl = useSettingsStore((s) => s.engineUrl)
+  const loadSettingsFromServer = useSettingsStore((s) => s.loadFromServer)
+
+  // Load server-persisted preferences once on mount (merges with local state)
+  useEffect(() => {
+    void loadSettingsFromServer()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // ── Page navigation ────────────────────────────────────────────────────────
   const [activePage, setActivePage] = useState<ActivePage>('chart')
@@ -233,10 +247,6 @@ export default function App() {
   // ── Strategy Library active count (for RightPanelSection badge) ──────────
   const [_activeStrategyCount] = useState<number | undefined>(undefined)
 
-  // ── Drawing state ─────────────────────────────────────────────────────────
-  const { drawings, activeTool, setActiveTool, addDrawing, clearDrawings } =
-    useDrawings(symbol, timeframe)
-
   // ── Chart API ref (for feed-to-chart scroll and keyboard shortcuts) ─────────
   const chartApiRef = useRef<IChartApi | null>(null)
   const handleChartReady = useCallback((chart: IChartApi) => {
@@ -248,19 +258,6 @@ export default function App() {
   const handleFeedItemClick = useCallback((timestamp: number) => {
     setScrollToTimestamp(timestamp)
   }, [])
-
-  // ── Chart click → create drawing ───────────────────────────────────────────
-  const handleChartClick = useCallback(
-    (price: number, timestamp: number) => {
-      if (!activeTool) return
-      if (activeTool === 'hline') {
-        addDrawing('hline', { price })
-        setActiveTool(null)
-      }
-      void timestamp
-    },
-    [activeTool, addDrawing, setActiveTool],
-  )
 
   // ── Status ────────────────────────────────────────────────────────────────
   const [latencyMs, setLatencyMs] = useState<number>(0)
@@ -286,10 +283,17 @@ export default function App() {
     signals: signalsData,
   } = useAnalysis(mode === 'replay' ? 1500 : 5000)
 
+  // ── Setups via hook ────────────────────────────────────────────────────────
+  const {
+    setups: setupsList,
+    isLoading: setupsLoading,
+    error: setupsError,
+  } = useSetups(market, timeframe)
+
   // Cast untyped analysis results to expected types
   const structureData = structureDataRaw as StructureAPIData | null
   const tradingConfig = tradingConfigRaw as TradingConfig | null
-  const zonesData = zonesDataRaw as { zones: ChartZone[] } | null
+  const zonesData = zonesDataRaw as { zones: unknown[] } | null
 
   // ── Track latency + last update from analysis polling ─────────────────────
   const lastBarTs = useMarketStore((s) => s.lastBarTs)
@@ -301,6 +305,9 @@ export default function App() {
     )
     setLatencyMs(0) // latency is not measured separately anymore
   }, [lastBarTs])
+
+  // ── Real-time session clock (ET, independent of API) ──────────────────────
+  const sessionClock = useSessionClock()
 
   // ── Replay hook ────────────────────────────────────────────────────────────
   const replay = useReplay(market, timeframe)
@@ -341,15 +348,11 @@ export default function App() {
   const lastClose = bars.at(-1)?.close
 
   // ── Current price: prefer live price when available, fall back to lastClose ──
-  const livePrice: number | null = (() => {
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const mod = require('@/live') as { useLiveStore?: { getState: () => { lastPrice: number | null } } }
-      return mod.useLiveStore?.getState?.()?.lastPrice ?? null
-    } catch {
-      return null
-    }
-  })()
+  // useLiveStore is populated by liveClient when the live WebSocket service
+  // (port 28081) is running.  When offline it stays null and we fall back to
+  // the last REST-fetched close price.
+  const livePrice = useLiveStore((s) => s.lastPrice)
+  const liveConnected = useLiveStore((s) => s.isConnected)
   const currentPrice = livePrice ?? lastClose ?? null
 
   // ── Right panel toggle ────────────────────────────────────────────────────
@@ -422,6 +425,7 @@ export default function App() {
     async (id: ActivePage) => {
       if (id === 'replay') {
         setMode('replay')
+        storeSetDataSource('replay')
         setActivePage('chart') // chart page with replay mode active
       } else if (id === 'settings') {
         setShowSettings(true)
@@ -430,11 +434,12 @@ export default function App() {
         if (id === 'chart' && mode === 'replay') {
           await replay.stop()
           setMode('live')
+          storeSetDataSource('db')
         }
         setActivePage(id)
       }
     },
-    [mode, replay],
+    [mode, replay, storeSetDataSource],
   )
 
   // ── Derived HUD values ────────────────────────────────────────────────────
@@ -442,9 +447,42 @@ export default function App() {
   const latestRsi = (indicatorData as IndicatorData | null)?.rsi?.at(-1)
   const latestEmaAlignment = (indicatorData as IndicatorData | null)?.ema?.at(-1)?.alignment ?? null
   const vwapPosition = deriveVwapPosition(indicatorData as IndicatorData | null, lastClose)
-  const hudSessionName = sessionData
-    ? (SESSION_DISPLAY[(sessionData as SessionAPIData).current_session] ?? (sessionData as SessionAPIData).current_session)
-    : null
+
+  // Latest VWAP level for BiasPanel price context
+  const latestVwapLevel = (indicatorData as IndicatorData | null)?.vwap?.at(-1)?.vwap ?? null
+
+  // Session open price for HUD price change (first bar of the session)
+  const sessionOpenPrice = bars.length > 0 ? bars[0].open : null
+
+  // Timestamp for staleness indicators — updated whenever analysis data refreshes
+  const [analysisLastUpdateTs, setAnalysisLastUpdateTs] = useState<number | null>(null)
+  useEffect(() => {
+    if (biasData != null || signalsData != null) {
+      setAnalysisLastUpdateTs(Date.now())
+    }
+  }, [biasData, signalsData])
+
+  // Session display: clock is authoritative (always real-time).
+  // API data may lag by up to one bar; the clock is always current.
+  const hudSessionName = sessionClock.displayName
+
+  // Detect session transitions for the HUD pulse animation
+  const prevClockSessionRef = useRef<string>(sessionClock.session)
+  const [sessionTransition, setSessionTransition] = useState(false)
+  useEffect(() => {
+    if (prevClockSessionRef.current !== sessionClock.session) {
+      prevClockSessionRef.current = sessionClock.session
+      setSessionTransition(true)
+      const t = setTimeout(() => setSessionTransition(false), 3000)
+      return () => clearTimeout(t)
+    }
+  }, [sessionClock.session])
+
+  // Session badge in RightPanel header: also use clock
+  const hudSessionBadge = useMemo(
+    () => sessionClock.displayName,
+    [sessionClock.displayName],
+  )
 
   // ── Feed ──────────────────────────────────────────────────────────────────
   const feedItems = buildFeedItems(
@@ -501,9 +539,12 @@ export default function App() {
       setMode(next)
       if (next === 'live') {
         await replay.stop()
+        storeSetDataSource('db')
+      } else if (next === 'replay') {
+        storeSetDataSource('replay')
       }
     },
-    [replay],
+    [replay, storeSetDataSource],
   )
 
   // ── Replay time display ────────────────────────────────────────────────────
@@ -539,15 +580,15 @@ export default function App() {
 
   return (
     <div
-      className="h-screen overflow-hidden"
+      className={cn('h-screen overflow-hidden', mode === 'replay' && 'ring-1 ring-inset ring-[var(--color-accent)]/15')}
       style={{
         display: 'grid',
         gridTemplateColumns: gridCols,
-        gridTemplateRows: hudVisible ? '44px 32px 1fr' : '44px 1fr',
+        gridTemplateRows: hudVisible ? '44px 32px 1fr 24px' : '44px 1fr 24px',
       }}
     >
       {/* Sidebar — col 1, all rows */}
-      <div style={{ gridColumn: '1', gridRow: '1 / -1' }}>
+      <div style={{ gridColumn: '1', gridRow: '1 / -1', overflow: 'hidden' }}>
         <Sidebar
           activeItem={sidebarActive}
           onNavigate={(id) => void handleNavigate(id)}
@@ -590,7 +631,11 @@ export default function App() {
             emaAlignment={latestEmaAlignment}
             vwapPosition={vwapPosition}
             sessionName={hudSessionName}
+            sessionProgress={sessionClock.progress}
+            sessionTransition={sessionTransition}
             barCount={barsCount > 0 ? barsCount : null}
+            currentPrice={currentPrice}
+            sessionOpenPrice={sessionOpenPrice}
           />
         </div>
       )}
@@ -622,11 +667,11 @@ export default function App() {
       )}
 
       {/* Main content area — col 2, row 3 */}
-      <div style={{ gridColumn: '2', gridRow: hudVisible ? '3' : '2' }} className="overflow-hidden">
+      <div style={{ gridColumn: '2', gridRow: hudVisible ? '3' : '2', minHeight: 0 }} className="overflow-hidden">
         <AnimatePresence mode="wait">
           <motion.div
             key={activePage}
-            className="h-full"
+            className="h-full min-h-0"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -645,6 +690,7 @@ export default function App() {
             {activePage === 'chart' && (
               <ChartPage
                 symbol={symbol}
+                timeframe={timeframe}
                 chartBars={chartBars}
                 isLoading={isLoading}
                 isConnected={isConnected}
@@ -655,14 +701,10 @@ export default function App() {
                 structureBreaks={structureData?.structure_breaks}
                 patternAnnotations={(patternsData as PatternsAPIData | null)?.annotations}
                 zones={zonesData?.zones}
-                drawings={drawings}
-                activeTool={activeTool}
-                onSelectTool={setActiveTool}
-                onClearDrawings={clearDrawings}
-                onChartClick={activeTool ? handleChartClick : undefined}
                 scrollToTimestamp={scrollToTimestamp}
                 onChartReady={handleChartReady}
                 signals={(signalsData as any)?.signals}
+                setups={setupsList}
                 mode={mode}
                 replay={replay}
                 replayCurrentTime={replayCurrentTime}
@@ -679,40 +721,82 @@ export default function App() {
 
       {/* Right panel — col 3, rows 2-3 — only when chart page is active */}
       {showRightPanel && (
-        <div
-          className="border-l border-[var(--color-border-subtle)] bg-[var(--color-surface-secondary)]/95 overflow-y-auto"
-          style={{ gridColumn: '3', gridRow: hudVisible ? '3' : '2' }}
-        >
+        <div style={{ gridColumn: '3', gridRow: hudVisible ? '3' : '2', minHeight: 0, overflow: 'hidden' }}>
+          <RightPanel onClose={() => setRightPanelOpen(false)}>
+          <RightPanelSection
+            title="Setups"
+            accent="ice"
+            count={setupsList.filter(s => !['invalidated','expired','stopped','completed','exited'].includes(s.status)).length || undefined}
+          >
+            <SetupLifecyclePanel
+              setups={setupsList}
+              isLoading={setupsLoading}
+              error={setupsError}
+              lastUpdateTs={analysisLastUpdateTs}
+            />
+          </RightPanelSection>
+
+          <RightPanelDivider />
+
+          {/* Signals: show L/S breakdown or "0" when loaded with no signals */}
           <RightPanelSection
             title="Signals"
             accent="ice"
-            count={(signalsData as SignalsAPIData | null)?.signals.length ?? undefined}
+            count={
+              (signalsData as SignalsAPIData | null) != null
+                ? ((signalsData as SignalsAPIData).signals.length > 0
+                    ? `${(signalsData as SignalsAPIData).signals.filter(s => s.direction === 'long').length}L · ${(signalsData as SignalsAPIData).signals.filter(s => s.direction === 'short').length}S`
+                    : '0')
+                : undefined
+            }
           >
-            {signalsData == null ? <PanelSkeleton /> : <SignalsPanel data={signalsData as SignalsAPIData} />}
+            {signalsData == null ? <PanelSkeleton lines={4} label="Connecting..." /> : <SignalsPanel data={signalsData as SignalsAPIData} lastUpdateTs={analysisLastUpdateTs} />}
           </RightPanelSection>
 
           <RightPanelDivider />
 
-          <RightPanelSection title="Session" accent="ice" count={(sessionData as SessionAPIData | null)?.bar_count}>
-            {sessionData == null ? <PanelSkeleton /> : <SessionPanel data={sessionData as SessionAPIData} />}
+          {/* Session: badge always uses clock (real-time), panel uses merged data */}
+          <RightPanelSection
+            title="Session"
+            accent="ice"
+            count={hudSessionBadge}
+          >
+            <SessionPanel data={sessionData as SessionAPIData | null} />
           </RightPanelSection>
 
           <RightPanelDivider />
 
-          <RightPanelSection title="Confluence" accent="ice">
-            {confluenceData == null ? <PanelSkeleton /> : <ConfluencePanel data={confluenceData as ConfluenceAPIData} />}
+          {/* Confluence: show signal count in badge */}
+          <RightPanelSection
+            title="Confluence"
+            accent="ice"
+            count={
+              (confluenceData as ConfluenceAPIData | null) != null
+                ? ((confluenceData as ConfluenceAPIData).signals?.length ?? 0)
+                : undefined
+            }
+          >
+            {confluenceData == null ? <PanelSkeleton lines={5} label="Connecting..." /> : <ConfluencePanel data={confluenceData as ConfluenceAPIData} />}
           </RightPanelSection>
 
           <RightPanelDivider />
 
-          <RightPanelSection title="Bias" accent="profit">
-            {biasData == null ? <PanelSkeleton /> : <BiasPanel data={biasData as BiasData} />}
+          {/* Bias: show state label in badge */}
+          <RightPanelSection
+            title="Bias"
+            accent="profit"
+            count={
+              (biasData as BiasData | null) != null
+                ? ((biasData as BiasData).bias_state?.state?.toUpperCase() ?? undefined)
+                : undefined
+            }
+          >
+            {biasData == null ? <PanelSkeleton lines={6} label="Connecting..." /> : <BiasPanel data={biasData as BiasData} currentPrice={currentPrice} vwapLevel={latestVwapLevel} lastUpdateTs={analysisLastUpdateTs} />}
           </RightPanelSection>
 
           <RightPanelDivider />
 
-          {/* Strategies work in background — no visible panel needed */}
-
+          {/* Feed: collapsible, shows count of recent events */}
           <RightPanelSection
             title="Feed"
             count={feedItems.length > 0 ? feedItems.length : undefined}
@@ -721,6 +805,7 @@ export default function App() {
             <FeedPanel
               items={feedItems.length > 0 ? feedItems : undefined}
               onItemClick={handleFeedItemClick}
+              relativeTimestamps
             />
           </RightPanelSection>
 
@@ -739,8 +824,30 @@ export default function App() {
               currentPrice={currentPrice ?? undefined}
             />
           </RightPanelSection>
+          </RightPanel>
         </div>
       )}
+
+      {/* StatusBar — last row, all columns */}
+      <div style={{ gridColumn: '1 / -1', gridRow: '-1' }}>
+        <StatusBar
+          connected={isConnected}
+          latencyMs={latencyMs}
+          barsLoaded={barsCount}
+          lastUpdate={lastUpdate}
+          liveFeed={liveConnected}
+          liveProvider={liveConnected ? 'rithmic' : null}
+          replay={
+            mode === 'replay' && replay.simStatus
+              ? {
+                  active: replay.simStatus.active,
+                  progress_pct: replay.simStatus.progress_pct,
+                  current_date: replay.simStatus.current_date,
+                }
+              : null
+          }
+        />
+      </div>
 
       {/* Settings slide-over panel — fixed overlay, always available */}
       <SettingsPanel
@@ -760,5 +867,14 @@ export default function App() {
         }}
       />
     </div>
+  )
+}
+
+export default function App() {
+  return (
+    <Routes>
+      <Route path="/landing" element={<LandingPage />} />
+      <Route path="/*" element={<AppShell />} />
+    </Routes>
   )
 }

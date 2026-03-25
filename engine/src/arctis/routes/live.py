@@ -1,15 +1,38 @@
 """Live market data streaming via Databento and Rithmic."""
 import asyncio
+import json
 import logging
 import os
 import time
 from datetime import datetime, timezone, timedelta
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
 from sqlalchemy import text
 
 router = APIRouter(prefix="/api/live", tags=["live"])
 logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Tick WebSocket broadcast — pushes every Rithmic tick to connected clients
+# ---------------------------------------------------------------------------
+_tick_subscribers: set[WebSocket] = set()
+
+
+async def _broadcast_tick(symbol: str, price: float, size: int, ts: int) -> None:
+    """Send tick to all WebSocket subscribers — non-blocking, fire-and-forget."""
+    if not _tick_subscribers:
+        return
+    msg = json.dumps({"type": "tick", "symbol": symbol, "price": price, "size": size, "ts": ts})
+    dead: list[WebSocket] = []
+    # Send to all clients concurrently (don't block on slow clients)
+    async def _send(ws: WebSocket) -> None:
+        try:
+            await ws.send_text(msg)
+        except Exception:
+            dead.append(ws)
+    await asyncio.gather(*[_send(ws) for ws in _tick_subscribers])
+    for ws in dead:
+        _tick_subscribers.discard(ws)
 
 # ---------------------------------------------------------------------------
 # Databento connection state
@@ -129,6 +152,9 @@ async def _stream_ticks_to_bars(client) -> None:
 
             # Cache last tick price for /api/live/price endpoint
             _last_prices[symbol] = {"price": price, "size": size, "ts": tick_ts}
+
+            # Broadcast tick to all WebSocket subscribers (millisecond delivery)
+            await _broadcast_tick(symbol, price, size, tick_ts)
             # Round down to minute boundary
             minute_ts = (tick_ts // 60) * 60
             key = (symbol, minute_ts)
@@ -160,6 +186,31 @@ async def _stream_ticks_to_bars(client) -> None:
 # ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
+
+@router.websocket("/ticks")
+async def ws_ticks(ws: WebSocket):
+    """WebSocket endpoint for real-time tick streaming.
+
+    Pushes every Rithmic tick as JSON: {"type":"tick","symbol":"NQM6","price":24400.25,"size":1,"ts":1774386000}
+    Clients receive ticks for ALL subscribed instruments (NQM6, ESM6).
+    Filter client-side by symbol if needed.
+    """
+    await ws.accept()
+    _tick_subscribers.add(ws)
+    logger.info("Tick WS client connected (%d total)", len(_tick_subscribers))
+    try:
+        # Keep connection alive — client sends pings, we just listen
+        while True:
+            # Wait for client messages (ping/pong or close)
+            await ws.receive_text()
+    except WebSocketDisconnect:
+        pass
+    except Exception:
+        pass
+    finally:
+        _tick_subscribers.discard(ws)
+        logger.info("Tick WS client disconnected (%d remaining)", len(_tick_subscribers))
+
 
 @router.get("/price")
 async def live_price(symbol: str = Query(default="NQM6")):

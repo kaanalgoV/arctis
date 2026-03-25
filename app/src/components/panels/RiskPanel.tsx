@@ -48,8 +48,8 @@ function warningLevel(
 
 const WARNING_COLORS = {
   ok:     undefined,           // use default
-  warn:   '#F59E0B',
-  danger: '#EF4444',
+  warn:   'var(--color-warning, #F7941D)',
+  danger: 'var(--color-loss, #FF3B3B)',
 } as const
 
 // ---------------------------------------------------------------------------
@@ -62,7 +62,7 @@ function RiskSkeleton() {
       {Array.from({ length: 4 }).map((_, i) => (
         <div
           key={i}
-          className="bg-[#161B22] border border-[#21262D] rounded-md p-2.5 flex flex-col gap-1.5"
+          className="bg-[var(--color-surface-secondary)] border border-[var(--color-border)] rounded-md p-2.5 flex flex-col gap-1.5"
         >
           <Skeleton className="h-2 w-2.5" />
           <Skeleton className="h-3.5 w-14" />
@@ -90,23 +90,23 @@ interface RiskCardProps {
 function RiskCard({ icon, label, value, valueColor, warningState }: RiskCardProps) {
   const borderColor =
     warningState === 'danger'
-      ? 'border-[#EF4444]/40'
+      ? 'border-[var(--color-loss)]/40'
       : warningState === 'warn'
-      ? 'border-[#F59E0B]/40'
-      : 'border-[#21262D]'
+      ? 'border-[var(--color-warning)]/40'
+      : 'border-[var(--color-border)]'
 
   return (
     <div
-      className={`bg-[#161B22] border ${borderColor} rounded-md p-2.5 flex flex-col gap-1 hover:border-[#30363D] transition-colors`}
+      className={`bg-[var(--color-surface-secondary)] border ${borderColor} rounded-md p-2.5 flex flex-col gap-1 hover:border-[var(--color-border)] transition-colors`}
     >
       {/* Icon row */}
       <div className="flex items-center justify-between">
-        <span className="text-[#484F58]">{icon}</span>
+        <span className="text-[var(--color-text-inactive)]">{icon}</span>
         {warningState && (
           <span
             className="w-1.5 h-1.5 rounded-full flex-shrink-0"
             style={{
-              background: warningState === 'danger' ? '#EF4444' : '#F59E0B',
+              background: warningState === 'danger' ? 'var(--color-loss, #FF3B3B)' : 'var(--color-warning, #F7941D)',
             }}
             aria-label={warningState === 'danger' ? 'Limit reached' : 'Approaching limit'}
           />
@@ -122,7 +122,7 @@ function RiskCard({ icon, label, value, valueColor, warningState }: RiskCardProp
       </div>
 
       {/* Label */}
-      <div className="text-[9px] text-[#6E7681] uppercase tracking-wider leading-none">
+      <div className="font-sans text-[9px] text-[var(--color-text-inactive)] uppercase tracking-wider leading-none">
         {label}
       </div>
     </div>
@@ -143,7 +143,7 @@ export function RiskPanel({ trades, contracts, config, loading, error }: RiskPan
   if (error && config == null) {
     return (
       <div className="flex items-center justify-center py-3">
-        <span className="text-[10px] text-[#EF4444]">{error}</span>
+        <span className="text-[10px] text-[var(--color-loss,#FF3B3B)]">{error}</span>
       </div>
     )
   }
@@ -152,7 +152,7 @@ export function RiskPanel({ trades, contracts, config, loading, error }: RiskPan
   if (config == null) {
     return (
       <div className="flex items-center justify-center py-3">
-        <span className="text-[10px] text-[#8B949E]">Waiting for data...</span>
+        <span className="text-[10px] text-[var(--color-text-inactive)]">Waiting for data...</span>
       </div>
     )
   }
@@ -191,7 +191,7 @@ export function RiskPanel({ trades, contracts, config, loading, error }: RiskPan
   // Trades warning
   const tradesWarn  = warningLevel(trades, config.max_daily_trades)
   const tradesColor =
-    tradesWarn !== 'ok' ? WARNING_COLORS[tradesWarn] : '#EF4444'
+    tradesWarn !== 'ok' ? WARNING_COLORS[tradesWarn] : 'var(--color-text-primary)'
 
   // Display values — show "—" for unavailable live data
   const tradesDisplay   = trades    != null ? String(trades)    : '—'
@@ -204,7 +204,7 @@ export function RiskPanel({ trades, contracts, config, loading, error }: RiskPan
         icon={<ShieldAlert size={10} strokeWidth={2} />}
         label="Max Loss"
         value={maxLoss}
-        valueColor="#EF4444"
+        valueColor="var(--color-loss, #FF3B3B)"
       />
 
       {/* Daily Loss Limit — previously hidden, now shown */}
@@ -212,7 +212,7 @@ export function RiskPanel({ trades, contracts, config, loading, error }: RiskPan
         icon={<TrendingDown size={10} strokeWidth={2} />}
         label="Daily Limit"
         value={dailyLossLimitValue}
-        valueColor="#EF4444"
+        valueColor="var(--color-loss, #FF3B3B)"
       />
 
       {/* Position / Contract Limit */}

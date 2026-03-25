@@ -7,6 +7,7 @@ import pandas as pd
 from sqlalchemy import create_engine
 
 from arctis.models import OHLCVBar
+from arctis.db_constants import VIEW_OHLCV_1M
 
 _raw_url = os.getenv(
     "DATABASE_URL",
@@ -44,9 +45,9 @@ def _build_symbol_map() -> dict[str, str]:
     if _SYMBOL_MAP is not None and (_time.time() - _SYMBOL_MAP_TS) < _SYMBOL_MAP_TTL:
         return _SYMBOL_MAP
 
-    query = """
+    query = f"""
         SELECT symbol, MAX(timestamp) as latest
-        FROM ohlcv_1m
+        FROM {VIEW_OHLCV_1M}
         GROUP BY symbol
         ORDER BY latest DESC
     """
@@ -84,9 +85,13 @@ def _resolve_symbol(market: str) -> str:
 def fetch_bars(
     symbol: str,
     days: int = 30,
-    table: str = "ohlcv_1m",
+    table: str | None = None,
 ) -> list[dict]:
-    """Fetch OHLCV bars from TimescaleDB as dicts (for REST API)."""
+    """Fetch OHLCV bars from TimescaleDB as dicts (for REST API).
+
+    Always reads from VIEW_OHLCV_1M unless an explicit override table is given.
+    """
+    table = table or VIEW_OHLCV_1M
     end = datetime.now(timezone.utc)
     start = end - timedelta(days=days)
 
@@ -193,11 +198,11 @@ def aggregate_bars(bars: list[OHLCVBar], timeframe: str) -> list[OHLCVBar]:
 
 def fetch_available_symbols() -> list[dict]:
     """Fetch distinct symbols from the DB, grouped by root."""
-    query = """
+    query = f"""
         SELECT symbol, COUNT(*) as bar_count,
                MIN(timestamp) as earliest,
                MAX(timestamp) as latest
-        FROM ohlcv_1m
+        FROM {VIEW_OHLCV_1M}
         GROUP BY symbol
         ORDER BY bar_count DESC
     """

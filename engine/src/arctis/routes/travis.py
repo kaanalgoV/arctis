@@ -1,173 +1,293 @@
 """Travis MCP integration route.
 
-Connects to the Travis MCP tool (mcp__travis__ask_about_videos,
-mcp__travis__search_videos) to provide contextual trading education.
-Falls back to context-aware analysis summary when MCP is unavailable.
+Endpoints:
+  POST /api/travis/ask          — context-aware question answering
+  POST /api/travis/search       — knowledge base search
+  GET  /api/travis/checklist    — session checklist
+
+All endpoints use TravisMCPClient which:
+  1. Checks in-memory cache (5 min TTL)
+  2. Tries real MCP tools (TODO — see services/travis_mcp.py)
+  3. Falls back to local analysis engine
 """
 
-import os
-import json
 import logging
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 from arctis.db import fetch_bars_as_models
-from arctis.analysis.sessions import classify_session, get_session_stats
+from arctis.analysis.sessions import classify_session
 from arctis.analysis.confluence import calculate_confluence
 from arctis.analysis.bias_state import calculate_bias_state
 from arctis.analysis.structure import detect_swings, classify_trend
+from arctis.analysis.signals import detect_signals
+from arctis.analysis.vwap import calculate_vwap
+from arctis.analysis.volume_profile import build_volume_profile
+from arctis.services.travis_mcp import TravisContext, TravisResponse, get_travis_client
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api", tags=["travis"])
+router = APIRouter(prefix="/api/travis", tags=["travis"])
 
 
-def _build_market_context(market: str = "NQ", timeframe: str = "1min") -> dict:
-    """Build current market context from analysis modules."""
+# ---------------------------------------------------------------------------
+# Context builder
+# ---------------------------------------------------------------------------
+
+
+def _build_travis_context(
+    question: str,
+    market: str = "NQ",
+    timeframe: str = "1min",
+    mode: str = "live",
+) -> TravisContext:
+    """Fetch live analysis data and package it into a TravisContext."""
     try:
         bars = fetch_bars_as_models(market=market, days=5, timeframe=timeframe)
-        if not bars:
-            return {"error": "No market data available"}
+    except Exception as exc:
+        logger.warning("Could not fetch bars for Travis context: %s", exc)
+        bars = []
 
-        last_price = bars[-1].close
-        ref_ts = bars[-1].timestamp
+    # --- Defaults ---
+    session_label = "unknown"
+    bias_direction = "neutral"
+    bias_confidence = 0.0
+    structure_summary = "unknown"
+    recent_signals: list[str] = []
+    visible_levels: list[str] = []
+    active_setup_summary = ""
+    resolved_symbol = market
 
-        # Session
+    if bars:
+        last = bars[-1]
+        price = last.close
+
         try:
-            current_session = classify_session(ref_ts).value
+            session_label = classify_session(last.timestamp).value
         except Exception:
-            current_session = "unknown"
+            pass
 
-        # Confluence
         try:
-            confluence = calculate_confluence(bars)
-            score = confluence.score
-            direction = confluence.direction
-            confidence = confluence.confidence
+            conf = calculate_confluence(bars)
+            if conf.direction and conf.direction != "neutral":
+                bias_direction = conf.direction
+            bias_confidence = min(abs(conf.score) / 10.0, 1.0)
         except Exception:
-            score, direction, confidence = 0, "neutral", "unknown"
+            pass
 
-        # Bias
         try:
-            bias = calculate_bias_state(bars)
-            bias_state = bias.get("state", "neutral") if isinstance(bias, dict) else str(bias)
+            br = calculate_bias_state(bars)
+            if isinstance(br, dict):
+                raw_bias = br.get("state", "neutral")
+                raw_score = br.get("score", 0)
+                if "long" in raw_bias.lower():
+                    bias_direction = "long"
+                elif "short" in raw_bias.lower():
+                    bias_direction = "short"
+                bias_confidence = min(abs(raw_score) / 10.0, 1.0)
         except Exception:
-            bias_state = "neutral"
+            pass
 
-        # Structure
         try:
             swings = detect_swings(bars)
-            trend_state = classify_trend(swings)
-            trend = trend_state.value if hasattr(trend_state, 'value') else str(trend_state)
+            trend = classify_trend(swings)
+            trend_str = trend.value if hasattr(trend, "value") else str(trend)
+            structure_summary = trend_str
         except Exception:
-            trend = "unknown"
+            pass
 
-        return {
-            "market": market,
-            "last_price": last_price,
-            "current_session": current_session,
-            "confluence_score": score,
-            "direction": direction,
-            "confidence": confidence,
-            "bias_state": bias_state,
-            "trend": trend,
-            "bar_count": len(bars),
-            "timeframe": timeframe,
-        }
-    except Exception as e:
-        logger.warning(f"Failed to build market context: {e}")
-        return {"error": str(e)}
+        try:
+            sigs = detect_signals(bars)
+            recent_signals = [
+                f"{s.direction.upper()} {s.signal_type} E:{s.entry_price:.0f} SL:{s.stop_price:.0f}"
+                for s in sigs[-3:]
+            ]
+            if sigs:
+                top = sigs[-1]
+                active_setup_summary = f"{top.direction} {top.signal_type.replace('_', ' ')}"
+        except Exception:
+            pass
 
+        try:
+            vd = calculate_vwap(bars)
+            vwap = vd[-1]["vwap"] if vd else price
+            visible_levels.append(f"VWAP {vwap:,.2f}")
+        except Exception:
+            pass
 
-def _generate_analysis_response(question: str, context: dict) -> list[dict]:
-    """Generate contextual analysis response based on current market state."""
-    price = context.get("last_price", 0)
-    session = context.get("current_session", "unknown")
-    score = context.get("confluence_score", 0)
-    direction = context.get("direction", "neutral")
-    bias = context.get("bias_state", "neutral")
-    trend = context.get("trend", "unknown")
-    market = context.get("market", "NQ")
+        try:
+            vp = build_volume_profile(bars)
+            visible_levels.append(f"POC {vp.poc:,.2f}")
+            visible_levels.append(f"VAH {vp.vah:,.2f}")
+            visible_levels.append(f"VAL {vp.val:,.2f}")
+        except Exception:
+            pass
 
-    results = []
-
-    # Market Overview (always include)
-    results.append({
-        "title": f"{market} Market Analysis",
-        "content": (
-            f"Current price: {price:,.2f}. "
-            f"Session: {session}. "
-            f"Trend: {trend}. "
-            f"Confluence score: {score:+d} ({direction}). "
-            f"Bias: {bias}."
-        ),
-    })
-
-    # Contextual advice based on bias
-    if "long" in bias.lower():
-        results.append({
-            "title": "Long Bias Active",
-            "content": (
-                f"The market shows {bias} bias. Look for pullbacks to VWAP or "
-                f"support levels as long entry opportunities. "
-                f"Confluence score {score:+d} {'supports' if score > 3 else 'weakly supports'} this direction. "
-                f"Avoid counter-trend shorts until bias flips."
-            ),
-        })
-    elif "short" in bias.lower():
-        results.append({
-            "title": "Short Bias Active",
-            "content": (
-                f"The market shows {bias} bias. Look for rallies to VWAP or "
-                f"resistance levels as short entry opportunities. "
-                f"Confluence score {score:+d} {'supports' if score < -3 else 'weakly supports'} this direction."
-            ),
-        })
-    else:
-        results.append({
-            "title": "Neutral / Range Conditions",
-            "content": (
-                f"Bias is {bias} — market is in balance. "
-                f"Trade edges of the range (VA High / VA Low) or wait for a directional break. "
-                f"Confluence score {score:+d} suggests no strong conviction yet."
-            ),
-        })
-
-    # Session-specific advice
-    if session in ("pre_market", "Pre-Mkt"):
-        results.append({
-            "title": "Pre-Market Session",
-            "content": "Pre-market action is often choppy. Wait for RTH open for cleaner setups.",
-        })
-    elif session in ("ny_open", "NY Open"):
-        results.append({
-            "title": "NY Open — High Opportunity",
-            "content": (
-                "Opening Range is forming. Watch for ORB breakout or IB extension. "
-                "First 15 minutes set the tone. Volume confirmation is critical."
-            ),
-        })
-
-    return results
+    return TravisContext(
+        market_root=market,
+        resolved_symbol=resolved_symbol,
+        timeframe=timeframe,
+        session_label=session_label,
+        bias_direction=bias_direction,
+        bias_confidence=bias_confidence,
+        structure_summary=structure_summary,
+        active_setup_summary=active_setup_summary,
+        recent_signals=recent_signals,
+        visible_levels=visible_levels,
+        mode=mode,
+        user_query=question,
+    )
 
 
-@router.post("/travis/ask")
+def _response_to_dict(resp: TravisResponse) -> dict:
+    """Serialize a TravisResponse to a JSON-safe dict."""
+    return {
+        "kind": resp.kind,
+        "title": resp.title,
+        "summary": resp.summary,
+        "confidence": round(resp.confidence, 2),
+        "why_now": resp.why_now,
+        "source": resp.source,
+        "data": resp.data or {},
+    }
+
+
+# ---------------------------------------------------------------------------
+# Endpoints
+# ---------------------------------------------------------------------------
+
+
+@router.post("/ask")
 async def ask_travis(body: dict) -> dict:
-    """Answer trading questions with current market context.
+    """Answer a trading question with full market context.
 
-    The endpoint fetches live market data and analysis to provide
-    context-aware responses about what the market is doing.
+    Request body:
+      question      string   the user's question
+      market        string   market root, e.g. "NQ" (default "NQ")
+      timeframe     string   e.g. "1min" (default "1min")
+      mode          string   "live" | "replay" (default "live")
+
+    Response:
+      question      string
+      response      TravisResponse (structured)
+      context       dict with raw analysis values
     """
     question: str = body.get("question", "")
     market: str = body.get("market", "NQ")
     timeframe: str = body.get("timeframe", "1min")
+    mode: str = body.get("mode", "live")
 
-    # Build current market context
-    context = _build_market_context(market, timeframe)
+    context = _build_travis_context(question, market, timeframe, mode)
+    client = get_travis_client()
 
-    # Generate contextual response
-    results = _generate_analysis_response(question, context)
+    try:
+        resp = await client.ask(context)
+    except Exception as exc:
+        logger.exception("TravisMCPClient.ask failed: %s", exc)
+        resp = TravisResponse(
+            kind="explanation",
+            title="Fehler",
+            summary="Travis konnte keine Antwort generieren.",
+            confidence=0.0,
+            why_now="Interner Fehler.",
+            source="local_fallback",
+        )
 
     return {
         "question": question,
-        "results": results,
-        "context": context,
+        "response": _response_to_dict(resp),
+        # Legacy "results" field for backward compatibility with existing
+        # TravisPanel/ArctisPanel that reads resp.results as a list.
+        "results": [
+            {"title": resp.title, "content": resp.summary, "type": "status"}
+        ],
+        "context": {
+            "market": context.market_root,
+            "symbol": context.resolved_symbol,
+            "session": context.session_label,
+            "bias": context.bias_direction,
+            "bias_confidence": context.bias_confidence,
+            "structure": context.structure_summary,
+            "levels": context.visible_levels,
+            "mode": context.mode,
+        },
+    }
+
+
+@router.post("/search")
+async def search_travis(body: dict) -> dict:
+    """Search Travis knowledge base.
+
+    Request body:
+      query         string   search query
+      market        string   market root (default "NQ")
+      timeframe     string   (default "1min")
+
+    Response:
+      query         string
+      results       list[TravisResponse]
+    """
+    query: str = body.get("query", "")
+    market: str = body.get("market", "NQ")
+    timeframe: str = body.get("timeframe", "1min")
+
+    context = _build_travis_context(query, market, timeframe)
+    client = get_travis_client()
+
+    try:
+        results = await client.search(query, context)
+    except Exception as exc:
+        logger.exception("TravisMCPClient.search failed: %s", exc)
+        results = []
+
+    return {
+        "query": query,
+        "results": [_response_to_dict(r) for r in results],
+        "count": len(results),
+    }
+
+
+@router.get("/checklist")
+async def get_checklist(
+    session: str = Query(default="", description="Session name, e.g. 'NY Open'"),
+    market: str = Query(default="NQ"),
+    timeframe: str = Query(default="1min"),
+) -> dict:
+    """Return a structured checklist for the given session.
+
+    Query params:
+      session       string   e.g. "NY Open", "London", "Pre-Market"
+      market        string   (default "NQ")
+      timeframe     string   (default "1min")
+
+    Response:
+      session       string
+      checklist     TravisResponse (kind="checklist")
+    """
+    context = _build_travis_context(
+        question=f"checklist {session}",
+        market=market,
+        timeframe=timeframe,
+    )
+
+    # Override session if explicitly passed
+    if session:
+        context.session_label = session
+
+    client = get_travis_client()
+
+    try:
+        resp = await client.get_session_checklist(session or context.session_label, context)
+    except Exception as exc:
+        logger.exception("TravisMCPClient.get_session_checklist failed: %s", exc)
+        resp = TravisResponse(
+            kind="checklist",
+            title="Checklist nicht verfuegbar",
+            summary="Konnte keine Checklist laden.",
+            confidence=0.0,
+            why_now="Fehler beim Laden.",
+            source="local_fallback",
+        )
+
+    return {
+        "session": session or context.session_label,
+        "checklist": _response_to_dict(resp),
     }

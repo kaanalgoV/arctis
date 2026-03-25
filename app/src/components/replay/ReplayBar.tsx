@@ -31,7 +31,7 @@ export interface ReplayBarProps {
 
 // ── Speed options ─────────────────────────────────────────────────────────────
 
-const SPEED_OPTIONS = [1, 5, 10] as const
+const SPEED_OPTIONS = [0.5, 1, 5, 10] as const
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
@@ -97,32 +97,38 @@ function ProgressTrack({ progress, onSeek }: ProgressTrackProps) {
       ref={trackRef}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
-      className="relative flex-1 h-[3px] rounded-full bg-white/[0.06] cursor-pointer group mx-2"
+      className="relative flex-1 cursor-pointer group mx-2"
+      style={{ height: 20, display: 'flex', alignItems: 'center' }}
       role="slider"
       aria-valuemin={0}
       aria-valuemax={100}
       aria-valuenow={Math.round(fillPct)}
       aria-label="Replay position"
     >
-      {/* Filled portion — ice-blue gradient */}
       <div
-        className="absolute inset-y-0 left-0 rounded-full"
-        style={{
-          width: `${fillPct}%`,
-          background: 'linear-gradient(90deg, #3a9fd8 0%, #5CB8F0 100%)',
-        }}
-      />
-      {/* Draggable thumb */}
-      <div
-        className={cn(
-          'absolute top-1/2 -translate-y-1/2 -translate-x-1/2',
-          'w-2.5 h-2.5 rounded-full',
-          'bg-[#5CB8F0] shadow-md',
-          'opacity-0 group-hover:opacity-100 transition-opacity duration-100',
-          'pointer-events-none',
-        )}
-        style={{ left: `${fillPct}%` }}
-      />
+        className="w-full h-[3px] group-hover:h-[5px] rounded-full transition-all duration-100"
+        style={{ background: 'rgba(255,255,255,0.06)' }}
+      >
+        {/* Filled portion — ice-blue gradient */}
+        <div
+          className="absolute inset-y-0 left-0 rounded-full"
+          style={{
+            width: `${fillPct}%`,
+            background: 'linear-gradient(90deg, var(--color-accent-dark) 0%, var(--color-accent) 100%)',
+          }}
+        />
+        {/* Draggable thumb */}
+        <div
+          className={cn(
+            'absolute top-1/2 -translate-y-1/2 -translate-x-1/2',
+            'w-2.5 h-2.5 rounded-full',
+            'shadow-md',
+            'opacity-0 group-hover:opacity-100 transition-opacity duration-100',
+            'pointer-events-none',
+          )}
+          style={{ left: `${fillPct}%`, backgroundColor: 'var(--color-accent)' }}
+        />
+      </div>
     </div>
   )
 }
@@ -163,16 +169,24 @@ export function ReplayBar({
         <TransportButton onClick={() => onSeek?.(Math.max(0, progress - 5))} label="Step back">
           <ChevronLeft size={11} strokeWidth={1.75} />
         </TransportButton>
-        <TransportButton
+        <button
           onClick={isPlaying ? () => onPause?.() : () => onPlay?.()}
-          label={isPlaying ? 'Pause' : 'Play'}
+          aria-label={isPlaying ? 'Pause' : 'Play'}
+          className={cn(
+            'flex items-center justify-center w-8 h-8 rounded',
+            'transition-colors duration-100',
+            'outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent)]',
+            isPlaying
+              ? 'bg-[var(--color-accent)]/15 text-[var(--color-accent)]'
+              : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] hover:bg-white/[0.04]',
+          )}
         >
           {isPlaying ? (
             <Pause size={11} strokeWidth={1.75} />
           ) : (
             <Play size={11} strokeWidth={1.75} />
           )}
-        </TransportButton>
+        </button>
         <TransportButton onClick={() => onSeek?.(Math.min(100, progress + 5))} label="Step forward">
           <ChevronRight size={11} strokeWidth={1.75} />
         </TransportButton>
@@ -200,8 +214,8 @@ export function ReplayBar({
         className={cn(
           'px-2 py-0.5 text-[10px] font-mono rounded transition-colors cursor-pointer shrink-0',
           proberunMode
-            ? 'bg-[#5CB8F0] text-[#0A0D12] font-semibold'
-            : 'bg-[#21262D] text-[#8B949E] hover:text-[#E6EDF3]',
+            ? 'bg-[var(--color-accent)] text-[var(--color-surface-base)] font-semibold'
+            : 'bg-[var(--color-surface-raised)] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]',
         )}
       >
         Proberun
@@ -222,11 +236,11 @@ export function ReplayBar({
               'transition-colors duration-100',
               'outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent)]',
               speed === s
-                ? 'bg-[#5CB8F0]/15 text-[#5CB8F0]'
+                ? 'bg-[var(--color-accent)]/15 text-[var(--color-accent)]'
                 : 'text-[var(--color-text-muted)] hover:bg-white/[0.04] hover:text-[var(--color-text-secondary)]',
             )}
           >
-            {s}x
+            {s === 0.5 ? '½x' : `${s}x`}
           </button>
         ))}
       </div>

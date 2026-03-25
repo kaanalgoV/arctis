@@ -7,24 +7,24 @@ const LABELS: Record<string, string> = {
 
 export function SetupAnnotation({ signal, onClose }: { signal: TradeSignal; onClose: () => void }) {
   const isLong = signal.direction === 'long'
-  const color = isLong ? '#22C55E' : '#EF4444'
+  const color = isLong ? 'var(--color-profit)' : 'var(--color-loss)'
   return (
-    <div className="absolute top-2 right-2 z-50 bg-[#161B22] border border-[#21262D] rounded-md p-3 w-52 font-mono text-[11px] shadow-xl">
+    <div className="absolute top-2 right-2 z-50 bg-[--color-surface-secondary] border border-[--color-border] rounded-md p-3 w-52 font-mono text-[11px] shadow-xl">
       <div className="flex justify-between items-center mb-2">
         <span className="font-semibold text-[13px]" style={{ color }}>
           {LABELS[signal.signal_type] || signal.signal_type}
         </span>
-        <button onClick={onClose} className="text-[#484F58] hover:text-[#8B949E] cursor-pointer">x</button>
+        <button onClick={onClose} className="text-[--color-text-inactive] hover:text-[--color-text-muted] cursor-pointer">x</button>
       </div>
-      <div className="space-y-1 text-[#8B949E]">
+      <div className="space-y-1 text-[--color-text-muted]">
         <Row label="Direction" value={signal.direction.toUpperCase()} color={color} />
-        <Row label="Entry" value={signal.entry_price.toFixed(2)} color="#E6EDF3" />
-        <Row label="Stop" value={signal.stop_price.toFixed(2)} color="#EF4444" />
-        <Row label="Target" value={signal.target_price.toFixed(2)} color="#22C55E" />
-        <Row label="R:R" value={signal.risk_reward.toFixed(1)} color="#5CB8F0" />
+        <Row label="Entry" value={signal.entry_price.toFixed(2)} color="var(--color-text-primary)" />
+        <Row label="Stop" value={signal.stop_price.toFixed(2)} color="var(--color-loss)" />
+        <Row label="Target" value={signal.target_price.toFixed(2)} color="var(--color-profit)" />
+        <Row label="R:R" value={signal.risk_reward.toFixed(1)} color="var(--color-accent)" />
         <Row label="Confidence" value={signal.confidence} />
       </div>
-      <div className="mt-2 pt-2 border-t border-[#21262D] text-[10px] text-[#484F58]">{signal.reason}</div>
+      <div className="mt-2 pt-2 border-t border-[--color-border] text-[10px] text-[--color-text-inactive]">{signal.reason}</div>
     </div>
   )
 }

@@ -1,3 +1,4 @@
+import { motion } from 'framer-motion'
 import { Skeleton } from '@/components/ui/Skeleton'
 
 interface ConfluenceSignal {
@@ -47,16 +48,16 @@ function directionColor(dir: string): string {
 
 function confidenceColor(confidence: string): string {
   const c = confidence.toLowerCase()
-  if (c === 'high') return 'var(--color-profit)'
-  if (c === 'medium' || c === 'med') return '#F0A500'
-  return 'var(--color-loss)'
+  if (c === 'high') return 'var(--color-accent)'
+  if (c === 'medium' || c === 'med') return 'var(--color-warning)'
+  return 'var(--color-text-muted)'
 }
 
 function confidenceBg(confidence: string): string {
   const c = confidence.toLowerCase()
-  if (c === 'high') return 'rgba(34,197,94,0.10)'
-  if (c === 'medium' || c === 'med') return 'rgba(240,165,0,0.10)'
-  return 'rgba(239,68,68,0.10)'
+  if (c === 'high') return 'var(--color-accent-muted)'
+  if (c === 'medium' || c === 'med') return 'var(--color-warning-muted)'
+  return 'var(--color-surface-raised)'
 }
 
 // ── Loading Skeleton ───────────────────────────────────────────────────────────
@@ -114,7 +115,7 @@ function ScoreHeader({
           style={{
             fontSize: 28,
             fontFamily: 'var(--font-mono)',
-            fontWeight: 700,
+            fontWeight: 800,
             color,
           }}
         >
@@ -168,17 +169,17 @@ function GaugeBar({ score, max_score }: { score: number; max_score: number }) {
         position: 'relative',
       }}
     >
-      <div
+      <motion.div
+        animate={{ width: `${ratio * 100}%` }}
+        transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
         style={{
           position: 'absolute',
           left: 0,
           top: 0,
           bottom: 0,
-          width: `${ratio * 100}%`,
           background: fillColor,
           borderRadius: 4,
           opacity: 0.75,
-          transition: 'width 0.4s ease',
         }}
       />
     </div>
@@ -232,30 +233,27 @@ function SignalBreakdown({ signals }: { signals: ConfluenceSignal[] }) {
 
   return (
     <div
-      className="flex flex-col rounded-[var(--radius-sm)] overflow-hidden"
-      style={{
-        border: '1px solid var(--color-border-subtle)',
-      }}
+      className="flex flex-col gap-0.5"
     >
       {signals.map((sig, i) => {
-        const isEven = i % 2 === 0
         const color = strengthColor(sig.strength)
         const sign = sig.strength > 0 ? '+' : sig.strength < 0 ? '' : ''
+        const iconColor = sig.strength > 0
+          ? 'color-mix(in srgb, var(--color-profit) 60%, transparent)'
+          : sig.strength < 0
+            ? 'color-mix(in srgb, var(--color-loss) 60%, transparent)'
+            : 'var(--color-text-muted)'
 
         return (
           <div
             key={sig.name}
-            className="flex items-center justify-between px-2.5 py-1.5"
-            style={{
-              background: isEven
-                ? 'var(--color-surface-raised)'
-                : 'var(--color-surface-primary)',
-            }}
+            className="flex items-center justify-between px-2 py-1.5 rounded-[var(--radius-xs)] transition-colors duration-75 hover:bg-[var(--color-surface-raised)]"
+            style={{ background: 'transparent' }}
           >
             <span
               style={{
                 fontSize: 10,
-                fontFamily: 'var(--font-mono)',
+                fontFamily: 'var(--font-sans)',
                 color: 'var(--color-text-secondary)',
                 letterSpacing: '0.02em',
               }}
@@ -267,13 +265,13 @@ function SignalBreakdown({ signals }: { signals: ConfluenceSignal[] }) {
               <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
                 {sig.strength > 0 ? (
                   <>
-                    <line x1="4" y1="1" x2="4" y2="7" stroke={color} strokeWidth="1.2" strokeLinecap="round" />
-                    <line x1="1" y1="4" x2="7" y2="4" stroke={color} strokeWidth="1.2" strokeLinecap="round" />
+                    <line x1="4" y1="1" x2="4" y2="7" stroke={iconColor} strokeWidth="1.2" strokeLinecap="round" />
+                    <line x1="1" y1="4" x2="7" y2="4" stroke={iconColor} strokeWidth="1.2" strokeLinecap="round" />
                   </>
                 ) : sig.strength < 0 ? (
-                  <line x1="1" y1="4" x2="7" y2="4" stroke={color} strokeWidth="1.2" strokeLinecap="round" />
+                  <line x1="1" y1="4" x2="7" y2="4" stroke={iconColor} strokeWidth="1.2" strokeLinecap="round" />
                 ) : (
-                  <circle cx="4" cy="4" r="1.5" fill={color} />
+                  <circle cx="4" cy="4" r="1.5" fill={iconColor} />
                 )}
               </svg>
               <span

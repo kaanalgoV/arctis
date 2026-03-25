@@ -1,4 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion'
+import { useEffect, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { transitions } from '@/lib/motion'
 
@@ -103,7 +104,7 @@ function BiasPanelSkeleton() {
 function Label({ children }: { children: React.ReactNode }) {
   return (
     <span
-      className="text-[9px] font-semibold tracking-[0.14em] uppercase"
+      className="font-sans text-[9px] font-semibold tracking-[0.14em] uppercase"
       style={{ color: 'var(--color-text-muted)' }}
     >
       {children}
@@ -196,20 +197,20 @@ function BiasHeader({ state, score }: { state: BiasData['bias_state']; score: nu
 
   return (
     <div
-      className="rounded-lg overflow-hidden"
-      style={{ border: `1px solid ${cfg.headerBorder}`, background: cfg.headerBg }}
+      className="rounded-[var(--radius-md)] overflow-hidden"
+      style={{ border: '1px solid var(--color-border-subtle)', background: 'var(--color-surface-raised)' }}
     >
       {/* Top row: direction + score */}
       <div className="flex items-start justify-between px-3 pt-2.5 pb-1.5">
         <div className="flex flex-col gap-0.5">
           <span
-            className="text-[9px] font-semibold tracking-[0.16em] uppercase"
+            className="text-[9px] font-medium tracking-[0.12em] uppercase"
             style={{ color: 'var(--color-text-muted)' }}
           >
             Daily Bias
           </span>
           <span
-            className="font-mono text-[22px] font-black leading-none tracking-wide"
+            className="font-mono text-[20px] font-semibold leading-none tracking-wide"
             style={{ color: cfg.labelColor }}
           >
             {cfg.label}
@@ -234,8 +235,8 @@ function BiasHeader({ state, score }: { state: BiasData['bias_state']; score: nu
             Score
           </span>
           <span
-            className="font-mono text-[26px] font-black tabular-nums leading-none"
-            style={{ color: cfg.scoreColor }}
+            className="font-mono text-[32px] font-extrabold tabular-nums leading-none opacity-90"
+            style={{ color: cfg.scoreColor, letterSpacing: '-0.02em' }}
           >
             {score > 0 ? '+' : ''}{score}
           </span>
@@ -275,16 +276,16 @@ function BiasHeader({ state, score }: { state: BiasData['bias_state']; score: nu
 
           {/* Position marker triangle */}
           <motion.div
-            className="absolute -top-[4px] -translate-x-1/2"
+            className="absolute -top-[5px] -translate-x-1/2"
             initial={{ left: '50%' }}
             animate={{ left: `${markerPct}%` }}
             transition={transitions.easeOutSlow}
             style={{ zIndex: 3 }}
           >
-            <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
               <polygon
-                points="4,7 0,0 8,0"
-                fill={cfg.scoreColor}
+                points="5,9 0,0 10,0"
+                fill={variant === 'range' ? 'var(--color-accent)' : cfg.scoreColor}
                 opacity={0.9}
               />
             </svg>
@@ -314,6 +315,8 @@ function ComponentsGrid({ components }: { components: Record<string, number> }) 
   const entries = Object.entries(components)
   if (entries.length === 0) return null
 
+  const maxVal = Math.max(...entries.map(([, v]) => Math.abs(v)), 1)
+
   return (
     <div className="flex flex-col gap-1.5">
       <Label>Signal Components</Label>
@@ -327,9 +330,7 @@ function ComponentsGrid({ components }: { components: Record<string, number> }) 
               ? 'var(--color-loss)'
               : 'var(--color-text-muted)'
 
-          // Bar fill: max value assumed ±3 for components
-          const maxVal = 3
-          const barPct = Math.min(Math.abs(val) / maxVal, 1) * 100
+          const barPct = (Math.abs(val) / maxVal) * 100
 
           return (
             <div key={key}>
@@ -345,7 +346,7 @@ function ComponentsGrid({ components }: { components: Record<string, number> }) 
                   className="absolute inset-y-0 rounded-sm transition-all duration-300"
                   style={{
                     [isPositive ? 'left' : 'right']: 0,
-                    width: `${barPct * 0.6}%`,
+                    width: `${barPct}%`,
                     background: isPositive
                       ? 'rgba(0,135,87,0.07)'
                       : isNegative
@@ -354,7 +355,7 @@ function ComponentsGrid({ components }: { components: Record<string, number> }) 
                   }}
                 />
                 <span
-                  className="text-[11px] relative z-10"
+                  className="font-sans text-[11px] relative z-10"
                   style={{ color: 'var(--color-text-secondary)' }}
                 >
                   {componentLabel(key)}
@@ -383,16 +384,15 @@ function SwitchLevel({ level, type, confidence }: {
 }) {
   const confColor =
     confidence === 'high'
-      ? 'var(--color-profit)'
+      ? 'var(--color-accent)'
       : confidence === 'low'
-        ? 'var(--color-loss)'
+        ? 'var(--color-text-muted)'
         : 'var(--color-warning)'
 
   return (
     <div
       className="flex flex-col gap-0 rounded-md overflow-hidden"
       style={{
-        borderLeft: '2px solid var(--color-accent)',
         border: '1px solid var(--color-border-subtle)',
         borderLeftWidth: 2,
         borderLeftColor: 'var(--color-accent)',
@@ -593,7 +593,7 @@ function NakedPocs({ pocs }: { pocs: BiasData['naked_pocs'] }) {
                   </span>
                   <span
                     className="font-mono text-[9px] font-medium"
-                    style={{ color: isAbove ? 'var(--color-loss)' : 'var(--color-profit)' }}
+                    style={{ color: isAbove ? 'var(--color-warning)' : 'var(--color-accent)' }}
                   >
                     {isAbove ? '+' : ''}{poc.distance.toFixed(1)}
                   </span>
@@ -797,14 +797,142 @@ function EmptyState() {
   )
 }
 
+// ── Staleness Dot ─────────────────────────────────────────────────────────────
+
+function StalenessDot({ lastUpdateTs }: { lastUpdateTs?: number | null }) {
+  const [age, setAge] = useState(0)
+
+  useEffect(() => {
+    if (!lastUpdateTs) return
+    const tick = () => setAge(Math.floor((Date.now() - lastUpdateTs) / 1000))
+    tick()
+    const id = setInterval(tick, 1000)
+    return () => clearInterval(id)
+  }, [lastUpdateTs])
+
+  if (!lastUpdateTs) return null
+
+  const color =
+    age < 5
+      ? 'var(--color-profit)'
+      : age < 30
+        ? 'var(--color-warning)'
+        : 'var(--color-loss)'
+
+  const shadow =
+    age < 5
+      ? '0 0 5px var(--color-profit)'
+      : age < 30
+        ? '0 0 4px var(--color-warning)'
+        : 'none'
+
+  const label = age < 60 ? `${age}s ago` : `${Math.floor(age / 60)}m ago`
+
+  return (
+    <div className="flex items-center gap-1 ml-auto" title={`Last updated ${label}`}>
+      <div
+        className="w-1.5 h-1.5 rounded-full"
+        style={{ background: color, boxShadow: shadow }}
+      />
+      <span className="font-mono text-[8px]" style={{ color: 'var(--color-text-muted)' }}>
+        {label}
+      </span>
+    </div>
+  )
+}
+
+// ── Live Price Context Strip ───────────────────────────────────────────────────
+
+interface PriceContextProps {
+  currentPrice?: number | null
+  vwapLevel?: number | null
+  switchLevel?: number | null
+  biasVariant: BiasVariant
+}
+
+function PriceContextStrip({ currentPrice, vwapLevel, switchLevel, biasVariant }: PriceContextProps) {
+  const cfg = VARIANT_CONFIG[biasVariant]
+  const prevPrice = useRef<number | null>(null)
+  const [direction, setDirection] = useState<'up' | 'down' | null>(null)
+
+  useEffect(() => {
+    if (currentPrice != null && prevPrice.current != null) {
+      if (currentPrice > prevPrice.current) setDirection('up')
+      else if (currentPrice < prevPrice.current) setDirection('down')
+    }
+    prevPrice.current = currentPrice ?? null
+  }, [currentPrice])
+
+  if (!currentPrice) return null
+
+  const vwapDiff = vwapLevel != null ? currentPrice - vwapLevel : null
+  const invalidationLevel = switchLevel
+
+  return (
+    <div
+      className="rounded-[var(--radius-md)] px-3 py-2 flex flex-col gap-1.5"
+      style={{
+        background: 'var(--color-surface-secondary)',
+        border: '1px solid var(--color-border-subtle)',
+      }}
+    >
+      {/* Price row */}
+      <div className="flex items-baseline gap-2">
+        <span
+          className="font-mono text-[22px] font-bold tabular-nums leading-none"
+          style={{ color: 'var(--color-text-primary)', letterSpacing: '-0.02em' }}
+        >
+          {fmtPrice(currentPrice)}
+        </span>
+        {direction && (
+          <span
+            className="font-mono text-[14px] leading-none"
+            style={{ color: direction === 'up' ? 'var(--color-profit)' : 'var(--color-loss)' }}
+          >
+            {direction === 'up' ? '▲' : '▼'}
+          </span>
+        )}
+      </div>
+
+      {/* VWAP context */}
+      {vwapDiff != null && (
+        <span
+          className="font-mono text-[10px] tabular-nums"
+          style={{ color: vwapDiff >= 0 ? 'var(--color-profit)' : 'var(--color-loss)' }}
+        >
+          {vwapDiff >= 0 ? '+' : ''}{vwapDiff.toFixed(2)} {vwapDiff >= 0 ? 'above' : 'below'} VWAP
+        </span>
+      )}
+
+      {/* Invalidation level */}
+      {invalidationLevel != null && (
+        <div
+          className="flex items-center gap-1.5 pt-0.5"
+          style={{ borderTop: '1px solid var(--color-border-subtle)' }}
+        >
+          <span className="font-mono text-[8px] uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>
+            Bias invalid below
+          </span>
+          <span className="font-mono text-[10px] font-semibold tabular-nums" style={{ color: cfg.labelColor }}>
+            {fmtPrice(invalidationLevel)}
+          </span>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Main Component ─────────────────────────────────────────────────────────────
 
 interface BiasPanelProps {
   data?: BiasData
   loading?: boolean
+  currentPrice?: number | null
+  vwapLevel?: number | null
+  lastUpdateTs?: number | null
 }
 
-export function BiasPanel({ data, loading = false }: BiasPanelProps) {
+export function BiasPanel({ data, loading = false, currentPrice, vwapLevel, lastUpdateTs }: BiasPanelProps) {
   if (loading) {
     return <BiasPanelSkeleton />
   }
@@ -816,6 +944,8 @@ export function BiasPanel({ data, loading = false }: BiasPanelProps) {
   const components = data.bias_state.components ?? {}
   const hasComponents = Object.keys(components).length > 0
   const hasNakedPocs = data.naked_pocs?.some((p: any) => p.naked)
+  const variant = parseBiasVariant(data.bias_state.state)
+  const switchLevel = data.bias_switch_level?.level ?? null
 
   return (
     <AnimatePresence mode="wait">
@@ -827,6 +957,19 @@ export function BiasPanel({ data, loading = false }: BiasPanelProps) {
         transition={transitions.easeOutSlow}
         className="flex flex-col gap-2.5"
       >
+        {/* 0. Live Price Context (above the bias header) */}
+        {currentPrice != null && (
+          <>
+            <PriceContextStrip
+              currentPrice={currentPrice}
+              vwapLevel={vwapLevel}
+              switchLevel={switchLevel}
+              biasVariant={variant}
+            />
+            <Divider />
+          </>
+        )}
+
         {/* 1. Bias State Header */}
         <BiasHeader state={data.bias_state} score={data.bias_state.score ?? 0} />
 
@@ -898,6 +1041,14 @@ export function BiasPanel({ data, loading = false }: BiasPanelProps) {
           <>
             <Divider />
             <KeyLevelsList levels={data.key_levels} />
+          </>
+        )}
+
+        {/* 9. Staleness indicator */}
+        {lastUpdateTs != null && (
+          <>
+            <Divider />
+            <StalenessDot lastUpdateTs={lastUpdateTs} />
           </>
         )}
       </motion.div>

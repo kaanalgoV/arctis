@@ -1,488 +1,488 @@
 {
   "version": 1,
-  "updatedAt": 1774374685316,
+  "updatedAt": 1774442880299,
   "nodeCount": 70,
   "nodes": {
     "mem-MEMORY-user-profile": {
       "id": "mem-MEMORY-user-profile",
       "category": "core",
-      "confidence": 0.5,
+      "confidence": 0.495,
       "accessCount": 0,
       "createdAt": 1774355481171
     },
     "mem-MEMORY-session-management-v3--stand-2": {
       "id": "mem-MEMORY-session-management-v3--stand-2",
       "category": "core",
-      "confidence": 0.5,
+      "confidence": 0.495,
       "accessCount": 0,
       "createdAt": 1774355481171
     },
     "mem-MEMORY-algorivo-core-project": {
       "id": "mem-MEMORY-algorivo-core-project",
       "category": "core",
-      "confidence": 0.5,
+      "confidence": 0.495,
       "accessCount": 0,
       "createdAt": 1774355481171
     },
     "mem-MEMORY-worktree-architecture--stand-2": {
       "id": "mem-MEMORY-worktree-architecture--stand-2",
       "category": "core",
-      "confidence": 0.5,
+      "confidence": 0.495,
       "accessCount": 0,
       "createdAt": 1774355481171
     },
     "mem-MEMORY-nexus-command-center": {
       "id": "mem-MEMORY-nexus-command-center",
       "category": "core",
-      "confidence": 0.5,
+      "confidence": 0.495,
       "accessCount": 0,
       "createdAt": 1774355481171
     },
     "mem-MEMORY-bias-app": {
       "id": "mem-MEMORY-bias-app",
       "category": "core",
-      "confidence": 0.5,
+      "confidence": 0.495,
       "accessCount": 0,
       "createdAt": 1774355481171
     },
     "mem-MEMORY-development-environment": {
       "id": "mem-MEMORY-development-environment",
       "category": "core",
-      "confidence": 0.5,
+      "confidence": 0.495,
       "accessCount": 0,
       "createdAt": 1774355481171
     },
     "mem-MEMORY-projekt-uebersicht--5-sessions": {
       "id": "mem-MEMORY-projekt-uebersicht--5-sessions",
       "category": "core",
-      "confidence": 0.5,
+      "confidence": 0.495,
       "accessCount": 0,
       "createdAt": 1774355481171
     },
     "mem-MEMORY-strategy-development": {
       "id": "mem-MEMORY-strategy-development",
       "category": "core",
-      "confidence": 0.5,
+      "confidence": 0.495,
       "accessCount": 0,
       "createdAt": 1774355481174
     },
     "mem-MEMORY-openclaw--clawdbot-": {
       "id": "mem-MEMORY-openclaw--clawdbot-",
       "category": "core",
-      "confidence": 0.5,
+      "confidence": 0.495,
       "accessCount": 0,
       "createdAt": 1774355481171
     },
     "mem-MEMORY-rithmic-mobile-heatmap": {
       "id": "mem-MEMORY-rithmic-mobile-heatmap",
       "category": "core",
-      "confidence": 0.5,
+      "confidence": 0.495,
       "accessCount": 0,
       "createdAt": 1774355481171
     },
     "mem-MEMORY-ralph-frontend-renaissance--st": {
       "id": "mem-MEMORY-ralph-frontend-renaissance--st",
       "category": "core",
-      "confidence": 0.5,
+      "confidence": 0.495,
       "accessCount": 0,
       "createdAt": 1774355481171
     },
     "mem-MEMORY-critical--agent-prompt-quality": {
       "id": "mem-MEMORY-critical--agent-prompt-quality",
       "category": "core",
-      "confidence": 0.5,
+      "confidence": 0.495,
       "accessCount": 0,
       "createdAt": 1774355481171
     },
     "mem-MEMORY-code-alpha-swarm-session--stan": {
       "id": "mem-MEMORY-code-alpha-swarm-session--stan",
       "category": "core",
-      "confidence": 0.5,
+      "confidence": 0.495,
       "accessCount": 0,
       "createdAt": 1774355481171
     },
     "mem-MEMORY-arctis-project": {
       "id": "mem-MEMORY-arctis-project",
       "category": "core",
-      "confidence": 0.5,
+      "confidence": 0.495,
       "accessCount": 0,
       "createdAt": 1774355481171
     },
     "mem-MEMORY-skills---plugins": {
       "id": "mem-MEMORY-skills---plugins",
       "category": "core",
-      "confidence": 0.5,
+      "confidence": 0.495,
       "accessCount": 0,
       "createdAt": 1774355481171
     },
     "mem-double-fake-strategy-status--profitable--2026-03-03": {
       "id": "mem-double-fake-strategy-status--profitable--2026-03-03",
       "category": "double-fake-strategy",
-      "confidence": 0.5,
+      "confidence": 0.495,
       "accessCount": 0,
       "createdAt": 1774355481171
     },
     "mem-double-fake-strategy-optimal-parameters--default-in": {
       "id": "mem-double-fake-strategy-optimal-parameters--default-in",
       "category": "double-fake-strategy",
-      "confidence": 0.5,
+      "confidence": 0.495,
       "accessCount": 0,
       "createdAt": 1774355481171
     },
     "mem-double-fake-strategy-best-results--new-binary--jan-": {
       "id": "mem-double-fake-strategy-best-results--new-binary--jan-",
       "category": "double-fake-strategy",
-      "confidence": 0.5,
+      "confidence": 0.495,
       "accessCount": 0,
       "createdAt": 1774355481171
     },
     "mem-double-fake-strategy-key-insights": {
       "id": "mem-double-fake-strategy-key-insights",
       "category": "double-fake-strategy",
-      "confidence": 0.5,
+      "confidence": 0.495,
       "accessCount": 0,
       "createdAt": 1774355481171
     },
     "mem-double-fake-strategy-files": {
       "id": "mem-double-fake-strategy-files",
       "category": "double-fake-strategy",
-      "confidence": 0.5,
+      "confidence": 0.495,
       "accessCount": 0,
       "createdAt": 1774355481171
     },
     "mem-double-fake-strategy-travis-alignment": {
       "id": "mem-double-fake-strategy-travis-alignment",
       "category": "double-fake-strategy",
-      "confidence": 0.5,
+      "confidence": 0.495,
       "accessCount": 0,
       "createdAt": 1774355481171
     },
     "mem-double-fake-strategy-auth-for-api-tests": {
       "id": "mem-double-fake-strategy-auth-for-api-tests",
       "category": "double-fake-strategy",
-      "confidence": 0.5,
+      "confidence": 0.495,
       "accessCount": 0,
       "createdAt": 1774355481171
     },
     "mem-feedback_agent_prompts----": {
       "id": "mem-feedback_agent_prompts----",
       "category": "feedback_agent_prompts",
-      "confidence": 0.5,
+      "confidence": 0.495,
       "accessCount": 0,
       "createdAt": 1774355481172
     },
     "mem-feedback_design_quality----": {
       "id": "mem-feedback_design_quality----",
       "category": "feedback_design_quality",
-      "confidence": 0.5,
+      "confidence": 0.495,
       "accessCount": 0,
       "createdAt": 1774355481172
     },
     "mem-feedback_expo_app_priority----": {
       "id": "mem-feedback_expo_app_priority----",
       "category": "feedback_expo_app_priority",
-      "confidence": 0.5,
+      "confidence": 0.495,
       "accessCount": 0,
       "createdAt": 1774355481172
     },
     "mem-feedback_heatmap_quality----": {
       "id": "mem-feedback_heatmap_quality----",
       "category": "feedback_heatmap_quality",
-      "confidence": 0.5,
+      "confidence": 0.495,
       "accessCount": 0,
       "createdAt": 1774355481172
     },
     "mem-feedback_no_emojis----": {
       "id": "mem-feedback_no_emojis----",
       "category": "feedback_no_emojis",
-      "confidence": 0.5,
+      "confidence": 0.495,
       "accessCount": 0,
       "createdAt": 1774355481172
     },
     "mem-feedback_quality_over_speed----": {
       "id": "mem-feedback_quality_over_speed----",
       "category": "feedback_quality_over_speed",
-      "confidence": 0.5,
+      "confidence": 0.495,
       "accessCount": 0,
       "createdAt": 1774355481173
     },
     "mem-feedback_stop_testing_halfbaked----": {
       "id": "mem-feedback_stop_testing_halfbaked----",
       "category": "feedback_stop_testing_halfbaked",
-      "confidence": 0.5,
+      "confidence": 0.495,
       "accessCount": 0,
       "createdAt": 1774355481173
     },
     "mem-mbo-indicators-context-was-passiert-ist": {
       "id": "mem-mbo-indicators-context-was-passiert-ist",
       "category": "mbo-indicators-context",
-      "confidence": 0.5,
+      "confidence": 0.495,
       "accessCount": 0,
       "createdAt": 1774355481173
     },
     "mem-mbo-indicators-context-was-noch-zu-tun-ist--150-tasks": {
       "id": "mem-mbo-indicators-context-was-noch-zu-tun-ist--150-tasks",
       "category": "mbo-indicators-context",
-      "confidence": 0.5,
+      "confidence": 0.495,
       "accessCount": 0,
       "createdAt": 1774355481173
     },
     "mem-mbo-indicators-context-kern-dateien": {
       "id": "mem-mbo-indicators-context-kern-dateien",
       "category": "mbo-indicators-context",
-      "confidence": 0.5,
+      "confidence": 0.495,
       "accessCount": 0,
       "createdAt": 1774355481173
     },
     "mem-mbo-indicators-context-design-entscheidungen": {
       "id": "mem-mbo-indicators-context-design-entscheidungen",
       "category": "mbo-indicators-context",
-      "confidence": 0.5,
+      "confidence": 0.495,
       "accessCount": 0,
       "createdAt": 1774355481173
     },
     "mem-mbo-indicators-context-fortf-hrungs-command": {
       "id": "mem-mbo-indicators-context-fortf-hrungs-command",
       "category": "mbo-indicators-context",
-      "confidence": 0.5,
+      "confidence": 0.495,
       "accessCount": 0,
       "createdAt": 1774355481173
     },
     "mem-nexus-mega-session-2026-03-17----": {
       "id": "mem-nexus-mega-session-2026-03-17----",
       "category": "nexus-mega-session-2026-03-17",
-      "confidence": 0.5,
+      "confidence": 0.495,
       "accessCount": 0,
       "createdAt": 1774355481173
     },
     "mem-platform-analysis-platform-status-overview": {
       "id": "mem-platform-analysis-platform-status-overview",
       "category": "platform-analysis",
-      "confidence": 0.5,
+      "confidence": 0.495,
       "accessCount": 0,
       "createdAt": 1774355481173
     },
     "mem-platform-analysis-critical-issues": {
       "id": "mem-platform-analysis-critical-issues",
       "category": "platform-analysis",
-      "confidence": 0.5,
+      "confidence": 0.495,
       "accessCount": 0,
       "createdAt": 1774355481173
     },
     "mem-platform-analysis-open-pr": {
       "id": "mem-platform-analysis-open-pr",
       "category": "platform-analysis",
-      "confidence": 0.5,
+      "confidence": 0.495,
       "accessCount": 0,
       "createdAt": 1774355481173
     },
     "mem-platform-analysis-known-todos--backend-": {
       "id": "mem-platform-analysis-known-todos--backend-",
       "category": "platform-analysis",
-      "confidence": 0.5,
+      "confidence": 0.495,
       "accessCount": 0,
       "createdAt": 1774355481173
     },
     "mem-platform-analysis-known-todos--frontend-": {
       "id": "mem-platform-analysis-known-todos--frontend-",
       "category": "platform-analysis",
-      "confidence": 0.5,
+      "confidence": 0.495,
       "accessCount": 0,
       "createdAt": 1774355481173
     },
     "mem-platform-analysis-recent-work--last-30-commits-": {
       "id": "mem-platform-analysis-recent-work--last-30-commits-",
       "category": "platform-analysis",
-      "confidence": 0.5,
+      "confidence": 0.495,
       "accessCount": 0,
       "createdAt": 1774355481173
     },
     "mem-platform-analysis-start-db": {
       "id": "mem-platform-analysis-start-db",
       "category": "platform-analysis",
-      "confidence": 0.5,
+      "confidence": 0.495,
       "accessCount": 0,
       "createdAt": 1774355481173
     },
     "mem-platform-analysis-start-api--local-": {
       "id": "mem-platform-analysis-start-api--local-",
       "category": "platform-analysis",
-      "confidence": 0.5,
+      "confidence": 0.495,
       "accessCount": 0,
       "createdAt": 1774355481173
     },
     "mem-platform-analysis-start-frontend": {
       "id": "mem-platform-analysis-start-frontend",
       "category": "platform-analysis",
-      "confidence": 0.5,
+      "confidence": 0.495,
       "accessCount": 0,
       "createdAt": 1774355481173
     },
     "mem-platform-analysis-start-worker": {
       "id": "mem-platform-analysis-start-worker",
       "category": "platform-analysis",
-      "confidence": 0.5,
+      "confidence": 0.495,
       "accessCount": 0,
       "createdAt": 1774355481173
     },
     "mem-project_arctis----": {
       "id": "mem-project_arctis----",
       "category": "project_arctis",
-      "confidence": 0.5,
+      "confidence": 0.495,
       "accessCount": 0,
       "createdAt": 1774355481173
     },
     "mem-project_ralph_frontend_renaissance----": {
       "id": "mem-project_ralph_frontend_renaissance----",
       "category": "project_ralph_frontend_renaissance",
-      "confidence": 0.5,
+      "confidence": 0.495,
       "accessCount": 0,
       "createdAt": 1774355481173
     },
     "mem-project_ralph_frontend_renaissance-ralph-frontend-renaissance-loo": {
       "id": "mem-project_ralph_frontend_renaissance-ralph-frontend-renaissance-loo",
       "category": "project_ralph_frontend_renaissance",
-      "confidence": 0.5,
+      "confidence": 0.495,
       "accessCount": 0,
       "createdAt": 1774355481173
     },
     "mem-project_rithmic_heatmap----": {
       "id": "mem-project_rithmic_heatmap----",
       "category": "project_rithmic_heatmap",
-      "confidence": 0.5,
+      "confidence": 0.495,
       "accessCount": 0,
       "createdAt": 1774355481174
     },
     "mem-project_rithmic_heatmap-projekt-status--stand-2026-03-": {
       "id": "mem-project_rithmic_heatmap-projekt-status--stand-2026-03-",
       "category": "project_rithmic_heatmap",
-      "confidence": 0.5,
+      "confidence": 0.495,
       "accessCount": 0,
       "createdAt": 1774355481174
     },
     "mem-project_rithmic_heatmap-abgeschlossene-sprints": {
       "id": "mem-project_rithmic_heatmap-abgeschlossene-sprints",
       "category": "project_rithmic_heatmap",
-      "confidence": 0.5,
+      "confidence": 0.495,
       "accessCount": 0,
       "createdAt": 1774355481174
     },
     "mem-project_rithmic_heatmap-technische-eckdaten": {
       "id": "mem-project_rithmic_heatmap-technische-eckdaten",
       "category": "project_rithmic_heatmap",
-      "confidence": 0.5,
+      "confidence": 0.495,
       "accessCount": 0,
       "createdAt": 1774355481174
     },
     "mem-project_rithmic_heatmap-bekannte-offene-punkte": {
       "id": "mem-project_rithmic_heatmap-bekannte-offene-punkte",
       "category": "project_rithmic_heatmap",
-      "confidence": 0.5,
+      "confidence": 0.495,
       "accessCount": 0,
       "createdAt": 1774355481174
     },
     "mem-MEMORY-key-facts": {
       "id": "mem-MEMORY-key-facts",
       "category": "core",
-      "confidence": 0.5,
+      "confidence": 0.495,
       "accessCount": 0,
       "createdAt": 1774355481175
     },
     "mem-traivend-strategy-rules-core-philosophy--kaan-aslan-": {
       "id": "mem-traivend-strategy-rules-core-philosophy--kaan-aslan-",
       "category": "traivend-strategy-rules",
-      "confidence": 0.5,
+      "confidence": 0.495,
       "accessCount": 0,
       "createdAt": 1774355481174
     },
     "mem-traivend-strategy-rules-fakeout-rules": {
       "id": "mem-traivend-strategy-rules-fakeout-rules",
       "category": "traivend-strategy-rules",
-      "confidence": 0.5,
+      "confidence": 0.495,
       "accessCount": 0,
       "createdAt": 1774355481174
     },
     "mem-traivend-strategy-rules-warnsignale-gegen-fakeout----e": {
       "id": "mem-traivend-strategy-rules-warnsignale-gegen-fakeout----e",
       "category": "traivend-strategy-rules",
-      "confidence": 0.5,
+      "confidence": 0.495,
       "accessCount": 0,
       "createdAt": 1774355481174
     },
     "mem-traivend-strategy-rules-trade-frequency--travis-": {
       "id": "mem-traivend-strategy-rules-trade-frequency--travis-",
       "category": "traivend-strategy-rules",
-      "confidence": 0.5,
+      "confidence": 0.495,
       "accessCount": 0,
       "createdAt": 1774355481174
     },
     "mem-traivend-strategy-rules-asia-range": {
       "id": "mem-traivend-strategy-rules-asia-range",
       "category": "traivend-strategy-rules",
-      "confidence": 0.5,
+      "confidence": 0.495,
       "accessCount": 0,
       "createdAt": 1774355481174
     },
     "mem-traivend-strategy-rules-session-zeiten": {
       "id": "mem-traivend-strategy-rules-session-zeiten",
       "category": "traivend-strategy-rules",
-      "confidence": 0.5,
+      "confidence": 0.495,
       "accessCount": 0,
       "createdAt": 1774355481174
     },
     "mem-traivend-strategy-rules-trade-management": {
       "id": "mem-traivend-strategy-rules-trade-management",
       "category": "traivend-strategy-rules",
-      "confidence": 0.5,
+      "confidence": 0.495,
       "accessCount": 0,
       "createdAt": 1774355481174
     },
     "mem-traivend-strategy-rules-double-fake-v2-benchmark--prof": {
       "id": "mem-traivend-strategy-rules-double-fake-v2-benchmark--prof",
       "category": "traivend-strategy-rules",
-      "confidence": 0.5,
+      "confidence": 0.495,
       "accessCount": 0,
       "createdAt": 1774355481174
     },
     "mem-traivend-strategy-rules-fakeout-pro-v5-best--round-9--": {
       "id": "mem-traivend-strategy-rules-fakeout-pro-v5-best--round-9--",
       "category": "traivend-strategy-rules",
-      "confidence": 0.5,
+      "confidence": 0.495,
       "accessCount": 0,
       "createdAt": 1774355481174
     },
     "mem-traivend-strategy-rules-optimization-lessons--2026-03-": {
       "id": "mem-traivend-strategy-rules-optimization-lessons--2026-03-",
       "category": "traivend-strategy-rules",
-      "confidence": 0.5,
+      "confidence": 0.495,
       "accessCount": 0,
       "createdAt": 1774355481174
     },
     "mem-traivend-strategy-rules-mbo-indicator-bugs--fixed-2026": {
       "id": "mem-traivend-strategy-rules-mbo-indicator-bugs--fixed-2026",
       "category": "traivend-strategy-rules",
-      "confidence": 0.5,
+      "confidence": 0.495,
       "accessCount": 0,
       "createdAt": 1774355481174
     },
     "mem-MEMORY-build-notes": {
       "id": "mem-MEMORY-build-notes",
       "category": "core",
-      "confidence": 0.5,
+      "confidence": 0.495,
       "accessCount": 0,
       "createdAt": 1774355481175
     },
     "mem-MEMORY-completed-phases": {
       "id": "mem-MEMORY-completed-phases",
       "category": "core",
-      "confidence": 0.5,
+      "confidence": 0.495,
       "accessCount": 0,
       "createdAt": 1774355481175
     },
     "mem-MEMORY-remaining-work": {
       "id": "mem-MEMORY-remaining-work",
       "category": "core",
-      "confidence": 0.5,
+      "confidence": 0.495,
       "accessCount": 0,
       "createdAt": 1774355481175
     },

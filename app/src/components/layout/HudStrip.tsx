@@ -1,3 +1,4 @@
+import { useState, useEffect, useRef } from 'react'
 import { cn } from '@/lib/utils'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -9,9 +10,17 @@ export interface HudStripProps {
   emaAlignment?: string | null
   vwapPosition?: string | null
   sessionName?: string | null
+  /** Session progress 0-1 for the thin progress bar under the session label */
+  sessionProgress?: number | null
+  /** When true the session pill briefly pulses to signal a session transition */
+  sessionTransition?: boolean
   barCount?: number | null
   /** When true, all values render as "—" (loading state). */
   loading?: boolean
+  /** Current live price */
+  currentPrice?: number | null
+  /** Session open price for change calculation */
+  sessionOpenPrice?: number | null
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────────
@@ -23,10 +32,10 @@ interface MetricPillProps {
 
 function MetricPill({ label, value }: MetricPillProps) {
   return (
-    <div className="flex items-center gap-1">
+    <div className="flex items-center gap-1.5">
       <span
         className={cn(
-          'font-mono text-[9px] leading-none uppercase tracking-wider',
+          'font-mono text-[10px] leading-none uppercase tracking-wide',
           'text-[var(--color-text-muted)]',
         )}
       >
@@ -54,8 +63,8 @@ function Divider() {
 // ── Color helpers ─────────────────────────────────────────────────────────────
 
 function getRvolColor(rvol: number): string {
-  if (rvol > 2.0) return 'var(--color-loss)'
-  if (rvol > 1.5) return 'var(--color-profit)'
+  if (rvol > 2.0) return 'var(--color-accent)'
+  if (rvol > 1.5) return 'var(--color-warning, #F7941D)'
   return 'var(--color-text-muted)'
 }
 
@@ -109,20 +118,63 @@ export function HudStrip({
   emaAlignment,
   vwapPosition,
   sessionName,
+  sessionProgress,
+  sessionTransition = false,
   barCount,
   loading = false,
+  currentPrice,
+  sessionOpenPrice,
 }: HudStripProps) {
+  // Pulse animation state for session transitions
+  const [pulsing, setPulsing] = useState(false)
+  const prevSessionRef = useRef<string | null | undefined>(sessionName)
+
+  // Price direction tracking
+  const prevPriceRef = useRef<number | null>(null)
+  const [priceDir, setPriceDir] = useState<'up' | 'down' | null>(null)
+
+  useEffect(() => {
+    if (currentPrice != null && prevPriceRef.current != null) {
+      if (currentPrice > prevPriceRef.current) setPriceDir('up')
+      else if (currentPrice < prevPriceRef.current) setPriceDir('down')
+    }
+    prevPriceRef.current = currentPrice ?? null
+  }, [currentPrice])
+
+  useEffect(() => {
+    // Trigger pulse when sessionName changes (session boundary crossed)
+    if (
+      prevSessionRef.current != null &&
+      sessionName != null &&
+      prevSessionRef.current !== sessionName
+    ) {
+      setPulsing(true)
+      const timer = setTimeout(() => setPulsing(false), 2000)
+      prevSessionRef.current = sessionName
+      return () => clearTimeout(timer)
+    }
+    prevSessionRef.current = sessionName
+  }, [sessionName])
+
+  // Also pulse when explicitly triggered by parent
+  useEffect(() => {
+    if (sessionTransition) {
+      setPulsing(true)
+      const timer = setTimeout(() => setPulsing(false), 2000)
+      return () => clearTimeout(timer)
+    }
+  }, [sessionTransition])
   // When loading with no data yet, show placeholder strip
-  if (loading && rvol == null && rsi == null && emaAlignment == null && sessionName == null) {
+  if (loading && rvol == null && rsi == null && emaAlignment == null && sessionName == null && currentPrice == null) {
     return (
       <div
         className={cn(
           'flex items-center w-full shrink-0',
-          'border-b border-[var(--color-border-subtle)]',
+          'bg-[var(--color-surface-secondary)]/90 backdrop-blur-sm',
+          'shadow-[0_1px_0_var(--color-border-subtle)]',
         )}
         style={{
-          height: '28px',
-          backgroundColor: 'var(--color-surface-secondary)',
+          height: 'var(--hudstrip-height, 32px)',
           paddingLeft: '16px',
           paddingRight: '16px',
           gap: '8px',
@@ -141,6 +193,7 @@ export function HudStrip({
   }
 
   const hasAnyMetric =
+    currentPrice != null ||
     rvol != null ||
     rsi != null ||
     rsiDivergence != null ||
@@ -152,6 +205,48 @@ export function HudStrip({
   if (!hasAnyMetric) return null
 
   const metrics: React.ReactNode[] = []
+
+  // Live price — always shown first when available
+  if (currentPrice != null) {
+    const priceColor =
+      priceDir === 'up'
+        ? 'var(--color-profit)'
+        : priceDir === 'down'
+          ? 'var(--color-loss)'
+          : 'var(--color-text-secondary)'
+
+    const sessionChange = sessionOpenPrice != null ? currentPrice - sessionOpenPrice : null
+    const changePct = sessionChange != null && sessionOpenPrice != null
+      ? (sessionChange / sessionOpenPrice) * 100
+      : null
+
+    metrics.push(
+      <div key="price" className="flex items-center gap-1.5">
+        <span
+          className="font-mono text-[12px] font-bold leading-none tabular-nums"
+          style={{ color: priceColor, letterSpacing: '-0.01em' }}
+        >
+          {currentPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        </span>
+        {priceDir && (
+          <span
+            className="font-mono text-[10px] leading-none"
+            style={{ color: priceColor }}
+          >
+            {priceDir === 'up' ? '▲' : '▼'}
+          </span>
+        )}
+        {sessionChange != null && changePct != null && (
+          <span
+            className="font-mono text-[9px] leading-none tabular-nums"
+            style={{ color: sessionChange >= 0 ? 'var(--color-profit)' : 'var(--color-loss)' }}
+          >
+            {sessionChange >= 0 ? '+' : ''}{sessionChange.toFixed(2)} ({changePct >= 0 ? '+' : ''}{changePct.toFixed(2)}%)
+          </span>
+        )}
+      </div>,
+    )
+  }
 
   if (rvol != null) {
     metrics.push(
@@ -227,16 +322,56 @@ export function HudStrip({
   }
 
   if (sessionName != null) {
+    const progressPct = sessionProgress != null ? Math.round(sessionProgress * 100) : null
     metrics.push(
-      <MetricPill
-        key="session"
-        label="SESSION"
-        value={
-          <span style={{ color: 'var(--color-text-secondary)' }}>
+      <div key="session" className="flex flex-col justify-center gap-[2px]">
+        <div className="flex items-center gap-1.5">
+          <span
+            className={cn(
+              'font-mono text-[10px] leading-none uppercase tracking-wide',
+              'text-[var(--color-text-muted)]',
+            )}
+          >
+            SESSION
+          </span>
+          <span
+            className={cn(
+              'font-mono text-[11px] leading-none tabular-nums transition-colors duration-300',
+              pulsing && 'text-[var(--color-accent)]',
+            )}
+            style={{ color: pulsing ? 'var(--color-accent, #5CB8F0)' : 'var(--color-text-secondary)' }}
+          >
             {sessionName}
           </span>
-        }
-      />,
+          {progressPct != null && (
+            <span
+              className="font-mono text-[9px] leading-none tabular-nums opacity-60"
+              style={{ color: 'var(--color-text-muted)' }}
+            >
+              {progressPct}%
+            </span>
+          )}
+        </div>
+        {/* Thin progress bar under session label */}
+        {progressPct != null && (
+          <div
+            className="h-[2px] rounded-full overflow-hidden"
+            style={{ width: '72px', backgroundColor: 'var(--color-border-subtle)' }}
+          >
+            <div
+              className={cn(
+                'h-full rounded-full transition-all duration-1000',
+                pulsing && 'animate-pulse',
+              )}
+              style={{
+                width: `${progressPct}%`,
+                backgroundColor: 'var(--color-accent, #5CB8F0)',
+                opacity: 0.7,
+              }}
+            />
+          </div>
+        )}
+      </div>,
     )
   }
 
@@ -258,11 +393,11 @@ export function HudStrip({
     <div
       className={cn(
         'flex items-center w-full shrink-0',
-        'border-b border-[var(--color-border-subtle)]',
+        'bg-[var(--color-surface-secondary)]/90 backdrop-blur-sm',
+        'shadow-[0_1px_0_var(--color-border-subtle)]',
       )}
       style={{
-        height: '28px',
-        backgroundColor: 'var(--color-surface-secondary)',
+        height: 'var(--hudstrip-height, 32px)',
         paddingLeft: '16px',
         paddingRight: '16px',
         gap: '8px',

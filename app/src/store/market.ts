@@ -20,8 +20,13 @@ export interface MarketState {
   lastBarTs: number | null
   /** Markets fetched from /api/markets on app init */
   markets: MarketInfo[]
-  /** Tracks whether chart bars are sourced from live feed or DB polling */
-  dataSource: 'db' | 'live'
+  /**
+   * Tracks how chart bars are currently sourced:
+   *   'db'     — REST polling from TimescaleDB (default, non-live mode)
+   *   'live'   — WS / live feed from rithmic/databento (live service active)
+   *   'replay' — Sim bars served by the replay engine (/api/bars)
+   */
+  dataSource: 'db' | 'live' | 'replay'
 
   setMarket: (market: string) => void
   setTimeframe: (tf: Timeframe) => void
@@ -30,7 +35,7 @@ export interface MarketState {
   setWsStatus: (status: WsStatus) => void
   setLastBarTs: (ts: number) => void
   setMarkets: (markets: MarketInfo[]) => void
-  setDataSource: (s: 'db' | 'live') => void
+  setDataSource: (s: 'db' | 'live' | 'replay') => void
   /**
    * Resolves the front-month symbol for a given root.
    * Checks fetched markets first, then falls back to static map.
@@ -41,8 +46,8 @@ export interface MarketState {
 export const useMarketStore = create<MarketState>((set, get) => ({
   market: 'NQ',
   symbol: 'NQM6',
-  timeframe: '15min',
-  days: 5,
+  timeframe: '5min',
+  days: 1,
   wsStatus: 'disconnected',
   lastBarTs: null,
   markets: [],

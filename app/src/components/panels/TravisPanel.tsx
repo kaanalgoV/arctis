@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
-import { Send, Loader2, Bot, User } from 'lucide-react'
+import { Send, Loader2, Bot, User, Database, Cpu, HardDrive } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useMarketStore } from '@/store/market'
 import { config } from '@/lib/config'
@@ -17,6 +17,8 @@ interface ChatMessage {
   role: 'user' | 'ai'
   content: string
   timestamp: number
+  response?: TravisStructuredResponse
+  // legacy fallback: plain results list from older endpoint
   results?: ArctisResult[]
 }
 
@@ -27,34 +29,195 @@ interface ArctisResult {
   type?: 'status' | 'signal' | 'no_signal'
 }
 
-interface ArctisResponse {
+/** Structured response from the Travis MCP BFF. */
+interface TravisStructuredResponse {
+  kind: 'video' | 'explanation' | 'checklist' | 'playbook' | 'review'
+  title: string
+  summary: string
+  confidence: number
+  why_now: string
+  source: 'mcp' | 'local_fallback' | 'cache'
+  data?: Record<string, unknown>
+}
+
+interface TravisApiResponse {
   question: string
-  results: ArctisResult[]
+  response: TravisStructuredResponse
+  /** Legacy results array — kept for backward compat with arctis_ai endpoint. */
+  results?: ArctisResult[]
   context?: Record<string, unknown>
 }
 
 // ─── Quick Actions ────────────────────────────────────────────────────────────
 
 const QUICK_ACTIONS = [
-  'Was macht der Markt?',
-  'Soll ich einsteigen?',
-  'Was war gestern?',
-  'Welche Setups gibt es?',
+  { label: 'Was passiert?', query: 'Was macht der Markt gerade?' },
+  { label: 'Session Checklist', query: 'checklist' },
+  { label: 'Setup erklaeren', query: 'Erklaer mir das aktuelle Setup' },
+  { label: 'Bias?', query: 'Welchen Bias haben wir gerade?' },
 ]
 
-// ─── API call ────────────────────────────────────────────────────────────────
+// ─── Source Badge ─────────────────────────────────────────────────────────────
 
-async function askArctis(question: string, market: string, timeframe: string, currentPrice?: number): Promise<ArctisResponse> {
-  const res = await fetch(`${config.apiBase}/api/arctis/ask`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ question, market, timeframe, current_price: currentPrice }),
-  })
-  if (!res.ok) throw new Error(`HTTP ${res.status}`)
-  return res.json() as Promise<ArctisResponse>
+function SourceBadge({ source }: { source: TravisStructuredResponse['source'] }) {
+  const map: Record<typeof source, { label: string; icon: React.ReactNode; color: string }> = {
+    mcp: {
+      label: 'MCP',
+      icon: <Cpu size={9} />,
+      color: 'var(--color-accent)',
+    },
+    cache: {
+      label: 'Cache',
+      icon: <HardDrive size={9} />,
+      color: '#A78BFA',
+    },
+    local_fallback: {
+      label: 'Local',
+      icon: <Database size={9} />,
+      color: 'var(--color-text-muted)',
+    },
+  }
+  const entry = map[source] ?? map.local_fallback
+  return (
+    <span
+      className="inline-flex items-center gap-0.5 text-[8px] px-1 py-0.5 rounded-sm font-mono uppercase tracking-wider"
+      style={{ color: entry.color, background: `${entry.color}18`, border: `1px solid ${entry.color}30` }}
+    >
+      {entry.icon}
+      {entry.label}
+    </span>
+  )
 }
 
-// ─── Message Bubble ──────────────────────────────────────────────────────────
+// ─── Confidence Bar ───────────────────────────────────────────────────────────
+
+function ConfidenceBar({ value }: { value: number }) {
+  const pct = Math.round(value * 100)
+  const color =
+    pct >= 70 ? 'var(--color-profit)' :
+    pct >= 40 ? '#F0A500' :
+    'var(--color-text-muted)'
+
+  return (
+    <div className="flex items-center gap-1.5">
+      <div
+        className="h-0.5 rounded-full flex-1"
+        style={{ background: 'rgba(255,255,255,0.06)' }}
+      >
+        <div
+          className="h-full rounded-full transition-all duration-300"
+          style={{ width: `${pct}%`, background: color }}
+        />
+      </div>
+      <span className="text-[8px] font-mono" style={{ color, minWidth: 24, textAlign: 'right' }}>
+        {pct}%
+      </span>
+    </div>
+  )
+}
+
+// ─── Travis Response Card ────────────────────────────────────────────────────
+
+function TravisCard({ response }: { response: TravisStructuredResponse }) {
+  const kindColor: Record<string, string> = {
+    checklist: 'var(--color-accent)',
+    review: 'var(--color-profit)',
+    explanation: 'var(--color-accent)',
+    video: '#F0A500',
+    playbook: '#A78BFA',
+  }
+  const accent = kindColor[response.kind] ?? 'var(--color-accent)'
+
+  return (
+    <div
+      className="rounded-md p-2 flex flex-col gap-1.5"
+      style={{
+        background: 'rgba(255,255,255,0.02)',
+        borderLeft: `2px solid ${accent}`,
+      }}
+    >
+      {/* Header row */}
+      <div className="flex items-start justify-between gap-1">
+        <span
+          className="text-[10px] font-bold tracking-wide leading-tight flex-1"
+          style={{ color: 'var(--color-text-primary)' }}
+        >
+          {response.title}
+        </span>
+        <div className="flex items-center gap-1 shrink-0">
+          <SourceBadge source={response.source} />
+        </div>
+      </div>
+
+      {/* Confidence */}
+      <ConfidenceBar value={response.confidence} />
+
+      {/* Summary */}
+      <pre
+        className="text-[9px] leading-snug whitespace-pre-wrap m-0 font-mono"
+        style={{ color: 'var(--color-text-muted)' }}
+      >
+        {response.summary}
+      </pre>
+
+      {/* Why now */}
+      {response.why_now && (
+        <div
+          className="text-[8px] leading-relaxed px-1.5 py-1 rounded-sm"
+          style={{
+            background: `${accent}0A`,
+            borderLeft: `1px solid ${accent}40`,
+            color: 'var(--color-text-muted)',
+          }}
+        >
+          {response.why_now}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Legacy Result Card (backward compat) ────────────────────────────────────
+
+function LegacyCard({ result }: { result: ArctisResult }) {
+  const actionColor =
+    result.action?.startsWith('EINSTEIGEN') ? 'var(--color-profit)' :
+    result.action?.startsWith('BEREIT') ? '#F0A500' :
+    result.action?.startsWith('VERPASST') ? 'var(--color-loss)' :
+    'var(--color-text-muted)'
+
+  return (
+    <div
+      className="rounded-md px-2 py-1.5"
+      style={{
+        background: result.type === 'signal' ? 'rgba(34,197,94,0.04)' : 'rgba(255,255,255,0.02)',
+        borderLeft: `2px solid ${result.type === 'signal' ? 'var(--color-profit)' : result.type === 'no_signal' ? 'var(--color-text-muted)' : 'var(--color-accent)'}`,
+      }}
+    >
+      <div className="flex items-center justify-between">
+        <span
+          className="text-[10px] font-bold tracking-wide"
+          style={{ color: result.type === 'signal' ? 'var(--color-profit)' : 'var(--color-text-primary)' }}
+        >
+          {result.title}
+        </span>
+        {result.action && (
+          <span
+            className="text-[7px] font-black px-1.5 py-0.5 rounded-sm uppercase tracking-wider"
+            style={{ color: actionColor, background: `${actionColor}15` }}
+          >
+            {result.action.split('—')[0].trim()}
+          </span>
+        )}
+      </div>
+      <pre className="text-[9px] leading-snug whitespace-pre-wrap m-0 mt-0.5 font-mono" style={{ color: 'var(--color-text-muted)' }}>
+        {result.content}
+      </pre>
+    </div>
+  )
+}
+
+// ─── Message Bubble ───────────────────────────────────────────────────────────
 
 function UserBubble({ content }: { content: string }) {
   return (
@@ -66,55 +229,32 @@ function UserBubble({ content }: { content: string }) {
           border: '1px solid rgba(92,184,240,0.2)',
         }}
       >
-        <span className="text-[11px] text-[#E6EDF3] leading-relaxed">{content}</span>
+        <span className="text-[11px] leading-relaxed" style={{ color: 'var(--color-text-primary)' }}>{content}</span>
       </div>
-      <User size={14} className="text-[#484F58] shrink-0 mt-0.5" />
+      <User size={14} className="shrink-0 mt-0.5" style={{ color: 'var(--color-text-inactive)' }} />
     </div>
   )
 }
 
-function AiBubble({ results }: { results: ArctisResult[] }) {
+function AiBubble({ message }: { message: ChatMessage }) {
   return (
     <div className="flex gap-1.5">
-      <Bot size={14} className="text-[#5CB8F0] shrink-0 mt-0.5" />
-      <div className="flex flex-col gap-1.5 max-w-[90%]">
-        {results.map((r, i) => {
-          const actionColor = r.action?.startsWith('EINSTEIGEN') ? '#22C55E'
-            : r.action?.startsWith('BEREIT') ? '#F0A500'
-            : r.action?.startsWith('VERPASST') ? '#EF4444'
-            : '#8B949E'
-
-          return (
-            <div
-              key={i}
-              className="rounded-md px-2 py-1.5"
-              style={{
-                background: r.type === 'signal' ? 'rgba(34,197,94,0.04)' : 'rgba(255,255,255,0.02)',
-                borderLeft: `2px solid ${r.type === 'signal' ? '#22C55E' : r.type === 'no_signal' ? '#8B949E' : '#5CB8F0'}`,
-              }}
-            >
-              <div className="flex items-center justify-between">
-                <span
-                  className="text-[10px] font-bold tracking-wide"
-                  style={{ color: r.type === 'signal' ? '#22C55E' : '#E6EDF3' }}
-                >
-                  {r.title}
-                </span>
-                {r.action && (
-                  <span
-                    className="text-[7px] font-black px-1.5 py-0.5 rounded-sm uppercase tracking-wider"
-                    style={{ color: actionColor, background: `${actionColor}15` }}
-                  >
-                    {r.action.split('—')[0].trim()}
-                  </span>
-                )}
-              </div>
-              <pre className="text-[9px] text-[#8B949E] leading-snug whitespace-pre-wrap m-0 mt-0.5 font-mono">
-                {r.content}
-              </pre>
-            </div>
-          )
-        })}
+      <Bot size={14} className="shrink-0 mt-0.5" style={{ color: 'var(--color-accent)' }} />
+      <div className="flex flex-col gap-1.5 max-w-[92%] w-full">
+        {/* Structured response — preferred */}
+        {message.response && (
+          <TravisCard response={message.response} />
+        )}
+        {/* Legacy plain results — fallback */}
+        {!message.response && message.results?.map((r, i) => (
+          <LegacyCard key={i} result={r} />
+        ))}
+        {/* Error text */}
+        {!message.response && !message.results?.length && message.content && (
+          <div className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>
+            {message.content}
+          </div>
+        )}
       </div>
     </div>
   )
@@ -123,12 +263,12 @@ function AiBubble({ results }: { results: ArctisResult[] }) {
 function TypingIndicator() {
   return (
     <div className="flex gap-1.5 items-center">
-      <Bot size={14} className="text-[#5CB8F0] shrink-0" />
+      <Bot size={14} className="shrink-0" style={{ color: 'var(--color-accent)' }} />
       <div className="flex gap-1 px-3 py-2">
         {[0, 1, 2].map((i) => (
           <div
             key={i}
-            className="w-1.5 h-1.5 rounded-full bg-[#5CB8F0]"
+            className="w-1.5 h-1.5 rounded-full bg-[var(--color-accent)]"
             style={{
               animation: `pulse 1.2s ease-in-out ${i * 0.2}s infinite`,
               opacity: 0.4,
@@ -138,6 +278,41 @@ function TypingIndicator() {
       </div>
     </div>
   )
+}
+
+// ─── API calls ────────────────────────────────────────────────────────────────
+
+async function askTravis(
+  question: string,
+  market: string,
+  timeframe: string,
+  currentPrice?: number,
+): Promise<TravisApiResponse> {
+  const res = await fetch(`${config.apiBase}/api/travis/ask`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      question,
+      market,
+      timeframe,
+      current_price: currentPrice,
+      mode: 'live',
+    }),
+  })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.json() as Promise<TravisApiResponse>
+}
+
+async function fetchChecklist(
+  session: string,
+  market: string,
+  timeframe: string,
+): Promise<TravisStructuredResponse> {
+  const params = new URLSearchParams({ session, market, timeframe })
+  const res = await fetch(`${config.apiBase}/api/travis/checklist?${params.toString()}`)
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  const data = await res.json() as { checklist: TravisStructuredResponse }
+  return data.checklist
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -173,12 +348,28 @@ export function ArctisPanel({
     setIsLoading(true)
 
     try {
-      const resp = await askArctis(question.trim(), market, timeframe, currentPrice)
+      // "checklist" quick action fetches dedicated endpoint
+      if (question.toLowerCase() === 'checklist') {
+        const checklist = await fetchChecklist('', market, timeframe)
+        const aiMsg: ChatMessage = {
+          id: `ai-${Date.now()}`,
+          role: 'ai',
+          content: '',
+          timestamp: Date.now(),
+          response: checklist,
+        }
+        setMessages((prev) => [...prev, aiMsg])
+        return
+      }
+
+      const resp = await askTravis(question.trim(), market, timeframe, currentPrice)
       const aiMsg: ChatMessage = {
         id: `ai-${Date.now()}`,
         role: 'ai',
         content: '',
         timestamp: Date.now(),
+        // Prefer structured response; fall back to legacy results list
+        response: resp.response ?? undefined,
         results: resp.results,
       }
       setMessages((prev) => [...prev, aiMsg])
@@ -194,7 +385,7 @@ export function ArctisPanel({
     } finally {
       setIsLoading(false)
     }
-  }, [market, timeframe, isLoading])
+  }, [market, timeframe, isLoading, currentPrice])
 
   return (
     <div className={cn('flex flex-col', className)} style={{ height: '100%', minHeight: 200 }}>
@@ -206,8 +397,8 @@ export function ArctisPanel({
       >
         {messages.length === 0 && !isLoading ? (
           <div className="flex flex-col items-center justify-center py-4 gap-2">
-            <Bot size={20} className="text-[#484F58]" />
-            <span className="text-[10px] text-[#484F58] text-center">
+            <Bot size={20} style={{ color: 'var(--color-text-inactive)' }} />
+            <span className="text-[10px] text-center" style={{ color: 'var(--color-text-inactive)' }}>
               Frag mich was zum Markt.
             </span>
           </div>
@@ -217,7 +408,7 @@ export function ArctisPanel({
               msg.role === 'user' ? (
                 <UserBubble key={msg.id} content={msg.content} />
               ) : (
-                <AiBubble key={msg.id} results={msg.results || []} />
+                <AiBubble key={msg.id} message={msg} />
               )
             )}
             {isLoading && <TypingIndicator />}
@@ -228,26 +419,26 @@ export function ArctisPanel({
       {/* Quick actions — only when no messages yet */}
       {messages.length === 0 && (
         <div className="flex flex-wrap gap-1 px-1 pb-1.5">
-          {QUICK_ACTIONS.map((q) => (
+          {QUICK_ACTIONS.map(({ label, query }) => (
             <button
-              key={q}
-              onClick={() => void handleSend(q)}
+              key={label}
+              onClick={() => void handleSend(query)}
               className="text-[9px] px-2 py-1 rounded-full cursor-pointer transition-colors"
               style={{
                 background: 'rgba(92,184,240,0.06)',
                 border: '1px solid rgba(92,184,240,0.15)',
-                color: '#8B949E',
+                color: 'var(--color-text-muted)',
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.background = 'rgba(92,184,240,0.12)'
-                e.currentTarget.style.color = '#E6EDF3'
+                e.currentTarget.style.color = 'var(--color-text-primary)'
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.background = 'rgba(92,184,240,0.06)'
-                e.currentTarget.style.color = '#8B949E'
+                e.currentTarget.style.color = 'var(--color-text-muted)'
               }}
             >
-              {q}
+              {label}
             </button>
           ))}
         </div>
@@ -266,9 +457,13 @@ export function ArctisPanel({
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') void handleSend(input) }}
-          placeholder="Frag Arctis..."
-          className="flex-1 bg-transparent border-none outline-none text-[11px] text-[#E6EDF3] placeholder-[#484F58]"
-          style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', caretColor: '#5CB8F0' }}
+          placeholder="Frag Travis..."
+          className="flex-1 bg-transparent border-none outline-none text-[11px]"
+          style={{
+            color: 'var(--color-text-primary)',
+            fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+            caretColor: 'var(--color-accent)',
+          }}
         />
         <button
           onClick={() => void handleSend(input)}
@@ -276,7 +471,7 @@ export function ArctisPanel({
           className="flex items-center justify-center w-6 h-6 rounded cursor-pointer transition-colors"
           style={{
             background: input.trim() && !isLoading ? 'rgba(92,184,240,0.15)' : 'transparent',
-            color: input.trim() && !isLoading ? '#5CB8F0' : '#484F58',
+            color: input.trim() && !isLoading ? 'var(--color-accent)' : 'var(--color-text-inactive)',
           }}
         >
           {isLoading ? (

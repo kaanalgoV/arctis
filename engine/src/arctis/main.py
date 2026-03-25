@@ -40,6 +40,7 @@ class Simulation:
         self.all_bars: list = []
         self.market: str | None = None
         self.timeframe: str | None = None
+        self._manual_offset: int = 0  # Net bar offset from sim/step calls
 
     def start(self, market: str, timeframe: str, date: str | None = None, speed: float = 10):
         """Start replay. If date given, replay that specific day. Otherwise use last available day."""
@@ -62,6 +63,7 @@ class Simulation:
         self.speed = speed
         self.start_real_time = _time.time()
         self.start_bar_index = 0
+        self._manual_offset = 0  # Reset offset on new simulation start
         self.active = True
         return True
 
@@ -72,8 +74,8 @@ class Simulation:
         if not self.active:
             return self.total_bars
         elapsed = _time.time() - self.start_real_time
-        count = self.start_bar_index + int(elapsed * self.speed)
-        return min(count, self.total_bars)
+        count = self.start_bar_index + int(elapsed * self.speed) + self._manual_offset
+        return min(max(count, 0), self.total_bars)
 
     def get_bars(self):
         if not self.active:
@@ -96,9 +98,11 @@ class Simulation:
             return False
         target_idx = int(position_pct * len(self.all_bars))
         target_idx = max(0, min(target_idx, len(self.all_bars) - 1))
-        # Adjust start time so visible_bar_count() returns target_idx
+        # Adjust start_bar_index and reset both the clock and manual offset so that
+        # visible_bar_count() returns exactly target_idx at the moment of seeking.
         self.start_bar_index = target_idx
         self.start_real_time = _time.time()
+        self._manual_offset = 0
         return True
 
     def status(self):
@@ -147,6 +151,14 @@ async def global_exception_handler(request, exc):
     logging.getLogger(__name__).exception("Unhandled exception: %s", exc)
     return JSONResponse(status_code=500, content={"error": "Internal server error"})
 
+
+@app.middleware("http")
+async def count_requests(request, call_next):
+    """Increment global request counter for /api/metrics."""
+    from arctis.routes.metrics import record_request
+    record_request()
+    return await call_next(request)
+
 from arctis.routes.analysis import router as analysis_router
 from arctis.routes.probability import router as probability_router
 from arctis.routes.risk import router as risk_router
@@ -159,6 +171,25 @@ from arctis.routes.strategies import router as strategies_router
 from arctis.routes.radar import router as radar_router
 from arctis.routes.live import router as live_router
 from arctis.routes.backfill import router as backfill_router
+from arctis.routes.travis import router as travis_router
+from arctis.routes.setups import router as setups_router
+from arctis.routes.snapshot import router as snapshot_router
+from arctis.routes.drawings import router as drawings_router
+from arctis.routes.workspace import router as workspace_router
+from arctis.routes.metrics import router as metrics_router
+
+# ---------------------------------------------------------------------------
+# Travis MCP client initialization
+# TRAVIS_MCP_GATEWAY env var enables the external MCP gateway.
+# Example: TRAVIS_MCP_GATEWAY=http://localhost:3001/mcp uvicorn arctis.main:app
+# When not set, the client uses local analysis (always works, no external deps).
+# ---------------------------------------------------------------------------
+import os as _os
+from arctis.services.travis_mcp import init_travis_client as _init_travis_client
+
+_travis_mcp_gateway = _os.environ.get("TRAVIS_MCP_GATEWAY")  # e.g. "http://localhost:3001/mcp"
+_init_travis_client(mcp_gateway_url=_travis_mcp_gateway)
+
 app.include_router(analysis_router)
 app.include_router(probability_router)
 app.include_router(risk_router)
@@ -171,16 +202,23 @@ app.include_router(strategies_router)
 app.include_router(radar_router)
 app.include_router(live_router)
 app.include_router(backfill_router)
+app.include_router(travis_router)
+app.include_router(setups_router)
+app.include_router(snapshot_router)
+app.include_router(drawings_router)
+app.include_router(workspace_router)
+app.include_router(metrics_router)
 
 
 @app.get("/health")
 async def health():
     from sqlalchemy import text
     from arctis.db import get_engine
+    from arctis.db_constants import VIEW_OHLCV_1M
     try:
         engine = get_engine()
         with engine.connect() as conn:
-            result = conn.execute(text("SELECT count(DISTINCT symbol) FROM bars"))
+            result = conn.execute(text(f"SELECT count(DISTINCT symbol) FROM {VIEW_OHLCV_1M}"))
             symbol_count = result.scalar() or 0
         return {"status": "ok", "version": "0.1.0", "db": "connected", "symbols": symbol_count}
     except Exception as e:
@@ -382,14 +420,19 @@ async def sim_status():
 
 @app.post("/api/sim/step")
 async def sim_step(direction: str = Query(default="forward")):
-    """Step simulation forward or backward by one bar."""
+    """Step simulation forward or backward by one bar.
+
+    Pauses time-based progression and advances/rewinds by one bar per call.
+    The offset is reset to zero on sim start or seek.
+    """
     if not sim.active:
         raise HTTPException(404, "No active simulation")
     if direction == "forward":
-        sim._manual_offset = getattr(sim, '_manual_offset', 0) + 1
+        sim._manual_offset += 1
     elif direction == "backward":
-        sim._manual_offset = max(getattr(sim, '_manual_offset', 0) - 1, 0)
-    return {"status": "ok", "offset": getattr(sim, '_manual_offset', 0)}
+        sim._manual_offset = max(sim._manual_offset - 1, -sim.start_bar_index)
+    visible = sim.visible_bar_count()
+    return {"status": "ok", "offset": sim._manual_offset, "visible_bars": visible}
 
 
 @app.post("/api/sim/seek")

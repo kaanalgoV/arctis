@@ -1,20 +1,30 @@
 import { Minus, Square, TrendingUp, Type, Trash2 } from 'lucide-react'
-import type { DrawingTool } from '@/hooks/useDrawings'
+import type { DrawingToolType } from '@/types/drawing'
+import { useDrawingStore } from '@/stores/drawingStore'
 import { CHART_TOKENS } from '@/lib/chart-tokens'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface DrawingToolbarProps {
-  activeTool: DrawingTool | null
-  onSelectTool: (tool: DrawingTool | null) => void
+  /**
+   * Controlled active tool (prop-driven usage).
+   * When provided, takes precedence over the store value.
+   * Pass null or undefined to fall back to reading from drawingStore.
+   */
+  activeTool?: DrawingToolType | null
+  /** Controlled setter — called when user clicks a tool button. */
+  onSelectTool?: (tool: DrawingToolType | null) => void
   onClear: () => void
   drawingCount?: number
 }
 
 // ─── Tool config ──────────────────────────────────────────────────────────────
 
+// Only the subset of DrawingToolType that the toolbar exposes
+type ToolbarTool = Extract<DrawingToolType, 'hline' | 'rectangle' | 'trendline' | 'text'>
+
 interface ToolConfig {
-  key: DrawingTool
+  key: ToolbarTool
   icon: React.ComponentType<{ size?: number; strokeWidth?: number }>
   label: string
 }
@@ -29,11 +39,28 @@ const TOOLS: ToolConfig[] = [
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function DrawingToolbar({
-  activeTool,
+  activeTool: propActiveTool,
   onSelectTool,
   onClear,
   drawingCount = 0,
 }: DrawingToolbarProps) {
+  // Read from store — prop takes precedence for backward-compat with legacy callers
+  const storeActiveTool = useDrawingStore((s) => s.activeTool)
+  const storeSetActiveTool = useDrawingStore((s) => s.setActiveTool)
+
+  // Resolve effective active tool: prop wins if explicitly provided
+  const activeTool: DrawingToolType | null =
+    propActiveTool !== undefined ? propActiveTool : storeActiveTool
+
+  // Resolve setter: prop setter wins, otherwise write to store
+  const handleSelectTool = (key: ToolbarTool) => {
+    const isActive = activeTool === key
+    const next: DrawingToolType = isActive ? 'crosshair' : key
+    if (onSelectTool) {
+      onSelectTool(isActive ? null : key)
+    }
+    storeSetActiveTool(next)
+  }
   return (
     <div
       style={{
@@ -69,7 +96,7 @@ export function DrawingToolbar({
               title={label}
               aria-label={label}
               aria-pressed={isActive}
-              onClick={() => onSelectTool(isActive ? null : key)}
+              onClick={() => handleSelectTool(key)}
               style={{
                 width: 28,
                 height: 28,
@@ -83,7 +110,7 @@ export function DrawingToolbar({
                 background: isActive
                   ? 'rgba(92, 184, 240, 0.12)'
                   : 'rgba(255, 255, 255, 0.03)',
-                color: isActive ? '#5CB8F0' : CHART_TOKENS.axis.label,
+                color: isActive ? 'var(--color-accent)' : CHART_TOKENS.axis.label,
                 cursor: 'pointer',
                 transition: 'border-color 0.12s, background 0.12s, color 0.12s',
                 padding: 0,
@@ -112,6 +139,19 @@ export function DrawingToolbar({
 
       {/* Spacer */}
       <div style={{ flex: 1 }} />
+
+      {/* Divider before destructive action */}
+      {drawingCount > 0 && (
+        <div
+          style={{
+            width: 16,
+            height: 1,
+            background: 'rgba(255,255,255,0.08)',
+            borderRadius: 1,
+            flexShrink: 0,
+          }}
+        />
+      )}
 
       {/* Clear / trash button — only visible when there are drawings */}
       {drawingCount > 0 && (

@@ -1,4 +1,3 @@
-export { AppShell, AppShellLayout } from './AppShell'
 export { Sidebar } from './Sidebar'
 export { Topbar } from './Topbar'
 export { StatusBar } from './StatusBar'

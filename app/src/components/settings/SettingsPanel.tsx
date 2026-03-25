@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { X, Database, Loader2, Bell, BellOff } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -338,7 +338,7 @@ function DisplayTab({ activeOverlays, onToggleOverlay }: DisplayTabProps) {
             'border border-[var(--color-border-subtle)]',
             'bg-[var(--color-surface-raised)]/40',
             'hover:bg-[var(--color-surface-raised)] hover:border-[var(--color-border)]',
-            'transition-colors duration-120',
+            'transition-colors duration-150',
             'cursor-pointer select-none',
           )}
           onClick={() => handleToggle(key)}
@@ -515,6 +515,16 @@ function ConnectionTab({ status }: { status: ConnectionStatus }) {
 
 function AlertsTab() {
   const { soundAlerts, setSoundAlerts } = useSettingsStore()
+  const [enabledAlerts, setEnabledAlerts] = useState<Record<string, boolean>>({
+    confluence: true,
+    volume_spike: true,
+    pattern: true,
+    session: true,
+  })
+
+  const toggleAlert = useCallback((key: string) => {
+    setEnabledAlerts(prev => ({ ...prev, [key]: !prev[key] }))
+  }, [])
 
   return (
     <div className="flex flex-col gap-3 px-4 pb-4">
@@ -525,7 +535,7 @@ function AlertsTab() {
           'bg-[var(--color-surface-raised)]/40',
           'cursor-pointer select-none',
           'hover:bg-[var(--color-surface-raised)] hover:border-[var(--color-border)]',
-          'transition-colors duration-120',
+          'transition-colors duration-150',
         )}
         onClick={() => setSoundAlerts(!soundAlerts)}
       >
@@ -557,12 +567,12 @@ function AlertsTab() {
           Alert Triggers
         </span>
         {[
-          { label: 'Confluence Signal', description: 'High-confidence confluence events' },
-          { label: 'Volume Spike', description: 'RVOL exceeds 2σ threshold' },
-          { label: 'Pattern Trigger', description: 'New pattern detected' },
-          { label: 'Session Change', description: 'Market session transition' },
-        ].map(({ label, description }) => (
-          <div key={label} className="flex items-center justify-between mt-2.5">
+          { key: 'confluence', label: 'Confluence Signal', description: 'High-confidence confluence events' },
+          { key: 'volume_spike', label: 'Volume Spike', description: 'RVOL exceeds 2σ threshold' },
+          { key: 'pattern', label: 'Pattern Trigger', description: 'New pattern detected' },
+          { key: 'session', label: 'Session Change', description: 'Market session transition' },
+        ].map(({ key, label, description }) => (
+          <div key={key} className="flex items-center justify-between mt-2.5">
             <div className="flex flex-col gap-0.5">
               <span style={{ fontSize: 12, color: 'var(--color-text-secondary)', fontFamily: 'var(--font-mono)' }}>
                 {label}
@@ -571,7 +581,7 @@ function AlertsTab() {
                 {description}
               </span>
             </div>
-            <ToggleSwitch checked={soundAlerts} onChange={setSoundAlerts} />
+            <ToggleSwitch checked={enabledAlerts[key] ?? true} onChange={() => toggleAlert(key)} />
           </div>
         ))}
       </div>
@@ -672,10 +682,10 @@ export function SettingsPanel({
               <button
                 onClick={onClose}
                 className={cn(
-                  'flex items-center justify-center w-6 h-6 rounded-[var(--radius-sm)]',
+                  'flex items-center justify-center w-8 h-8 rounded-[var(--radius-sm)]',
                   'text-[var(--color-text-muted)]',
                   'hover:bg-white/[0.06] hover:text-[var(--color-text-secondary)]',
-                  'transition-colors duration-120',
+                  'transition-colors duration-150',
                   'outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent)]',
                 )}
                 aria-label="Close settings"
@@ -697,7 +707,7 @@ export function SettingsPanel({
                   key={tab.key}
                   onClick={() => setActiveTab(tab.key)}
                   className={cn(
-                    'relative px-3 pb-2 transition-colors duration-120',
+                    'relative px-3 pb-2 transition-colors duration-150',
                     'outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent)]',
                   )}
                   style={{
@@ -720,23 +730,33 @@ export function SettingsPanel({
 
             {/* Content */}
             <div className="flex-1 overflow-y-auto pt-4">
-              {activeTab === 'risk' && (
-                <RiskTab
-                  onClose={onClose}
-                  externalConfig={tradingConfig}
-                  onConfigSaved={onConfigSaved}
-                />
-              )}
-              {activeTab === 'display' && (
-                <DisplayTab
-                  activeOverlays={activeOverlays}
-                  onToggleOverlay={onToggleOverlay}
-                />
-              )}
-              {activeTab === 'connection' && (
-                <ConnectionTab status={connectionStatus} />
-              )}
-              {activeTab === 'alerts' && <AlertsTab />}
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={activeTab}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -4 }}
+                  transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
+                >
+                  {activeTab === 'risk' && (
+                    <RiskTab
+                      onClose={onClose}
+                      externalConfig={tradingConfig}
+                      onConfigSaved={onConfigSaved}
+                    />
+                  )}
+                  {activeTab === 'display' && (
+                    <DisplayTab
+                      activeOverlays={activeOverlays}
+                      onToggleOverlay={onToggleOverlay}
+                    />
+                  )}
+                  {activeTab === 'connection' && (
+                    <ConnectionTab status={connectionStatus} />
+                  )}
+                  {activeTab === 'alerts' && <AlertsTab />}
+                </motion.div>
+              </AnimatePresence>
             </div>
           </motion.div>
         </>

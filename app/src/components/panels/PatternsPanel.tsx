@@ -28,8 +28,8 @@ export interface PatternsAPIData {
 // Color helpers
 // ---------------------------------------------------------------------------
 const typeColors: Record<string, { border: string; text: string }> = {
-  long: { border: '#22C55E', text: '#22C55E' },
-  short: { border: '#EF4444', text: '#EF4444' },
+  long: { border: 'var(--color-profit)', text: 'var(--color-profit)' },
+  short: { border: 'var(--color-loss)', text: 'var(--color-loss)' },
   info: { border: 'var(--color-accent, #5CB8F0)', text: 'var(--color-accent, #5CB8F0)' },
 }
 
@@ -117,8 +117,8 @@ function DayPill({ label, value, accentColor }: DayPillProps) {
 
 function getBiasColor(bias: string): string {
   const lower = bias.toLowerCase()
-  if (lower === 'long' || lower === 'bullish') return '#22C55E'
-  if (lower === 'short' || lower === 'bearish') return '#EF4444'
+  if (lower === 'long' || lower === 'bullish') return 'var(--color-profit)'
+  if (lower === 'short' || lower === 'bearish') return 'var(--color-loss)'
   return 'var(--color-accent, #5CB8F0)'
 }
 
@@ -192,7 +192,7 @@ function PatternCard({ annotation, isLast }: PatternCardProps) {
 
   return (
     <div
-      className="flex items-start gap-2 px-2 py-1.5 hover:bg-[#21262D]/40 transition-colors"
+      className="flex items-start gap-2 px-2 py-1.5 hover:bg-[var(--color-surface-raised)]/40 transition-colors"
       style={{
         borderLeft: `2px solid ${colors.border}`,
         borderBottom: isLast ? 'none' : '1px solid var(--color-border-subtle, #1C2128)',
@@ -328,7 +328,7 @@ export function PatternsPanel({ data, loading, error }: PatternsPanelProps) {
   if (error && data == null) {
     return (
       <div className="flex items-center justify-center py-4">
-        <span className="text-[10px] text-[#EF4444]">{error}</span>
+        <span className="text-[10px]" style={{ color: 'var(--color-loss)' }}>{error}</span>
       </div>
     )
   }

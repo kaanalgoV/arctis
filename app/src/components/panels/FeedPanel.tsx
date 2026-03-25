@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { TrendingUp, Layers, BarChart3, AlertTriangle, Compass, Info } from 'lucide-react'
+import { TrendingUp, Layers, BarChart3, AlertTriangle, Compass, Info, MessageCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Skeleton } from '@/components/ui/Skeleton'
+import { useSettingsStore } from '@/store/settings'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -54,27 +55,27 @@ function ItemIcon({ type, message }: { type: FeedItem['type']; message: string }
       return (
         <TrendingUp
           {...iconProps}
-          style={{ color: isShort ? '#EF4444' : '#22C55E' }}
+          style={{ color: isShort ? 'var(--color-loss, #FF3B3B)' : 'var(--color-profit, #00B775)' }}
         />
       )
     case 'warning':
-      return <AlertTriangle {...iconProps} style={{ color: '#F59E0B' }} />
+      return <AlertTriangle {...iconProps} style={{ color: 'var(--color-warning, #F7941D)' }} />
     case 'structure':
       return <Layers {...iconProps} style={{ color: 'var(--color-accent, #5CB8F0)' }} />
     case 'volume':
-      return <BarChart3 {...iconProps} style={{ color: '#EAB308' }} />
+      return <BarChart3 {...iconProps} style={{ color: 'var(--color-warning, #F7941D)' }} />
     case 'risk':
-      return <AlertTriangle {...iconProps} style={{ color: '#EF4444' }} />
+      return <AlertTriangle {...iconProps} style={{ color: 'var(--color-loss, #FF3B3B)' }} />
     case 'bias':
       return (
         <Compass
           {...iconProps}
-          style={{ color: isShort ? '#EF4444' : '#22C55E' }}
+          style={{ color: isShort ? 'var(--color-loss, #FF3B3B)' : 'var(--color-profit, #00B775)' }}
         />
       )
     case 'info':
     default:
-      return <Info {...iconProps} style={{ color: '#484F58' }} />
+      return <Info {...iconProps} style={{ color: 'var(--color-text-inactive)' }} />
   }
 }
 
@@ -83,13 +84,13 @@ function ItemIcon({ type, message }: { type: FeedItem['type']; message: string }
 // ---------------------------------------------------------------------------
 
 const messageColor: Record<FeedItem['type'], string> = {
-  signal:    '#C9D1D9',
-  info:      '#8B949E',
-  warning:   '#D97706',
+  signal:    'var(--color-text-primary, #E6EDF3)',
+  info:      'var(--color-text-secondary, #8B949E)',
+  warning:   'var(--color-warning, #F7941D)',
   structure: 'var(--color-accent, #5CB8F0)',
-  volume:    '#CA8A04',
-  risk:      '#EF4444',
-  bias:      '#A8B5C1',
+  volume:    'var(--color-text-secondary, #8B949E)',
+  risk:      'var(--color-loss, #FF3B3B)',
+  bias:      'var(--color-text-secondary, #A8B5C1)',
 }
 
 // ---------------------------------------------------------------------------
@@ -98,10 +99,23 @@ const messageColor: Record<FeedItem['type'], string> = {
 
 function formatHHMMSS(timestamp: number): string {
   const d = new Date(timestamp * 1000)
-  const hh = d.getUTCHours().toString().padStart(2, '0')
-  const mm = d.getUTCMinutes().toString().padStart(2, '0')
-  const ss = d.getUTCSeconds().toString().padStart(2, '0')
+  const hh = d.getHours().toString().padStart(2, '0')
+  const mm = d.getMinutes().toString().padStart(2, '0')
+  const ss = d.getSeconds().toString().padStart(2, '0')
   return `${hh}:${mm}:${ss}`
+}
+
+// ---------------------------------------------------------------------------
+// Relative timestamp ("2m ago", "15m ago", "1h ago")
+// ---------------------------------------------------------------------------
+
+function formatRelativeTime(timestamp: number): string {
+  const nowSec = Math.floor(Date.now() / 1000)
+  const deltaSec = nowSec - timestamp
+  if (deltaSec < 60) return `${deltaSec}s ago`
+  if (deltaSec < 3600) return `${Math.floor(deltaSec / 60)}m ago`
+  if (deltaSec < 86400) return `${Math.floor(deltaSec / 3600)}h ago`
+  return formatHHMMSS(timestamp)
 }
 
 // ---------------------------------------------------------------------------
@@ -112,7 +126,7 @@ function FeedSkeleton() {
   return (
     <div className="flex flex-col">
       {Array.from({ length: 5 }).map((_, i) => (
-        <div key={i} className="flex items-center gap-2 py-1.5 px-1 border-b border-[#21262D]/60">
+        <div key={i} className="flex items-center gap-2 py-1.5 px-1 border-b border-[var(--color-border)]/60">
           <Skeleton className="h-2 w-14 flex-shrink-0" />
           <Skeleton className="w-2.5 h-2.5 rounded-sm flex-shrink-0" />
           <Skeleton className="flex-1 h-2" />
@@ -133,21 +147,41 @@ interface FeedPanelProps {
   /** Error message when the last fetch failed. */
   error?: string | null
   onItemClick?: (timestamp: number) => void
+  /** Show relative timestamps ("2m ago") instead of absolute HH:MM:SS */
+  relativeTimestamps?: boolean
 }
 
-export function FeedPanel({ items, loading, error, onItemClick }: FeedPanelProps) {
+export function FeedPanel({ items, loading, error, onItemClick, relativeTimestamps = true }: FeedPanelProps) {
   const [activeFilter, setActiveFilter] = useState<FilterKey>('all')
+  const [askingTravis, setAskingTravis] = useState<number | null>(null)
+  const engineUrl = useSettingsStore((s) => s.engineUrl)
+
+  async function handleAskTravis(item: FeedItem, itemIndex: number) {
+    setAskingTravis(itemIndex)
+    try {
+      const context = `Feed event at ${item.time}: ${item.message}`
+      await fetch(`${engineUrl}/api/travis/ask`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question: context, context: item }),
+      })
+    } catch {
+      // silently ignore — Travis endpoint may be offline
+    } finally {
+      setAskingTravis(null)
+    }
+  }
 
   // Loading state (no items yet)
   if (loading && (items == null || items.length === 0)) {
     return (
       <div className="flex flex-col gap-2">
         {/* Skeleton tabs */}
-        <div className="flex gap-0.5 border-b border-[#21262D]">
+        <div className="flex gap-0.5 border-b border-[var(--color-border)]">
           {FILTERS.map((f) => (
             <span
               key={f.key}
-              className="px-2 py-1 text-[10px] text-[#484F58]"
+              className="px-2 py-1 text-[10px] text-[var(--color-text-inactive)]"
             >
               {f.label}
             </span>
@@ -162,7 +196,7 @@ export function FeedPanel({ items, loading, error, onItemClick }: FeedPanelProps
   if (error && (items == null || items.length === 0)) {
     return (
       <div className="flex items-center justify-center py-3">
-        <span className="text-[10px] text-[#EF4444]">{error}</span>
+        <span className="text-[10px] text-[var(--color-loss,#FF3B3B)]">{error}</span>
       </div>
     )
   }
@@ -170,8 +204,24 @@ export function FeedPanel({ items, loading, error, onItemClick }: FeedPanelProps
   // No data state
   if (items == null || items.length === 0) {
     return (
-      <div className="flex items-center justify-center py-3">
-        <span className="text-[11px] text-[#8B949E]">No events yet</span>
+      <div className="flex flex-col items-center justify-center gap-2 py-6">
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 16 16"
+          fill="none"
+          style={{ color: 'var(--color-text-inactive)', opacity: 0.35 }}
+        >
+          {/* Signal / wave icon suggesting waiting for events */}
+          <circle cx="8" cy="8" r="2" fill="currentColor" />
+          <path d="M4.5 8C4.5 5.51 6.27 3.5 8 3.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+          <path d="M11.5 8C11.5 5.51 9.73 3.5 8 3.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+          <path d="M2 8C2 4.13 4.69 1 8 1" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" opacity="0.5" />
+          <path d="M14 8C14 4.13 11.31 1 8 1" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" opacity="0.5" />
+        </svg>
+        <span className="font-mono text-[10px] text-[var(--color-text-inactive)] tracking-[0.05em]">
+          Feed is empty — waiting for market events
+        </span>
       </div>
     )
   }
@@ -197,7 +247,7 @@ export function FeedPanel({ items, loading, error, onItemClick }: FeedPanelProps
   return (
     <div className="flex flex-col gap-0">
       {/* Filter tabs — underline style */}
-      <div className="flex gap-0.5 border-b border-[#21262D] mb-1">
+      <div className="flex gap-1 border-b border-[var(--color-border)] mb-1">
         {FILTERS.map((filter) => {
           const count = countByFilter(filter)
           const isActive = activeFilter === filter.key
@@ -207,11 +257,11 @@ export function FeedPanel({ items, loading, error, onItemClick }: FeedPanelProps
               onClick={() => setActiveFilter(filter.key)}
               className={cn(
                 'flex items-center gap-1 px-2 py-1 relative',
-                'text-[10px] font-medium transition-colors leading-none',
+                'text-[9px] font-medium transition-colors leading-none rounded-full',
                 'focus:outline-none',
                 isActive
                   ? 'text-[var(--color-accent,#5CB8F0)]'
-                  : 'text-[#484F58] hover:text-[#8B949E]',
+                  : 'text-[var(--color-text-inactive)] hover:text-[var(--color-text-secondary)]',
               )}
             >
               {/* Active underline */}
@@ -222,18 +272,20 @@ export function FeedPanel({ items, loading, error, onItemClick }: FeedPanelProps
                 />
               )}
               {filter.label}
-              {count > 0 && (
-                <span
-                  className={cn(
-                    'px-1 py-px rounded font-mono tabular-nums text-[9px]',
-                    isActive
-                      ? 'bg-[var(--color-accent,#5CB8F0)]/15 text-[var(--color-accent,#5CB8F0)]'
-                      : 'bg-[#21262D] text-[#484F58]',
-                  )}
-                >
-                  {count}
-                </span>
-              )}
+              <span
+                className={cn(
+                  'px-1 py-px rounded-full font-mono tabular-nums text-[9px]',
+                  isActive && count > 0
+                    ? 'bg-[var(--color-accent,#5CB8F0)]/15 text-[var(--color-accent,#5CB8F0)]'
+                    : isActive && count === 0
+                    ? 'bg-[var(--color-surface-raised)] text-[var(--color-text-inactive)]'
+                    : count > 0
+                    ? 'bg-[var(--color-surface-raised)] text-[var(--color-text-inactive)]'
+                    : 'bg-[var(--color-surface-raised)] text-[var(--color-text-inactive)] opacity-40',
+                )}
+              >
+                {count}
+              </span>
             </button>
           )
         })}
@@ -241,56 +293,100 @@ export function FeedPanel({ items, loading, error, onItemClick }: FeedPanelProps
 
       {/* Event list — scrollable, items separated by 1px dividers */}
       <div
-        className="flex flex-col overflow-y-auto scrollbar-thin scrollbar-thumb-[#21262D] relative"
-        style={{ maxHeight: 200 }}
+        className="flex flex-col overflow-y-auto scrollbar-thin scrollbar-thumb-[var(--color-surface-raised)] relative"
+        style={{ maxHeight: 'clamp(160px, 30vh, 400px)' }}
       >
         {displayItems.length === 0 ? (
-          <p className="py-2 text-[11px] text-[#8B949E]">No events</p>
+          <p className="py-3 text-[10px] font-mono text-[var(--color-text-inactive)] tracking-[0.04em]">
+            No events for this filter
+          </p>
         ) : (
           displayItems.map((item, i) => {
             const isClickable = item.timestamp != null && !!onItemClick
-            // Use unix timestamp for HH:MM:SS; fall back to the string time field
-            const timeLabel =
-              item.timestamp != null ? formatHHMMSS(item.timestamp) : item.time
+            // Relative or absolute timestamp
+            const timeLabel = item.timestamp != null
+              ? relativeTimestamps
+                ? formatRelativeTime(item.timestamp)
+                : formatHHMMSS(item.timestamp)
+              : item.time
+
+            const isAskingThis = askingTravis === i
 
             return (
               <div
                 key={i}
-                onClick={() => {
-                  if (item.timestamp != null && onItemClick) {
-                    onItemClick(item.timestamp)
-                  }
-                }}
                 className={cn(
-                  'feed-item', // used by fade-in keyframe
-                  'flex items-start gap-2 py-1.5 px-1',
-                  'border-b border-[#21262D]/50 last:border-b-0',
-                  'transition-colors duration-100',
+                  'feed-item group', // used by fade-in keyframe; group for hover children
+                  'flex flex-col gap-0.5 py-1.5 px-1',
+                  'rounded-[var(--radius-sm)]',
+                  'transition-colors duration-75',
                   isClickable
-                    ? 'cursor-pointer hover:bg-[#161B22]'
-                    : 'cursor-default hover:bg-[#0D1117]/40',
+                    ? 'cursor-pointer hover:bg-[var(--color-surface-raised)]'
+                    : 'cursor-default hover:bg-[var(--color-surface-raised)]',
                 )}
-                style={{
-                  animationDelay: `${i * 20}ms`,
-                }}
+                style={{ animationDelay: `${i * 20}ms` }}
               >
-                {/* Timestamp — monospace, muted */}
-                <span className="font-mono text-[9px] text-[#484F58] pt-[1px] tabular-nums shrink-0 min-w-[46px]">
-                  {timeLabel}
-                </span>
-
-                {/* Type icon */}
-                <span className="pt-[1px] flex-shrink-0">
-                  <ItemIcon type={item.type} message={item.message} />
-                </span>
-
-                {/* Message */}
-                <span
-                  className="text-[10px] leading-snug"
-                  style={{ color: messageColor[item.type] }}
+                {/* Main row: timestamp + icon + message */}
+                <div
+                  className="flex items-start gap-2"
+                  onClick={() => {
+                    if (item.timestamp != null && onItemClick) {
+                      onItemClick(item.timestamp)
+                    }
+                  }}
                 >
-                  {item.message}
-                </span>
+                  {/* Timestamp — monospace, muted */}
+                  <span
+                    className="font-mono text-[9px] tabular-nums pt-[1px] shrink-0 min-w-[46px]"
+                    style={{ color: 'var(--color-text-inactive)' }}
+                    title={item.timestamp != null ? formatHHMMSS(item.timestamp) : item.time}
+                  >
+                    {timeLabel}
+                  </span>
+
+                  {/* Type icon */}
+                  <span className="pt-[1px] flex-shrink-0">
+                    <ItemIcon type={item.type} message={item.message} />
+                  </span>
+
+                  {/* Message */}
+                  <span
+                    className="text-[10px] leading-snug flex-1 min-w-0"
+                    style={{ color: messageColor[item.type] }}
+                  >
+                    {item.message}
+                  </span>
+                </div>
+
+                {/* Ask Travis button — visible on hover */}
+                <div className="flex justify-end opacity-0 group-hover:opacity-100 transition-opacity duration-100">
+                  <button
+                    type="button"
+                    disabled={isAskingThis}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      void handleAskTravis(item, i)
+                    }}
+                    className={cn(
+                      'flex items-center gap-1 px-1.5 py-0.5 rounded',
+                      'font-mono text-[8px] leading-none tracking-wide',
+                      'transition-colors duration-75 outline-none',
+                      'focus-visible:ring-1 focus-visible:ring-[var(--color-accent)]',
+                      isAskingThis
+                        ? 'opacity-50 cursor-wait'
+                        : 'hover:bg-[var(--color-accent)]/10 text-[var(--color-accent)]',
+                    )}
+                    style={{
+                      color: 'var(--color-accent)',
+                      border: '1px solid var(--color-accent)',
+                      opacity: isAskingThis ? 0.5 : undefined,
+                    }}
+                    title="Ask Travis about this event"
+                  >
+                    <MessageCircle size={8} strokeWidth={2} />
+                    {isAskingThis ? 'Asking...' : 'Ask Travis'}
+                  </button>
+                </div>
               </div>
             )
           })

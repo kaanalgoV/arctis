@@ -1,6 +1,8 @@
+import { useEffect, useState } from 'react'
 import { cn } from '@/lib/utils'
 import type { SetupData, SetupStatus } from '@/hooks/useSetups'
 import { isTerminalStatus } from '@/hooks/useSetups'
+import { Skeleton } from '@/components/ui/Skeleton'
 
 // ── Status metadata ───────────────────────────────────────────────────────────
 
@@ -18,6 +20,12 @@ const STATUS_META: Record<SetupStatus, StatusMeta> = {
     bg: 'rgba(255,255,255,0.04)',
     border: 'rgba(255,255,255,0.1)',
   },
+  qualified: {
+    label: 'QUALIFIED',
+    color: 'var(--color-text-secondary)',
+    bg: 'rgba(255,255,255,0.06)',
+    border: 'rgba(255,255,255,0.18)',
+  },
   armed: {
     label: 'ARMED',
     color: 'var(--color-warning)',
@@ -26,10 +34,29 @@ const STATUS_META: Record<SetupStatus, StatusMeta> = {
   },
   triggered: {
     label: 'TRIGGERED',
-    color: '#5CB8F0',
+    color: 'var(--color-accent)',
     bg: 'rgba(92,184,240,0.08)',
     border: 'rgba(92,184,240,0.3)',
   },
+  in_position: {
+    label: 'IN POSITION',
+    color: 'var(--color-accent)',
+    bg: 'rgba(92,184,240,0.1)',
+    border: 'rgba(92,184,240,0.4)',
+  },
+  partial_taken: {
+    label: 'PARTIAL',
+    color: 'var(--color-profit)',
+    bg: 'rgba(52,211,153,0.08)',
+    border: 'rgba(52,211,153,0.3)',
+  },
+  exited: {
+    label: 'EXITED',
+    color: 'var(--color-profit)',
+    bg: 'rgba(52,211,153,0.06)',
+    border: 'rgba(52,211,153,0.2)',
+  },
+  // Legacy aliases
   partial_tp1: {
     label: 'PARTIAL TP1',
     color: 'var(--color-profit)',
@@ -135,9 +162,11 @@ function DirectionBadge({ direction }: { direction: string }) {
 
 function StatusBadge({ status }: { status: SetupStatus }) {
   const meta = STATUS_META[status] ?? STATUS_META.candidate
+  const isArmed = status === 'armed'
+
   return (
     <div
-      className="flex items-center justify-center"
+      className={cn('flex items-center justify-center', isArmed && 'animate-pulse')}
       style={{
         height: 18,
         paddingLeft: 6,
@@ -145,6 +174,7 @@ function StatusBadge({ status }: { status: SetupStatus }) {
         borderRadius: 3,
         background: meta.bg,
         border: `1px solid ${meta.border}`,
+        boxShadow: isArmed ? '0 0 8px rgba(251,191,36,0.4)' : undefined,
       }}
     >
       <span
@@ -162,24 +192,40 @@ function StatusBadge({ status }: { status: SetupStatus }) {
   )
 }
 
+// ticks = price difference / 0.25 (NQ tick size)
+function toTicks(priceDiff: number): number {
+  return Math.round(Math.abs(priceDiff) / 0.25)
+}
+
 function PriceRow({ setup }: { setup: SetupData }) {
-  const risk = setup.entry_trigger_price > 0 && setup.stop_price > 0
-    ? Math.abs(setup.entry_trigger_price - setup.stop_price)
-    : 0
-  const reward = setup.entry_trigger_price > 0 && setup.tp1_price > 0
-    ? Math.abs(setup.tp1_price - setup.entry_trigger_price)
-    : 0
+  const entry = setup.entry_trigger_price
+  const stop = setup.stop_price
+  const tp1 = setup.tp1_price
+  const tp2 = setup.tp2_price
+  const zoneHigh = setup.entry_zone_high
+  const zoneLow = setup.entry_zone_low
+
+  const risk = entry > 0 && stop > 0 ? Math.abs(entry - stop) : 0
+  const reward = entry > 0 && tp1 > 0 ? Math.abs(tp1 - entry) : 0
   const total = risk + reward
 
+  const stopTicks = entry > 0 && stop > 0 ? toTicks(entry - stop) : null
+  const tp1Ticks = entry > 0 && tp1 > 0 ? toTicks(tp1 - entry) : null
+  const tp2Ticks = entry > 0 && tp2 > 0 ? toTicks(tp2 - entry) : null
+
+  const isLong = setup.direction === 'long'
+
   return (
-    <div className="flex flex-col gap-1">
-      {/* Price values */}
-      <div
-        className="grid gap-1"
-        style={{ gridTemplateColumns: '1fr 1fr 1fr' }}
-      >
-        {/* Entry */}
-        <div className="flex flex-col gap-0.5">
+    <div className="flex flex-col gap-1.5">
+      {/* Entry zone band — if zone is set */}
+      {zoneLow > 0 && zoneHigh > 0 && (
+        <div
+          className="flex items-center justify-between px-2 py-1 rounded-[var(--radius-xs)]"
+          style={{
+            background: isLong ? 'rgba(0,135,87,0.06)' : 'rgba(239,65,54,0.06)',
+            border: `1px solid ${isLong ? 'rgba(0,135,87,0.2)' : 'rgba(239,65,54,0.2)'}`,
+          }}
+        >
           <span
             style={{
               fontSize: 8,
@@ -189,92 +235,105 @@ function PriceRow({ setup }: { setup: SetupData }) {
               letterSpacing: '0.08em',
             }}
           >
-            Entry
+            Entry Zone
           </span>
           <span
             className="tabular-nums"
             style={{
-              fontSize: 11,
+              fontSize: 10,
               fontFamily: 'var(--font-mono)',
               fontWeight: 600,
-              color: 'var(--color-text-primary)',
+              color: isLong ? 'var(--color-profit)' : 'var(--color-loss)',
             }}
           >
-            {formatPrice(setup.entry_trigger_price)}
+            {formatPrice(zoneLow)} – {formatPrice(zoneHigh)}
           </span>
         </div>
+      )}
+
+      {/* Price grid */}
+      <div className="grid gap-1" style={{ gridTemplateColumns: '1fr 1fr 1fr' }}>
+        {/* Entry trigger */}
+        <div className="flex flex-col gap-0.5">
+          <span
+            style={{ fontSize: 8, fontFamily: 'var(--font-mono)', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}
+          >
+            Trigger
+          </span>
+          <span
+            className="tabular-nums"
+            style={{ fontSize: 11, fontFamily: 'var(--font-mono)', fontWeight: 600, color: 'var(--color-text-primary)' }}
+          >
+            {formatPrice(entry)}
+          </span>
+        </div>
+
         {/* Stop */}
         <div className="flex flex-col gap-0.5">
           <span
-            style={{
-              fontSize: 8,
-              fontFamily: 'var(--font-mono)',
-              color: 'var(--color-text-muted)',
-              textTransform: 'uppercase',
-              letterSpacing: '0.08em',
-            }}
+            style={{ fontSize: 8, fontFamily: 'var(--font-mono)', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}
           >
             Stop
           </span>
           <span
             className="tabular-nums"
-            style={{
-              fontSize: 11,
-              fontFamily: 'var(--font-mono)',
-              fontWeight: 600,
-              color: 'var(--color-loss)',
-            }}
+            style={{ fontSize: 11, fontFamily: 'var(--font-mono)', fontWeight: 600, color: 'var(--color-loss)' }}
           >
-            {formatPrice(setup.stop_price)}
+            {formatPrice(stop)}
           </span>
+          {stopTicks != null && (
+            <span style={{ fontSize: 8, fontFamily: 'var(--font-mono)', color: 'var(--color-loss)', opacity: 0.7 }}>
+              -{stopTicks}t
+            </span>
+          )}
         </div>
+
         {/* TP1 */}
         <div className="flex flex-col gap-0.5">
           <span
-            style={{
-              fontSize: 8,
-              fontFamily: 'var(--font-mono)',
-              color: 'var(--color-text-muted)',
-              textTransform: 'uppercase',
-              letterSpacing: '0.08em',
-            }}
+            style={{ fontSize: 8, fontFamily: 'var(--font-mono)', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}
           >
             TP1
           </span>
           <span
             className="tabular-nums"
-            style={{
-              fontSize: 11,
-              fontFamily: 'var(--font-mono)',
-              fontWeight: 600,
-              color: 'var(--color-profit)',
-            }}
+            style={{ fontSize: 11, fontFamily: 'var(--font-mono)', fontWeight: 600, color: 'var(--color-profit)' }}
           >
-            {formatPrice(setup.tp1_price)}
+            {formatPrice(tp1)}
           </span>
+          {tp1Ticks != null && (
+            <span style={{ fontSize: 8, fontFamily: 'var(--font-mono)', color: 'var(--color-profit)', opacity: 0.7 }}>
+              +{tp1Ticks}t
+            </span>
+          )}
         </div>
       </div>
+
+      {/* TP2 if available */}
+      {tp2 > 0 && tp2Ticks != null && (
+        <div className="flex items-center justify-between">
+          <span style={{ fontSize: 8, fontFamily: 'var(--font-mono)', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+            TP2
+          </span>
+          <div className="flex items-baseline gap-1.5">
+            <span className="tabular-nums" style={{ fontSize: 11, fontFamily: 'var(--font-mono)', fontWeight: 600, color: 'var(--color-profit)' }}>
+              {formatPrice(tp2)}
+            </span>
+            <span style={{ fontSize: 8, fontFamily: 'var(--font-mono)', color: 'var(--color-profit)', opacity: 0.7 }}>
+              +{tp2Ticks}t
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* R:R bar */}
       {total > 0 && (
         <div className="flex items-center gap-0.5" style={{ height: 4 }}>
           <div
-            style={{
-              flex: risk,
-              height: 4,
-              borderRadius: 2,
-              background: 'var(--color-loss)',
-              opacity: 0.55,
-            }}
+            style={{ flex: risk, height: 4, borderRadius: 2, background: 'var(--color-loss)', opacity: 0.55 }}
           />
           <div
-            style={{
-              flex: reward,
-              height: 4,
-              borderRadius: 2,
-              background: 'var(--color-profit)',
-              opacity: 0.55,
-            }}
+            style={{ flex: reward, height: 4, borderRadius: 2, background: 'var(--color-profit)', opacity: 0.55 }}
           />
         </div>
       )}
@@ -449,19 +508,35 @@ function SetupCard({ setup, dimmed = false }: SetupCardProps) {
         </div>
       </div>
 
-      {/* Status badge */}
-      <div className="flex items-center gap-1.5">
-        <StatusBadge status={setup.status} />
-        {setup.exit_reason && (
+      {/* Status badge + reason + P&L */}
+      <div className="flex items-center justify-between gap-1.5">
+        <div className="flex items-center gap-1.5">
+          <StatusBadge status={setup.status} />
+          {(setup.exit_reason || setup.status_reason) && (
+            <span
+              style={{
+                fontSize: 8,
+                fontFamily: 'var(--font-mono)',
+                color: 'var(--color-text-muted)',
+                letterSpacing: '0.04em',
+              }}
+            >
+              {setup.exit_reason || setup.status_reason}
+            </span>
+          )}
+        </div>
+        {/* P&L ticks badge — only shown when position has exited */}
+        {setup.pnl_ticks != null && (
           <span
+            className="tabular-nums"
             style={{
-              fontSize: 8,
+              fontSize: 10,
               fontFamily: 'var(--font-mono)',
-              color: 'var(--color-text-muted)',
-              letterSpacing: '0.04em',
+              fontWeight: 700,
+              color: setup.pnl_ticks >= 0 ? 'var(--color-profit)' : 'var(--color-loss)',
             }}
           >
-            {setup.exit_reason}
+            {setup.pnl_ticks >= 0 ? '+' : ''}{setup.pnl_ticks}t
           </span>
         )}
       </div>
@@ -496,16 +571,111 @@ function SetupCard({ setup, dimmed = false }: SetupCardProps) {
   )
 }
 
+// ── Staleness Dot ─────────────────────────────────────────────────────────────
+
+function StalenessDot({ lastUpdateTs }: { lastUpdateTs?: number | null }) {
+  const [age, setAge] = useState(0)
+
+  useEffect(() => {
+    if (!lastUpdateTs) return
+    const tick = () => setAge(Math.floor((Date.now() - lastUpdateTs) / 1000))
+    tick()
+    const id = setInterval(tick, 1000)
+    return () => clearInterval(id)
+  }, [lastUpdateTs])
+
+  if (!lastUpdateTs) return null
+
+  const color =
+    age < 5
+      ? 'var(--color-profit)'
+      : age < 30
+        ? 'var(--color-warning)'
+        : 'var(--color-loss)'
+
+  const shadow = age < 5 ? '0 0 5px var(--color-profit)' : age < 30 ? '0 0 4px var(--color-warning)' : 'none'
+  const label = age < 60 ? `${age}s ago` : `${Math.floor(age / 60)}m ago`
+
+  return (
+    <div className="flex items-center gap-1" title={`Last updated ${label}`}>
+      <div className="w-1.5 h-1.5 rounded-full" style={{ background: color, boxShadow: shadow }} />
+      <span className="font-mono text-[8px]" style={{ color: 'var(--color-text-muted)' }}>
+        {label}
+      </span>
+    </div>
+  )
+}
+
+// ── Loading skeleton ──────────────────────────────────────────────────────────
+
+function SetupSkeleton() {
+  return (
+    <div className="flex flex-col gap-2">
+      {Array.from({ length: 2 }).map((_, i) => (
+        <div
+          key={i}
+          className="flex flex-col gap-2 px-3 py-2.5 rounded-[var(--radius-sm)]"
+          style={{
+            background: 'var(--color-surface-raised)',
+            border: '1px solid var(--color-border-subtle)',
+          }}
+        >
+          {/* Header row */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <Skeleton className="h-[18px] w-10" style={{ borderRadius: 3 }} />
+              <Skeleton className="h-3 w-16" />
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Skeleton className="h-3 w-8" />
+              <Skeleton className="h-4 w-8" />
+            </div>
+          </div>
+          {/* Status badge */}
+          <Skeleton className="h-[18px] w-20" style={{ borderRadius: 3 }} />
+          {/* Price grid */}
+          <div className="grid gap-1" style={{ gridTemplateColumns: '1fr 1fr 1fr' }}>
+            {Array.from({ length: 3 }).map((_, j) => (
+              <div key={j} className="flex flex-col gap-0.5">
+                <Skeleton className="h-2 w-8" />
+                <Skeleton className="h-3 w-14" />
+              </div>
+            ))}
+          </div>
+          {/* R:R bar */}
+          <Skeleton className="h-1 w-full" style={{ borderRadius: 2 }} />
+        </div>
+      ))}
+    </div>
+  )
+}
+
 // ── Empty state ───────────────────────────────────────────────────────────────
 
-function EmptyState({ message }: { message: string }) {
+function EmptyState({ message, showIcon = false }: { message: string; showIcon?: boolean }) {
   return (
-    <div className="flex items-center justify-center py-5">
+    <div className="flex flex-col items-center justify-center gap-2 py-6">
+      {showIcon && (
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 18 18"
+          fill="none"
+          style={{ opacity: 0.3 }}
+        >
+          {/* Grid icon suggesting empty table */}
+          <rect x="1" y="1" width="6" height="6" rx="1" stroke="currentColor" strokeWidth="1.2" />
+          <rect x="11" y="1" width="6" height="6" rx="1" stroke="currentColor" strokeWidth="1.2" />
+          <rect x="1" y="11" width="6" height="6" rx="1" stroke="currentColor" strokeWidth="1.2" />
+          <rect x="11" y="11" width="6" height="6" rx="1" stroke="currentColor" strokeWidth="1.2" />
+        </svg>
+      )}
       <span
         style={{
-          fontSize: 11,
+          fontSize: 10,
           color: 'var(--color-text-muted)',
           fontFamily: 'var(--font-mono)',
+          letterSpacing: '0.05em',
         }}
       >
         {message}
@@ -558,6 +728,7 @@ export interface SetupLifecyclePanelProps {
   isLoading?: boolean
   error?: string | null
   className?: string
+  lastUpdateTs?: number | null
 }
 
 export function SetupLifecyclePanel({
@@ -565,11 +736,12 @@ export function SetupLifecyclePanel({
   isLoading = false,
   error = null,
   className,
+  lastUpdateTs,
 }: SetupLifecyclePanelProps) {
   if (isLoading && setups.length === 0) {
     return (
       <div className={cn('flex flex-col gap-2', className)}>
-        <EmptyState message="Loading setups..." />
+        <SetupSkeleton />
       </div>
     )
   }
@@ -577,7 +749,7 @@ export function SetupLifecyclePanel({
   if (error) {
     return (
       <div className={cn('flex flex-col gap-2', className)}>
-        <EmptyState message={`Error: ${error}`} />
+        <EmptyState message={`Error: ${error}`} showIcon />
       </div>
     )
   }
@@ -588,13 +760,20 @@ export function SetupLifecyclePanel({
   if (setups.length === 0) {
     return (
       <div className={cn('flex flex-col gap-2', className)}>
-        <EmptyState message="No active setups" />
+        <EmptyState message="No setups detected" showIcon />
       </div>
     )
   }
 
   return (
     <div className={cn('flex flex-col gap-3', className)}>
+      {/* Staleness indicator */}
+      {lastUpdateTs != null && (
+        <div className="flex justify-end">
+          <StalenessDot lastUpdateTs={lastUpdateTs} />
+        </div>
+      )}
+
       {/* Active setups */}
       {activeSetups.length > 0 && (
         <div className="flex flex-col gap-1.5">

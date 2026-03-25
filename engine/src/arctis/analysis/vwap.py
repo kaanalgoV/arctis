@@ -26,7 +26,9 @@ def calculate_vwap(bars: list[OHLCVBar]) -> list[VWAPData]:
         return []
 
     from datetime import datetime, timezone
+    from zoneinfo import ZoneInfo
 
+    ET = ZoneInfo("America/New_York")
     results = []
     cum_tp_vol = 0.0
     cum_vol = 0.0
@@ -34,24 +36,31 @@ def calculate_vwap(bars: list[OHLCVBar]) -> list[VWAPData]:
     prev_trading_day = None
 
     for bar in bars:
-        # Determine the trading day for this bar.
-        # CME trading day starts at 17:00 CT (23:00 UTC) previous calendar day.
-        # For VWAP reset we use 14:30 UTC (09:30 ET = RTH open) as the anchor.
-        dt = datetime.fromtimestamp(bar.timestamp, tz=timezone.utc)
-        # Trading day: if before 14:30 UTC, it belongs to the previous calendar date.
-        # If at or after 14:30 UTC, it's the current date.
-        if dt.hour < 14 or (dt.hour == 14 and dt.minute < 30):
-            trading_day = (dt.date().toordinal() - 1)  # previous day's session
-        else:
-            trading_day = dt.date().toordinal()
+        # Convert to ET for correct RTH detection (handles EST/EDT automatically)
+        et_dt = datetime.fromtimestamp(bar.timestamp, tz=timezone.utc).astimezone(ET)
+        et_minutes = et_dt.hour * 60 + et_dt.minute
 
-        # Reset VWAP at new trading day
+        # RTH = 09:30 - 16:00 ET (CME Regular Trading Hours)
+        is_rth = 570 <= et_minutes < 960  # 09:30 - 16:00 ET
+
+        # Trading day resets at RTH open (09:30 ET)
+        if et_minutes < 570:
+            trading_day = (et_dt.date().toordinal() - 1)
+        else:
+            trading_day = et_dt.date().toordinal()
+
+        # Reset VWAP at new RTH session
         if prev_trading_day is not None and trading_day != prev_trading_day:
             cum_tp_vol = 0.0
             cum_vol = 0.0
             cum_tp2_vol = 0.0
 
         prev_trading_day = trading_day
+
+        # Only accumulate volume during RTH — skip pre-RTH bars entirely.
+        # No VWAP data emitted for overnight/premarket = clean line on chart.
+        if not is_rth:
+            continue
 
         tp = (bar.high + bar.low + bar.close) / 3.0
         cum_tp_vol += tp * bar.volume
@@ -75,5 +84,18 @@ def calculate_vwap(bars: list[OHLCVBar]) -> list[VWAPData]:
                 lower_2=round(vwap - 2 * sd, 2),
             )
         )
+
+    # Only return VWAP for the most recent trading day (today).
+    # This prevents visual jumps between yesterday's and today's VWAP.
+    if results and prev_trading_day is not None:
+        today_results = [r for r in results if (
+            datetime.fromtimestamp(r.timestamp, tz=timezone.utc).astimezone(ET).hour * 60 +
+            datetime.fromtimestamp(r.timestamp, tz=timezone.utc).astimezone(ET).minute >= 570
+        ) and (
+            datetime.fromtimestamp(r.timestamp, tz=timezone.utc).astimezone(ET).date() ==
+            datetime.now(ET).date()
+        )]
+        if today_results:
+            return today_results
 
     return results

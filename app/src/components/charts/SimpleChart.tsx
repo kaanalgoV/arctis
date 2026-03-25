@@ -1,3 +1,8 @@
+/**
+ * @deprecated Use CandlestickChart via ArctisChartWrapper. Kept as fallback.
+ * This component uses lightweight-charts and lacks drawing tools, volume profile,
+ * VWAP/EMA overlays, and session bands. Migrate all usages to ArctisChartWrapper.
+ */
 import { useEffect, useRef, useMemo, useState, useCallback } from 'react'
 import {
   createChart,
@@ -314,7 +319,7 @@ export function SimpleChart({
       lineWidth: 2,
       priceLineVisible: false,
       lastValueVisible: false,
-      priceScaleId: 'overlay',
+      priceScaleId: 'right',
       visible: false,
     })
     overlayRef.current.vwap = vwapSeries
@@ -326,7 +331,7 @@ export function SimpleChart({
       lineStyle: LineStyle.Dashed,
       priceLineVisible: false,
       lastValueVisible: false,
-      priceScaleId: 'overlay',
+      priceScaleId: 'right',
       visible: false,
     })
     const vwapLower1Series = chart.addSeries(LineSeries, {
@@ -335,7 +340,7 @@ export function SimpleChart({
       lineStyle: LineStyle.Dashed,
       priceLineVisible: false,
       lastValueVisible: false,
-      priceScaleId: 'overlay',
+      priceScaleId: 'right',
       visible: false,
     })
     overlayRef.current.vwapUpper1 = vwapUpper1Series
@@ -348,7 +353,7 @@ export function SimpleChart({
       lineStyle: LineStyle.Solid,
       priceLineVisible: false,
       lastValueVisible: false,
-      priceScaleId: 'overlay',
+      priceScaleId: 'right',
       visible: false,
     })
     const ema21Series = chart.addSeries(LineSeries, {
@@ -357,7 +362,7 @@ export function SimpleChart({
       lineStyle: LineStyle.Solid,
       priceLineVisible: false,
       lastValueVisible: false,
-      priceScaleId: 'overlay',
+      priceScaleId: 'right',
       visible: false,
     })
     const ema50Series = chart.addSeries(LineSeries, {
@@ -366,16 +371,12 @@ export function SimpleChart({
       lineStyle: LineStyle.Dashed,
       priceLineVisible: false,
       lastValueVisible: false,
-      priceScaleId: 'overlay',
+      priceScaleId: 'right',
       visible: false,
     })
     overlayRef.current.ema9 = ema9Series
 
-    // Configure shared overlay price scale (must be AFTER first series with this ID is added)
-    chart.priceScale('overlay').applyOptions({
-      scaleMargins: { top: 0.05, bottom: 0.12 },
-      visible: false,
-    })
+    // Overlays share the right price scale with candles — no separate overlay scale needed
     overlayRef.current.ema21 = ema21Series
     overlayRef.current.ema50 = ema50Series
 
@@ -445,10 +446,9 @@ export function SimpleChart({
       return
     }
 
-    // Save current TIME range (not logical range — logical indices shift after setData)
-    const savedTimeRange = chart.timeScale().getVisibleRange()
     const prevCount = prevBarCountRef.current
     const newCount = bars.length
+    const isFirstLoad = prevCount === 0 && newCount > 0
 
     candleSeries.setData(
       bars.map((b) => ({
@@ -464,24 +464,18 @@ export function SimpleChart({
       }))
     )
 
-    if (prevCount === 0 && newCount > 0) {
-      // FIRST LOAD: zoom to last N bars — fewer for small timeframes
-      // 1m=60 bars (1h), 5m=60 bars (5h), 15m=80 bars (20h), 30m+=120 bars
-      const barInterval = bars.length > 1 ? (bars[bars.length-1].timestamp - bars[bars.length-2].timestamp) : 900
-      const visible = barInterval <= 60 ? 60 : barInterval <= 300 ? 60 : barInterval <= 900 ? 80 : 120
-      if (newCount > visible) {
-        chart.timeScale().setVisibleLogicalRange({
-          from: newCount - visible,
-          to: newCount + 5,
-        })
-      } else {
-        chart.timeScale().fitContent()
-      }
+    if (isFirstLoad) {
+      // Show last 2 trading days on first load only — never re-zoom after
+      const lastTs = bars[newCount - 1].timestamp
+      const twoDaysAgo = lastTs - 2 * 24 * 3600
+      const startIdx = bars.findIndex(b => b.timestamp >= twoDaysAgo)
+      const from = startIdx >= 0 ? startIdx : 0
+      chart.timeScale().setVisibleLogicalRange({ from, to: newCount + 5 })
       isFirstLoadRef.current = false
-    } else if (savedTimeRange) {
-      // SUBSEQUENT UPDATES: restore via TIME range (timestamps are stable across setData)
-      chart.timeScale().setVisibleRange(savedTimeRange)
     }
+    // For ALL subsequent updates: do NOTHING with zoom/scroll
+    // LWC preserves scroll position automatically when setData is called
+    // with the same time axis. The user's view is sacred.
 
     prevBarCountRef.current = newCount
     requestAnimationFrame(() => updateVisibleRange())
@@ -935,13 +929,17 @@ export function SimpleChart({
   const handleRecenter = useCallback(() => {
     const chart = chartRef.current
     if (!chart || bars.length === 0) return
-    const n = bars.length
-    const visible = n > 500 ? 120 : Math.min(n, 80)
-    if (n > visible) {
-      chart.timeScale().setVisibleLogicalRange({ from: n - visible, to: n + 5 })
-    } else {
-      chart.timeScale().fitContent()
-    }
+
+    // Show last 2 days: find the bar ~48h ago (or 2 trading sessions)
+    const now = bars[bars.length - 1].timestamp
+    const twoDaysAgo = now - 2 * 24 * 3600
+    const startIdx = bars.findIndex(b => b.timestamp >= twoDaysAgo)
+    const from = startIdx >= 0 ? startIdx : 0
+
+    chart.timeScale().setVisibleLogicalRange({
+      from,
+      to: bars.length + 5,
+    })
   }, [bars])
 
   return (

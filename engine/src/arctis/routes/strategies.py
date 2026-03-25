@@ -1,8 +1,12 @@
 """Strategy Library API — serves strategy definitions with real performance metrics."""
 
-from fastapi import APIRouter
+import logging
+
+from fastapi import APIRouter, HTTPException
 from arctis.db import get_engine
 import sqlalchemy as sa
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/strategies", tags=["strategies"])
 
@@ -10,48 +14,53 @@ router = APIRouter(prefix="/api/strategies", tags=["strategies"])
 @router.get("")
 async def get_strategies():
     """Return all strategy definitions with aggregated performance metrics from real backtests."""
-    engine = get_engine()
-    with engine.connect() as conn:
-        rows = conn.execute(sa.text("""
-            SELECT
-                sd.id,
-                sd.name,
-                sd.description,
-                sd.category,
-                sd.enabled,
-                sd.is_implemented,
-                COALESCE(perf.total_trades, 0)   AS total_trades,
-                COALESCE(perf.total_wins, 0)     AS total_wins,
-                perf.win_rate,
-                perf.profit_factor,
-                perf.avg_win,
-                perf.avg_loss,
-                perf.best_pf,
-                perf.profitable_runs,
-                perf.total_runs
-            FROM strategy_definitions sd
-            LEFT JOIN LATERAL (
+    try:
+        engine = get_engine()
+    except Exception:
+        logger.exception("Failed to connect to database")
+        raise HTTPException(status_code=503, detail="Database unavailable")
+    try:
+        with engine.connect() as conn:
+            rows = conn.execute(sa.text("""
                 SELECT
-                    SUM(rm.total_trades)                                                              AS total_trades,
-                    SUM(rm.winning_trades)                                                            AS total_wins,
-                    ROUND(
-                        SUM(rm.winning_trades)::numeric
-                        / NULLIF(SUM(rm.total_trades), 0) * 100,
-                    1)                                                                                AS win_rate,
-                    ROUND(AVG(rm.profit_factor)::numeric, 2)                                          AS profit_factor,
-                    ROUND(AVG(rm.avg_win)::numeric, 0)                                                AS avg_win,
-                    ROUND(AVG(rm.avg_loss)::numeric, 0)                                               AS avg_loss,
-                    ROUND(MAX(rm.profit_factor)::numeric, 2)                                          AS best_pf,
-                    COUNT(*) FILTER (WHERE rm.profit_factor > 1.0)                                    AS profitable_runs,
-                    COUNT(*)                                                                           AS total_runs
-                FROM runs r
-                JOIN run_metrics rm ON rm.run_id = r.id
-                WHERE r.strategy = sd.id
-                  AND r.status = 'finished'
-                  AND rm.total_trades > 5
-            ) perf ON true
-            ORDER BY perf.total_trades DESC NULLS LAST, sd.name ASC
-        """)).fetchall()
+                    sd.id,
+                    sd.name,
+                    sd.description,
+                    sd.category,
+                    sd.enabled,
+                    sd.is_implemented,
+                    COALESCE(perf.total_trades, 0)   AS total_trades,
+                    COALESCE(perf.total_wins, 0)     AS total_wins,
+                    perf.win_rate,
+                    perf.profit_factor,
+                    perf.avg_win,
+                    perf.avg_loss,
+                    perf.best_pf,
+                    perf.profitable_runs,
+                    perf.total_runs
+                FROM strategy_definitions sd
+                LEFT JOIN LATERAL (
+                    SELECT
+                        SUM(rm.total_trades)                                                              AS total_trades,
+                        SUM(rm.winning_trades)                                                            AS total_wins,
+                        ROUND(
+                            SUM(rm.winning_trades)::numeric
+                            / NULLIF(SUM(rm.total_trades), 0) * 100,
+                        1)                                                                                AS win_rate,
+                        ROUND(AVG(rm.profit_factor)::numeric, 2)                                          AS profit_factor,
+                        ROUND(AVG(rm.avg_win)::numeric, 0)                                                AS avg_win,
+                        ROUND(AVG(rm.avg_loss)::numeric, 0)                                               AS avg_loss,
+                        ROUND(MAX(rm.profit_factor)::numeric, 2)                                          AS best_pf,
+                        COUNT(*) FILTER (WHERE rm.profit_factor > 1.0)                                    AS profitable_runs,
+                        COUNT(*)                                                                           AS total_runs
+                    FROM runs r
+                    JOIN run_metrics rm ON rm.run_id = r.id
+                    WHERE r.strategy = sd.id
+                      AND r.status = 'finished'
+                      AND rm.total_trades > 5
+                ) perf ON true
+                ORDER BY perf.total_trades DESC NULLS LAST, sd.name ASC
+            """)).fetchall()
 
         # Rename internal strategy names to Arctis branding
         _NAME_MAP = {
@@ -106,3 +115,8 @@ async def get_strategies():
             })
 
         return {"strategies": strategies}
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception("Failed to query strategies")
+        raise HTTPException(status_code=503, detail="Database unavailable")

@@ -28,34 +28,18 @@ export function useAnalysis(pollIntervalMs = 5000) {
 
   const fetchAll = useCallback(async () => {
     try {
-      const tf = timeframe
-      const results = await Promise.allSettled([
-        api.fetchSessions(market, tf),
-        api.fetchConfluence(market, tf),
-        api.fetchPatterns(market, tf),
-        api.fetchIndicators(market, tf),
-        api.fetchVolume(market, tf),
-        api.fetchStructure(market, tf),
-        api.fetchConfig(),
-        api.fetchBias(market, tf),
-        api.fetchZones(market, tf),
-        api.fetchSignals(market, tf),
-      ])
-
-      const getValue = (r: PromiseSettledResult<any>) =>
-        r.status === 'fulfilled' ? r.value : null
-
+      const snapshot = await api.fetchSnapshot(market, timeframe)
       setData({
-        sessions: getValue(results[0]),
-        confluence: getValue(results[1]),
-        patterns: getValue(results[2]),
-        indicators: getValue(results[3]),
-        volume: getValue(results[4]),
-        structure: getValue(results[5]),
-        config: getValue(results[6]),
-        bias: getValue(results[7]),
-        zones: getValue(results[8]),
-        signals: getValue(results[9]),
+        sessions:    snapshot.sessions    ?? null,
+        confluence:  snapshot.confluence  ?? null,
+        patterns:    snapshot.patterns    ?? null,
+        indicators:  snapshot.indicators  ?? null,
+        volume:      snapshot.volume      ?? null,
+        structure:   snapshot.structure   ?? null,
+        config:      snapshot.config      ?? null,
+        bias:        snapshot.bias        ?? null,
+        zones:       snapshot.zones       ?? null,
+        signals:     snapshot.signals     ?? null,
       })
       setError(null)
     } catch (e) {

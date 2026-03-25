@@ -11,61 +11,57 @@ from arctis.analysis.confluence import calculate_confluence
 from arctis.analysis.discipline import DisciplineContext, generate_warnings
 from arctis.analysis.indicators import calculate_ema_ribbon, calculate_rsi
 from arctis.analysis.patterns import detect_patterns
-from arctis.analysis.sessions import classify_session, get_session_stats
+from arctis.analysis.sessions import (
+    classify_session,
+    get_current_session,
+    get_recent_transition,
+    get_session_context,
+    get_session_stats,
+    get_today_session_stats,
+)
 from arctis.analysis.structure import classify_trend, detect_structure_breaks, detect_swings
 from arctis.analysis.volume import detect_volume_spikes, relative_volume
 from arctis.analysis.volume_profile import build_daily_volume_profiles, build_volume_profile, calculate_session_levels
 from arctis.analysis.vwap import calculate_vwap
 from arctis.db import fetch_bars_as_models
-from arctis.models import Market, Timeframe
+from arctis.models import Market, Timeframe, FRONT_MONTH, resolve_symbol
 
 router = APIRouter(prefix="/api/analysis")
 
 
-def _get_sim():
-    from arctis.main import sim
-    return sim
+from arctis.routes._common import get_sim as _get_sim, load_bars as _load_bars, current_timestamp as _current_timestamp
 
 
-def _load_bars(market: Market, timeframe: Timeframe, days: int = 30):
-    """Load bars from simulation engine or TimescaleDB.
+def _shared_meta(market: Market, bars: list) -> dict:
+    """Return the shared meta block included in every analysis response.
 
-    Source selection is explicit and logged:
-    - If a simulation is active for this market+timeframe → use sim bars.
-    - Otherwise → use TimescaleDB. No silent ParquetStore fallback.
-
-    The ParquetStore fallback was removed because stale parquet files silently
-    overrode live DB data, creating a second source of truth and data integrity
-    issues. If you need parquet for testing, do so explicitly at the call site.
+    Guarantees that current_price, session, timestamp are derived from the
+    same sources as /api/analysis/bias and /api/signals.
     """
-    sim = _get_sim()
-    if sim.active and sim.market == market and sim.timeframe == timeframe:
-        bars = sim.get_bars()
-        logger.debug(
-            "_load_bars: source=simulation market=%s timeframe=%s bars=%d",
-            market.value, timeframe.value, len(bars),
-        )
-        return bars
+    from arctis.routes.live import _last_prices
 
-    logger.debug(
-        "_load_bars: source=timescaledb market=%s timeframe=%s days=%d",
-        market.value, timeframe.value, days,
-    )
-    bars = fetch_bars_as_models(market=market.value, days=days, timeframe=timeframe.value)
-    if not bars:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Keine Bars fuer {market.value} ({timeframe.value}) in der DB gefunden.",
-        )
-    return bars
+    symbol = resolve_symbol(market)
+    now = time.time()
+    live_entry = _last_prices.get(symbol)
 
+    if live_entry:
+        current_price = live_entry["price"]
+        price_is_live = (now - live_entry["ts"]) < 5.0
+        price_age_s = round(now - live_entry["ts"], 1)
+    else:
+        current_price = bars[-1].close if bars else None
+        price_is_live = False
+        price_age_s = None
 
-def _current_timestamp() -> int:
-    """Return current timestamp, or simulated time in sim mode."""
-    sim = _get_sim()
-    if sim.active:
-        return sim.get_sim_timestamp()
-    return int(time.time())
+    session_ctx = get_current_session()
+
+    return {
+        "current_price": round(current_price, 2) if current_price is not None else None,
+        "session": session_ctx.value,
+        "timestamp": now,
+        "price_is_live": price_is_live,
+        "price_age_s": price_age_s,
+    }
 
 
 @router.get("/structure")
@@ -93,6 +89,7 @@ async def analyze_structure(
     return {
         "market": market.value,
         "timeframe": timeframe.value,
+        **_shared_meta(market, bars),
         "trend": trend.value,
         "swings": [
             {"type": sw.type.value, "price": sw.price, "index": sw.index, "timestamp": sw.timestamp}
@@ -127,6 +124,7 @@ async def analyze_volume(
     return {
         "market": market.value,
         "timeframe": timeframe.value,
+        **_shared_meta(market, bars),
         "relative_volume": [
             {"index": i, "timestamp": bars[i].timestamp, "rvol": v}
             for i, v in enumerate(rvol) if v is not None
@@ -144,6 +142,7 @@ async def analyze_sessions(
     market: Market = Query(...),
     timeframe: Timeframe = Query(default=Timeframe.M1),
     days: int = Query(default=30, ge=1, le=365),
+    today_only: bool = Query(default=True, description="Show only today's session stats (ET date)"),
 ):
     try:
         bars = _load_bars(market, timeframe, days=days)
@@ -152,20 +151,32 @@ async def analyze_sessions(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Fehler beim Laden der Session-Daten: {e}")
 
-    stats = get_session_stats(bars)
-    # Use last bar's timestamp as data context; fall back to wall-clock only if no bars available
-    ref_ts = bars[-1].timestamp if bars else _current_timestamp()
-    current = classify_session(ref_ts)
+    # current_session uses real wall-clock time — never stale bar timestamps
+    ctx   = get_session_context()
+    stats = get_today_session_stats(bars) if today_only else get_session_stats(bars)
 
     return {
         "market": market.value,
         "timeframe": timeframe.value,
-        "current_session": current.value,
+        **_shared_meta(market, bars),
+        # Real-time session context
+        "current_session":   ctx["current_session"],
+        "session_start_et":  ctx["session_start_et"],
+        "session_end_et":    ctx["session_end_et"],
+        "session_progress":  ctx["session_progress"],
+        "next_session":      ctx["next_session"],
+        "time_to_next":      ctx["time_to_next"],
+        "is_rth":            ctx["is_rth"],
+        "current_time_et":   ctx["current_time_et"],
+        # Transition alert: set within 5 minutes after a session boundary crossing.
+        "recent_transition": ctx["recent_transition"],
+        # Stats (today or multi-day depending on today_only param)
+        "today_only": today_only,
         "session_stats": {
             session.value: {
-                "bar_count": st.bar_count,
-                "avg_volume": round(st.avg_volume, 1),
-                "avg_range": round(st.avg_range, 4),
+                "bar_count":    st.bar_count,
+                "avg_volume":   round(st.avg_volume, 1),
+                "avg_range":    round(st.avg_range, 4),
                 "total_volume": st.total_volume,
             }
             for session, st in stats.items()
@@ -189,9 +200,8 @@ async def get_warnings(
 
     swings = detect_swings(bars)
     trend = classify_trend(swings)
-    # Use last bar's timestamp as data context; fall back to wall-clock only if no bars available
-    ref_ts = bars[-1].timestamp if bars else _current_timestamp()
-    current_session = classify_session(ref_ts)
+    # Always use real wall-clock time for the current session
+    current_session = get_current_session()
 
     ctx = DisciplineContext(
         trend=trend,
@@ -206,6 +216,7 @@ async def get_warnings(
     return {
         "market": market.value,
         "timeframe": timeframe.value,
+        **_shared_meta(market, bars),
         "warnings": [{"message": w.message, "severity": w.severity.value} for w in warnings],
     }
 
@@ -243,6 +254,7 @@ async def get_indicators(
     return {
         "market": market.value,
         "timeframe": timeframe.value,
+        **_shared_meta(market, bars),
         "vwap": [
             {"timestamp": v.timestamp, "vwap": v.vwap, "upper_1": v.upper_1, "lower_1": v.lower_1, "upper_2": v.upper_2, "lower_2": v.lower_2}
             for v in vwap_out
@@ -347,6 +359,7 @@ async def get_confluence(
     return {
         "market": market.value,
         "timeframe": timeframe.value,
+        **_shared_meta(market, bars),
         "score": result.score,
         "max_score": result.max_score,
         "direction": result.direction,
@@ -422,6 +435,9 @@ async def get_patterns(
     )
 
     return {
+        "market": market.value,
+        "timeframe": timeframe.value,
+        **_shared_meta(market, bars),
         "annotations": [
             {
                 "timestamp": a.timestamp,

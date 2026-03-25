@@ -65,17 +65,7 @@ async def run_backtest_endpoint(
     }
 
 
-def _get_sim():
-    from arctis.main import sim
-    return sim
-
-
-def _load_bars(market: Market, timeframe: Timeframe):
-    """Load bars, respecting simulation mode."""
-    sim = _get_sim()
-    if sim.active and sim.market == market.value and sim.timeframe == timeframe.value:
-        return sim.get_bars()
-    return fetch_bars_as_models(market=market.value, days=30, timeframe=timeframe.value)
+from arctis.routes._common import load_bars as _load_bars
 
 
 @router.get("/zones")

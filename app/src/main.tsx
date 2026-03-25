@@ -1,7 +1,9 @@
 import { StrictMode, Component, type ReactNode } from 'react'
 import { createRoot } from 'react-dom/client'
+import { BrowserRouter } from 'react-router-dom'
 import './index.css'
 import App from './App.tsx'
+import { ChartSettingsProvider } from '@/contexts/ChartSettingsContext'
 
 class ErrorBoundary extends Component<{children: ReactNode}, {error: Error | null}> {
   state = { error: null as Error | null }
@@ -36,7 +38,11 @@ try {
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
       <ErrorBoundary>
-        <App />
+        <BrowserRouter>
+          <ChartSettingsProvider>
+            <App />
+          </ChartSettingsProvider>
+        </BrowserRouter>
       </ErrorBoundary>
     </StrictMode>,
   )

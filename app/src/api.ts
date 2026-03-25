@@ -1,4 +1,5 @@
 import type { Bar, MarketsResponse, HealthResponse } from './types/contracts'
+import type { ChartDrawing } from './types/drawing'
 import { config } from './lib/config'
 
 /**
@@ -92,6 +93,32 @@ export async function fetchSignals(market: string, timeframe: string) {
   return fetchJSON('/api/analysis/signals', { market, timeframe })
 }
 
+/**
+ * Fetch all analysis data in a single request.
+ *
+ * Returns sessions, indicators, confluence, patterns, volume, structure,
+ * bias, zones, and signals atomically so all panels share the same data.
+ *
+ * Failed sub-analyses are returned as null with the error message recorded
+ * under the top-level `errors` key — the whole request never fails because
+ * of one failing sub-analysis.
+ *
+ * @param market    - Market symbol, e.g. "NQ" or "ES"
+ * @param timeframe - Bar timeframe, e.g. "15min" (default) or "1min", "5min"
+ * @param days      - Number of calendar days to include (default 5)
+ */
+export async function fetchSnapshot(
+  market: string,
+  timeframe = '15min',
+  days = 5,
+) {
+  return fetchJSON('/api/snapshot', {
+    market,
+    timeframe,
+    days: String(days),
+  })
+}
+
 // Config management
 export async function saveConfig(cfg: Record<string, unknown>) {
   const url = new URL('/api/config', getBaseUrl())
@@ -165,4 +192,81 @@ export async function fetchWarnings(market: string, timeframe: string) {
 
 export async function fetchProbability(market: string, timeframe: string) {
   return fetchJSON('/api/analysis/probability', { market, timeframe })
+}
+
+// ============ Drawing API ============
+
+export interface DrawingsResponse {
+  symbol: string
+  timeframe: string
+  drawings: ChartDrawing[]
+}
+
+/**
+ * Fetch all persisted drawings for a symbol:timeframe combination.
+ * Returns an empty drawings array if none have been saved yet.
+ */
+export async function fetchDrawings(symbol: string, timeframe: string): Promise<DrawingsResponse> {
+  return fetchJSON<DrawingsResponse>('/api/drawings', { symbol, timeframe })
+}
+
+/**
+ * Persist a new drawing to the server.
+ * Uses an upsert strategy on the server — safe to call on retry.
+ */
+export async function saveDrawing(
+  symbol: string,
+  timeframe: string,
+  drawing: ChartDrawing,
+): Promise<{ status: string; id: string }> {
+  const url = new URL('/api/drawings', getBaseUrl())
+  const res = await fetch(url.toString(), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ symbol, timeframe, drawing }),
+  })
+  if (!res.ok) {
+    throw new Error(`API error: ${res.status} ${res.statusText}`)
+  }
+  return res.json()
+}
+
+/**
+ * Apply a partial update to an existing drawing.
+ * Only the fields in `updates` are merged — all other fields remain unchanged.
+ */
+export async function updateDrawingApi(
+  id: string,
+  symbol: string,
+  timeframe: string,
+  updates: Partial<ChartDrawing>,
+): Promise<{ status: string; id: string }> {
+  const url = new URL(`/api/drawings/${encodeURIComponent(id)}`, getBaseUrl())
+  const res = await fetch(url.toString(), {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ symbol, timeframe, updates }),
+  })
+  if (!res.ok) {
+    throw new Error(`API error: ${res.status} ${res.statusText}`)
+  }
+  return res.json()
+}
+
+/**
+ * Delete a drawing by id.
+ */
+export async function deleteDrawingApi(
+  id: string,
+  symbol: string,
+  timeframe: string,
+): Promise<{ status: string; id: string }> {
+  const url = new URL(`/api/drawings/${encodeURIComponent(id)}`, getBaseUrl())
+  url.searchParams.set('symbol', symbol)
+  url.searchParams.set('timeframe', timeframe)
+  const res = await fetch(url.toString(), { method: 'DELETE' })
+  if (!res.ok) {
+    throw new Error(`API error: ${res.status} ${res.statusText}`)
+  }
+  return res.json()
 }

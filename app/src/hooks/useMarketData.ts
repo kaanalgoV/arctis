@@ -11,7 +11,7 @@ type WsMessageType = 'subscribed' | 'snapshot' | 'bar' | 'heartbeat' | 'error' |
 // ---------------------------------------------------------------------------
 
 export function useMarketData(options?: { pauseWs?: boolean }) {
-  const { symbol, timeframe, days, setWsStatus, setLastBarTs } = useMarketStore()
+  const { symbol, timeframe, days, setWsStatus, setLastBarTs, setDataSource } = useMarketStore()
   // Read engineUrl at render time so changes in settings propagate
   const engineUrl = useSettingsStore((s) => s.engineUrl)
   const wsUrl = engineUrl.replace(/^http/, 'ws')
@@ -19,17 +19,24 @@ export function useMarketData(options?: { pauseWs?: boolean }) {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [lastHeartbeat, setLastHeartbeat] = useState<number | null>(null)
+  // Live tick price — updated every 1s from /api/live/price.
+  // Intentionally separate from `bars` so the chart bars array is never
+  // mutated by a tick poll.  Consumers (Topbar, StatusBar) read this value
+  // directly for display; CandlestickChart handles incremental updates via
+  // its own mechanism.
+  const [livePrice, setLivePrice] = useState<number | null>(null)
   const wsRef = useRef<WebSocket | null>(null)
   const reconnectTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const reconnectAttempt = useRef(0)
 
-  // REST initial load
-  const loadBars = useCallback(async () => {
+  // REST initial load (supports AbortSignal for cleanup)
+  const loadBars = useCallback(async (signal?: AbortSignal) => {
     setIsLoading(true)
     setError(null)
+    setDataSource('db')
     try {
       const url = `${engineUrl}/api/db/bars?symbol=${symbol}&days=${days}&timeframe=${timeframe}`
-      const res = await fetch(url)
+      const res = await fetch(url, signal ? { signal } : undefined)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()
       const loadedBars: Bar[] = data.bars || []
@@ -38,11 +45,12 @@ export function useMarketData(options?: { pauseWs?: boolean }) {
         setLastBarTs(loadedBars[loadedBars.length - 1].timestamp)
       }
     } catch (e) {
+      if (e instanceof DOMException && e.name === 'AbortError') return
       setError(e instanceof Error ? e.message : 'Failed to load bars')
     } finally {
       setIsLoading(false)
     }
-  }, [symbol, timeframe, days, setLastBarTs, engineUrl])
+  }, [symbol, timeframe, days, setLastBarTs, setDataSource, engineUrl])
 
   // WebSocket connection
   const connectWs = useCallback(() => {
@@ -62,8 +70,9 @@ export function useMarketData(options?: { pauseWs?: boolean }) {
         const msg = JSON.parse(event.data) as { type: WsMessageType; [key: string]: unknown }
         switch (msg.type) {
           case 'subscribed':
-            // Subscription confirmed by server — mark as connected
+            // Subscription confirmed by server — mark as connected + live source
             setWsStatus('connected')
+            setDataSource('live')
             break
           case 'snapshot':
             // Only use WS snapshot if it has MORE bars than current set
@@ -116,6 +125,7 @@ export function useMarketData(options?: { pauseWs?: boolean }) {
 
     ws.onclose = () => {
       wsRef.current = null
+      setDataSource('db')
       const delay = Math.min(1000 * Math.pow(2, reconnectAttempt.current), 30000)
       reconnectAttempt.current++
       setWsStatus('reconnecting')
@@ -125,40 +135,94 @@ export function useMarketData(options?: { pauseWs?: boolean }) {
     ws.onerror = () => {
       ws.close()
     }
-  }, [symbol, setWsStatus, setLastBarTs, wsUrl])
+  }, [symbol, setWsStatus, setLastBarTs, setDataSource, wsUrl])
 
-  // Load bars + fast price poll (1s) + slow bar refresh (15s)
+  // ── Tick WebSocket — zero-delay price updates ───────────────────────────
+  // Connects to /api/live/ticks WS and receives every Rithmic tick instantly.
+  //
+  // PERFORMANCE: During NY Open, NQ can produce 100-500+ ticks/second.
+  // We CANNOT call React setState on every tick (would cause 500 re-renders/s).
+  // Instead:
+  //   1. Ticks update a mutable ref (zero-cost, no re-render)
+  //   2. A requestAnimationFrame loop (60fps) flushes the latest tick to React state
+  //   3. The chart gets smooth 60fps updates, not choppy 500-tick re-renders
+  const tickWsRef = useRef<WebSocket | null>(null)
+  const pendingTickRef = useRef<{ price: number; high: number; low: number } | null>(null)
+  const rafIdRef = useRef<number>(0)
+
   useEffect(() => {
-    loadBars()
-    let tickCount = 0
+    if (options?.pauseWs) return
 
-    const pollId = setInterval(async () => {
+    const tickWsUrl = `${wsUrl}/api/live/ticks`
+    const ws = new WebSocket(tickWsUrl)
+    tickWsRef.current = ws
+
+    ws.onmessage = (event) => {
       try {
-        tickCount++
+        const msg = JSON.parse(event.data)
+        if (msg.type !== 'tick' || msg.symbol !== symbol) return
 
-        // EVERY 1s: Get live tick price and update last candle's close
-        const priceRes = await fetch(`${engineUrl}/api/live/price?symbol=${symbol}`)
-        let tickPrice: number | null = null
-        if (priceRes.ok) {
-          const priceData = await priceRes.json()
-          if (priceData.price) tickPrice = priceData.price
+        const tickPrice: number = msg.price
+
+        // Accumulate tick into ref (zero-cost, no React re-render)
+        const pending = pendingTickRef.current
+        if (pending) {
+          pending.price = tickPrice
+          pending.high = Math.max(pending.high, tickPrice)
+          pending.low = Math.min(pending.low, tickPrice)
+        } else {
+          pendingTickRef.current = { price: tickPrice, high: tickPrice, low: tickPrice }
         }
+      } catch { /* ignore */ }
+    }
 
-        if (tickPrice) {
-          // Update last bar's close with live tick — instant visual update
-          setBars(prev => {
-            if (prev.length === 0) return prev
-            const last = prev[prev.length - 1]
-            if (last.close === tickPrice) return prev // No change
-            const updated = { ...last, close: tickPrice, high: Math.max(last.high, tickPrice), low: Math.min(last.low, tickPrice) }
-            return [...prev.slice(0, -1), updated]
-          })
-          setLastBarTs(Math.floor(Date.now() / 1000))
-        }
+    // 60fps flush loop — batches all ticks received since last frame into ONE state update
+    const flush = () => {
+      const tick = pendingTickRef.current
+      if (tick) {
+        pendingTickRef.current = null
+        const { price, high, low } = tick
 
-        // EVERY 15s: Full bar refresh (picks up new completed bars)
-        if (tickCount % 15 !== 0) return
+        // Update display price (Topbar, StatusBar)
+        setLivePrice(price)
 
+        // Patch last candle for chart movement
+        setBars(prev => {
+          if (prev.length === 0) return prev
+          const last = prev[prev.length - 1]
+          if (last.close === price && last.high >= high && last.low <= low) return prev
+          const updated: Bar = {
+            ...last,
+            close: price,
+            high: Math.max(last.high, high),
+            low: Math.min(last.low, low),
+          }
+          return [...prev.slice(0, -1), updated]
+        })
+      }
+      rafIdRef.current = requestAnimationFrame(flush)
+    }
+    rafIdRef.current = requestAnimationFrame(flush)
+
+    ws.onclose = () => { tickWsRef.current = null }
+    ws.onerror = () => { ws.close() }
+
+    return () => {
+      ws.close()
+      tickWsRef.current = null
+      cancelAnimationFrame(rafIdRef.current)
+      pendingTickRef.current = null
+    }
+  }, [symbol, wsUrl, options?.pauseWs])
+
+  // ── Bar refresh (30s) — picks up newly closed bars from DB ──────────────
+  // Much slower than before (was 15s) because tick WS handles real-time now.
+  useEffect(() => {
+    const abortController = new AbortController()
+    loadBars(abortController.signal)
+
+    const refreshId = setInterval(async () => {
+      try {
         const url = `${engineUrl}/api/db/bars?symbol=${symbol}&days=1&timeframe=${timeframe}`
         const res = await fetch(url)
         if (!res.ok) return
@@ -166,25 +230,23 @@ export function useMarketData(options?: { pauseWs?: boolean }) {
         const freshBars: Bar[] = data.bars || []
         if (freshBars.length === 0) return
 
-        // MERGE: keep the full dataset, only update/append bars from the poll
         setBars(prev => {
           if (prev.length === 0) return freshBars
-
-          // Find where the poll data overlaps with existing bars
           const firstPollTs = freshBars[0].timestamp
           const cutoffIdx = prev.findIndex(b => b.timestamp >= firstPollTs)
-
-          if (cutoffIdx === -1) {
-            // No overlap — append all fresh bars
-            return [...prev, ...freshBars]
-          }
-
-          // Keep everything before the overlap, replace with fresh data
+          if (cutoffIdx === -1) return [...prev, ...freshBars]
           return [...prev.slice(0, cutoffIdx), ...freshBars]
         })
+        if (freshBars.length > 0) {
+          setLastBarTs(freshBars[freshBars.length - 1].timestamp)
+        }
       } catch { /* silent */ }
-    }, 1_000)  // 1s poll for near-realtime chart updates
-    return () => clearInterval(pollId)
+    }, 30_000) // 30s refresh for bar persistence (ticks handle real-time)
+
+    return () => {
+      abortController.abort()
+      clearInterval(refreshId)
+    }
   }, [symbol, timeframe, days, engineUrl, setLastBarTs])
 
   // Connect WS after initial load
@@ -206,7 +268,5 @@ export function useMarketData(options?: { pauseWs?: boolean }) {
     }
   }, [symbol, options?.pauseWs]) // Reconnect on symbol change or pause toggle
 
-  // (Poll-refresh is now integrated into the loadBars useEffect above)
-
-  return { bars, isLoading, error, lastHeartbeat, reload: loadBars }
+  return { bars, isLoading, error, lastHeartbeat, livePrice, reload: loadBars }
 }
