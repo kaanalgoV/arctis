@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { motion, useInView, useMotionValue, animate, useScroll, useTransform, AnimatePresence, type MotionValue } from 'framer-motion'
 import {
   ArrowRight, Download, ChevronDown, TrendingUp, Check, X, Minus, Clock,
@@ -113,12 +114,18 @@ function useAnimatedCounter(config: CounterConfig, inView: boolean) {
 
 function LandingNavbar() {
   const [scrolled, setScrolled] = useState(false)
+  const navigate = useNavigate()
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20)
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
+
+  const scrollToSection = (id: string) => {
+    const el = document.getElementById(id)
+    if (el) el.scrollIntoView({ behavior: 'smooth' })
+  }
 
   return (
     <header
@@ -147,24 +154,39 @@ function LandingNavbar() {
 
         {/* Nav Links */}
         <nav className="hidden md:flex items-center gap-7">
-          {['Features', 'Pricing'].map((link) => (
-            <a
-              key={link}
-              href={`#${link.toLowerCase()}`}
-              className="text-sm transition-colors duration-150"
-              style={{ color: 'var(--color-text-muted)' }}
-              onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--color-text-secondary)')}
-              onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--color-text-muted)')}
-            >
-              {link}
-            </a>
-          ))}
+          <button
+            onClick={() => scrollToSection('features')}
+            className="text-sm transition-colors duration-150 cursor-pointer bg-transparent border-none p-0"
+            style={{ color: 'var(--color-text-muted)' }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--color-text-secondary)')}
+            onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--color-text-muted)')}
+          >
+            Features
+          </button>
+          <button
+            onClick={() => scrollToSection('pricing')}
+            className="text-sm transition-colors duration-150 cursor-pointer bg-transparent border-none p-0"
+            style={{ color: 'var(--color-text-muted)' }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--color-text-secondary)')}
+            onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--color-text-muted)')}
+          >
+            Pricing
+          </button>
+          <button
+            onClick={() => navigate('/changelog')}
+            className="text-sm transition-colors duration-150 cursor-pointer bg-transparent border-none p-0"
+            style={{ color: 'var(--color-text-muted)' }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--color-text-secondary)')}
+            onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--color-text-muted)')}
+          >
+            Changelog
+          </button>
         </nav>
 
         {/* CTA */}
-        <a
-          href="/"
-          className="px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200"
+        <button
+          onClick={() => navigate('/')}
+          className="px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer"
           style={{
             background: 'rgba(92,184,240,0.12)',
             border: '1px solid rgba(92,184,240,0.25)',
@@ -179,8 +201,8 @@ function LandingNavbar() {
             e.currentTarget.style.borderColor = 'rgba(92,184,240,0.25)'
           }}
         >
-          App öffnen
-        </a>
+          App offnen
+        </button>
       </div>
     </header>
   )
@@ -290,13 +312,19 @@ function HeroCandlestickChart() {
 
 function HeroSection() {
   const containerRef = useRef<HTMLElement>(null)
+  const navigate = useNavigate()
   const { scrollYProgress } = useScroll({ target: containerRef, offset: ['start start', 'end start'] })
   const bgY = useTransform(scrollYProgress, [0, 1], [0, 100])
   const dashY = useTransform(scrollYProgress, [0, 1], [0, 60])
 
   const statsRef = useRef<HTMLDivElement>(null)
   const statsInView = useInView(statsRef, { once: true })
-  const { ref: traderCountRef } = useAnimatedCounter({ type: 'integer', target: 12400, suffix: '+' }, statsInView)
+  const { ref: traderCountRef } = useAnimatedCounter({ type: 'integer', target: 250, suffix: '+' }, statsInView)
+
+  const scrollToSection = (id: string) => {
+    const el = document.getElementById(id)
+    if (el) el.scrollIntoView({ behavior: 'smooth' })
+  }
 
   return (
     <section
@@ -365,6 +393,7 @@ function HeroSection() {
                 variants={staggerItem}
                 whileHover={{ scale: 1.03 }}
                 whileTap={{ scale: 0.98 }}
+                onClick={() => navigate('/')}
                 className="font-display group relative flex cursor-pointer items-center gap-2.5 overflow-hidden rounded-xl px-8 py-4 text-lg font-semibold transition-all duration-200"
                 style={{ background: 'var(--color-accent)', color: 'var(--color-arctic-base)' }}
                 onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 0 60px rgba(92,184,240,0.2), 0 0 120px rgba(92,184,240,0.08)' }}
@@ -380,6 +409,7 @@ function HeroSection() {
                 variants={staggerItem}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
+                onClick={() => navigate('/')}
                 className="font-display group flex cursor-pointer items-center gap-2.5 rounded-xl border px-8 py-4 text-lg font-medium transition-all duration-200"
                 style={{ borderColor: 'rgba(53,61,72,1)', color: 'var(--color-frost-white)', background: 'transparent' }}
                 onMouseEnter={(e) => {
@@ -533,7 +563,7 @@ function HeroSection() {
                 }}
               >
                 <div className="flex gap-10 whitespace-nowrap" style={{ animation: 'landing-marquee 25s linear infinite' }}>
-                  {['CME Group', 'NinjaTrader', 'Rithmic', 'Tradovate', 'AMP Futures', 'Optimus', 'CME Group', 'NinjaTrader', 'Rithmic', 'Tradovate', 'AMP Futures', 'Optimus'].map((name, i) => (
+                  {['Rithmic', 'NinjaTrader', 'Tradovate', 'AMP Futures', 'Topstep', 'FTMO', 'Rithmic', 'NinjaTrader', 'Tradovate', 'AMP Futures', 'Topstep', 'FTMO'].map((name, i) => (
                     <span
                       key={`${name}-${i}`}
                       className="text-sm font-semibold uppercase tracking-wider whitespace-nowrap cursor-default select-none opacity-40 hover:opacity-80 transition-opacity"
@@ -723,13 +753,13 @@ function HeroSection() {
 // ── TrustBar Section ──────────────────────────────────────────────────────────
 
 const TRUST_METRICS: Array<{ icon: React.ReactNode; config: CounterConfig; label: string }> = [
-  { icon: <BarChart3 size={20} />, config: { type: 'integer', target: 12400, suffix: '+' }, label: 'Aktive Trader' },
+  { icon: <BarChart3 size={20} />, config: { type: 'integer', target: 250, suffix: '+' }, label: 'Aktive Trader' },
   { icon: <Shield size={20} />, config: { type: 'integer', target: 89, suffix: '%' }, label: 'Setup-Trefferquote' },
   { icon: <Zap size={20} />, config: { type: 'static', display: '14 Min' }, label: 'Pre-Market Vorbereitung' },
   { icon: <Globe size={20} />, config: { type: 'decimal', target: 3.2, decimals: 1 }, label: 'Durchschnittliches R:R' },
 ]
 
-const TRUST_LOGOS = ['CME Group', 'NinjaTrader', 'Rithmic', 'Tradovate', 'AMP Futures', 'Optimus Futures']
+const TRUST_LOGOS = ['Rithmic', 'NinjaTrader', 'Tradovate', 'AMP Futures', 'Topstep', 'FTMO', 'Rithmic', 'NinjaTrader', 'Tradovate', 'AMP Futures', 'Topstep', 'FTMO']
 
 function TrustMetricCard({ icon, counterConfig, label, inView }: { icon: React.ReactNode; counterConfig: CounterConfig; label: string; inView: boolean }) {
   const { ref } = useAnimatedCounter(counterConfig, inView)
@@ -1266,6 +1296,7 @@ function PriceDisplay({ tier, isAnnual }: { tier: PricingTier; isAnnual: boolean
 
 function PricingSection() {
   const [isAnnual, setIsAnnual] = useState(false)
+  const navigate = useNavigate()
 
   return (
     <section id="pricing" className="section-padding relative">
@@ -1314,7 +1345,7 @@ function PricingSection() {
                         </li>
                       ))}
                     </ul>
-                    <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} transition={{ type: 'spring', stiffness: 400, damping: 25 }} className="mt-8 w-full rounded-xl px-6 py-3 font-display text-sm font-semibold transition-colors duration-200 shadow-[0_0_24px_rgba(92,184,240,0.25)] hover:shadow-[0_0_32px_rgba(92,184,240,0.4)]" style={{ background: 'var(--color-ice)', color: 'var(--color-arctic-base)' }} onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--color-ice-light)')} onMouseLeave={(e) => (e.currentTarget.style.background = 'var(--color-ice)')}>
+                    <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} transition={{ type: 'spring', stiffness: 400, damping: 25 }} onClick={() => navigate('/')} className="mt-8 w-full rounded-xl px-6 py-3 font-display text-sm font-semibold transition-colors duration-200 shadow-[0_0_24px_rgba(92,184,240,0.25)] hover:shadow-[0_0_32px_rgba(92,184,240,0.4)]" style={{ background: 'var(--color-ice)', color: 'var(--color-arctic-base)' }} onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--color-ice-light)')} onMouseLeave={(e) => (e.currentTarget.style.background = 'var(--color-ice)')}>
                       {tier.cta}
                     </motion.button>
                   </div>
@@ -1455,6 +1486,7 @@ function FAQSection() {
 // ── FinalCTA Section ──────────────────────────────────────────────────────────
 
 function FinalCTASection() {
+  const navigate = useNavigate()
   return (
     <section className="noise-overlay relative overflow-hidden py-24 lg:py-32" style={{ background: 'var(--color-arctic-primary)' }}>
       <div aria-hidden="true" className="pointer-events-none absolute inset-0" style={{ zIndex: 0 }}>
@@ -1480,12 +1512,12 @@ function FinalCTASection() {
         </motion.p>
 
         <motion.div variants={fadeInUp} initial="hidden" whileInView="visible" viewport={viewportOnce} transition={{ delay: 0.2 }} className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
-          <motion.a
-            href="/"
+          <motion.button
             variants={scaleIn}
             whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.98 }}
             transition={{ duration: 0.2 }}
+            onClick={() => navigate('/')}
             className="font-display group relative flex cursor-pointer items-center gap-2.5 overflow-hidden rounded-xl px-10 py-4 text-lg font-bold transition-all duration-200"
             style={{ background: 'var(--color-ice)', color: 'var(--color-arctic-base)' }}
             onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--color-ice-light)'; e.currentTarget.style.boxShadow = '0 0 60px rgba(92,184,240,0.2), 0 0 120px rgba(92,184,240,0.08)' }}
@@ -1495,21 +1527,21 @@ function FinalCTASection() {
             <Download size={18} strokeWidth={2.2} />
             Jetzt starten
             <ArrowRight size={16} strokeWidth={2.2} className="transition-transform duration-200 group-hover:translate-x-0.5" />
-          </motion.a>
+          </motion.button>
 
-          <motion.a
-            href="#features"
+          <motion.button
             variants={scaleIn}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             transition={{ duration: 0.2 }}
+            onClick={() => navigate('/')}
             className="font-display group flex cursor-pointer items-center gap-2.5 rounded-xl border px-10 py-4 text-lg font-medium transition-all duration-200 hover:bg-[rgba(92,184,240,0.08)]"
             style={{ borderColor: 'var(--color-frost-border)', color: 'var(--color-frost-white)' }}
             onMouseEnter={(e) => (e.currentTarget.style.borderColor = 'rgba(92,184,240,0.3)')}
             onMouseLeave={(e) => (e.currentTarget.style.borderColor = 'var(--color-frost-border)')}
           >
             Live Demo
-          </motion.a>
+          </motion.button>
         </motion.div>
 
         <motion.p variants={fadeInUp} initial="hidden" whileInView="visible" viewport={viewportOnce} transition={{ delay: 0.3 }} className="font-sans mt-6 text-sm" style={{ color: 'var(--color-frost-muted)' }}>
@@ -1545,6 +1577,27 @@ const FOOTER_COLUMNS = [
 ]
 
 function FooterSection() {
+  const navigate = useNavigate()
+
+  const getFooterLinkHref = (link: string): string => {
+    if (link === 'Features') return '#features'
+    if (link === 'Pricing') return '#pricing'
+    if (link === 'Changelog') return '/changelog'
+    return '#'
+  }
+
+  const handleFooterLinkClick = (e: React.MouseEvent<HTMLAnchorElement>, link: string) => {
+    if (link === 'Changelog') {
+      e.preventDefault()
+      navigate('/changelog')
+    } else if (link === 'Features' || link === 'Pricing') {
+      e.preventDefault()
+      const id = link.toLowerCase()
+      const el = document.getElementById(id)
+      if (el) el.scrollIntoView({ behavior: 'smooth' })
+    }
+  }
+
   return (
     <footer className="border-t" style={{ background: 'var(--color-arctic-base)', borderColor: 'rgba(39,47,58,0.5)' }}>
       <div className="section-container py-16 lg:py-20">
@@ -1570,7 +1623,14 @@ function FooterSection() {
               <ul className="space-y-3">
                 {col.links.map((link) => (
                   <li key={link}>
-                    <a href="#" className="text-sm transition-colors duration-200" style={{ color: 'var(--color-frost-muted)' }} onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--color-frost-secondary)')} onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--color-frost-muted)')}>
+                    <a
+                      href={getFooterLinkHref(link)}
+                      onClick={(e) => handleFooterLinkClick(e, link)}
+                      className="text-sm transition-colors duration-200"
+                      style={{ color: 'var(--color-frost-muted)' }}
+                      onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--color-frost-secondary)')}
+                      onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--color-frost-muted)')}
+                    >
                       {link}
                     </a>
                   </li>

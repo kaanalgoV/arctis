@@ -577,8 +577,8 @@ export const CandlestickChart = forwardRef<CandlestickChartHandle, CandlestickCh
 
         // Color volume bars: green when bullish, red when bearish
         if (volumeSeriesRef.current) {
-          const upColor = parseColorToUIntArgb(chartSettingsRef.current.candleUpColor + '4D'); // 30% opacity
-          const downColor = parseColorToUIntArgb(chartSettingsRef.current.candleDownColor + '4D');
+          const upColor = parseColorToUIntArgb(chartSettingsRef.current.candleUpColor + '33'); // 20% opacity
+          const downColor = parseColorToUIntArgb(chartSettingsRef.current.candleDownColor + '33');
           // Capture candle data for the palette provider closure
           const candlesCopy = candlesToLoad;
           const candleCount = count;
@@ -853,7 +853,7 @@ export const CandlestickChart = forwardRef<CandlestickChartHandle, CandlestickCh
         theme.loadingAnimationBackground = cs.chartBackground || '#0F1318';
         theme.axisBandsFill = 'transparent';
         theme.gridBorderBrush = 'transparent';
-        theme.majorGridLineBrush = cs.gridLineColor || 'rgba(255,255,255,0.04)';
+        theme.majorGridLineBrush = cs.gridLineColor || 'rgba(255,255,255,0.03)';
         theme.minorGridLineBrush = 'transparent';
         theme.tickTextBrush = cs.axisLabelColor || '#6E7681';
 
@@ -880,7 +880,7 @@ export const CandlestickChart = forwardRef<CandlestickChartHandle, CandlestickCh
           drawMinorGridLines: false,
           drawMajorBands: false,
           axisBandsFill: 'transparent',
-          labelStyle: { color: '#6b7280', fontSize: 11 },
+          labelStyle: { color: '#6E7681', fontSize: 10, fontFamily: 'Geist Mono, SF Mono, monospace' },
           labelProvider: xLabelProvider,
           maxAutoTicks: 20,
         });
@@ -892,13 +892,13 @@ export const CandlestickChart = forwardRef<CandlestickChartHandle, CandlestickCh
         const yAxis = new NumericAxis(wasmContext, {
           autoRange: EAutoRange.Never,
           growBy: new NumberRange(0.05, 0.05),
-          drawMajorGridLines: false,
+          drawMajorGridLines: true,
           drawMinorGridLines: false,
           drawMajorBands: false,
           axisBandsFill: 'transparent',
           backgroundColor: '#000000',
           axisBorder: { borderTop: 0, borderBottom: 0, borderLeft: 1, borderRight: 0, color: '#1a1a1a' },
-          labelStyle: { color: '#6b7280', fontSize: 11 },
+          labelStyle: { color: '#6E7681', fontSize: 11, fontFamily: 'Geist Mono, SF Mono, monospace' },
           labelFormat: ENumericFormat.Decimal,
           labelPrecision: pricePrecision,
           // Show more price levels (double the default)
@@ -926,11 +926,12 @@ export const CandlestickChart = forwardRef<CandlestickChartHandle, CandlestickCh
         const candlestickSeries = new FastCandlestickRenderableSeries(wasmContext, {
           dataSeries,
           strokeThickness: 1,
-          dataPointWidth: 0.7,
+          dataPointWidth: 0.8,
           brushUp: chartSettings.candleUpColor,
           brushDown: chartSettings.candleDownColor,
-          strokeUp: chartSettings.candleUpColor,
-          strokeDown: chartSettings.candleDownColor,
+          // Slightly darker stroke for candle body definition (professional look)
+          strokeUp: chartSettings.candleUpColor + 'CC',
+          strokeDown: chartSettings.candleDownColor + 'CC',
         });
         sciChartSurface.renderableSeries.add(candlestickSeries);
         candlestickSeriesRef.current = candlestickSeries;
@@ -943,7 +944,7 @@ export const CandlestickChart = forwardRef<CandlestickChartHandle, CandlestickCh
             autoRange: EAutoRange.Always,
             isVisible: false,
             // Push volume bars to the bottom ~25% of the chart
-            growBy: new NumberRange(0, 4),
+            growBy: new NumberRange(0, 5),
           });
           sciChartSurface.yAxes.add(volumeYAxis);
 
@@ -959,8 +960,8 @@ export const CandlestickChart = forwardRef<CandlestickChartHandle, CandlestickCh
           const volumeSeries = new FastColumnRenderableSeries(wasmContext, {
             dataSeries: volumeDataSeries,
             yAxisId: 'volumeAxis',
-            dataPointWidth: 0.7,
-            opacity: 0.3,
+            dataPointWidth: 0.8,
+            opacity: 0.2,
             // Default fill — will be updated per-bar via palette provider
             fill: '#ffffff33',
             stroke: '#ffffff00',
@@ -1091,24 +1092,24 @@ export const CandlestickChart = forwardRef<CandlestickChartHandle, CandlestickCh
 
     const surface = surfaceRef.current;
 
-    // Update candlestick colors
+    // Update candlestick colors (slightly darker stroke for body definition)
     if (candlestickSeriesRef.current) {
       candlestickSeriesRef.current.brushUp = chartSettings.candleUpColor;
       candlestickSeriesRef.current.brushDown = chartSettings.candleDownColor;
-      candlestickSeriesRef.current.strokeUp = chartSettings.candleUpColor;
-      candlestickSeriesRef.current.strokeDown = chartSettings.candleDownColor;
+      candlestickSeriesRef.current.strokeUp = chartSettings.candleUpColor + 'CC';
+      candlestickSeriesRef.current.strokeDown = chartSettings.candleDownColor + 'CC';
     }
 
     // Update Y-axis colors
     const yAxis = surface.yAxes.get(0);
     if (yAxis) {
-      yAxis.labelStyle = { color: chartSettings.axisLabelColor, fontSize: 11 };
+      yAxis.labelStyle = { color: chartSettings.axisLabelColor, fontSize: 11, fontFamily: 'Geist Mono, SF Mono, monospace' };
     }
 
     // Update X-axis colors
     const xAxis = surface.xAxes.get(0);
     if (xAxis) {
-      xAxis.labelStyle = { color: chartSettings.axisLabelColor, fontSize: 11 };
+      xAxis.labelStyle = { color: chartSettings.axisLabelColor, fontSize: 10, fontFamily: 'Geist Mono, SF Mono, monospace' };
     }
 
     // Update cursor modifier colors
@@ -1155,7 +1156,7 @@ export const CandlestickChart = forwardRef<CandlestickChartHandle, CandlestickCh
         const series = new FastOhlcRenderableSeries(wasmContext, {
           dataSeries: ohlcData,
           strokeThickness: 1,
-          dataPointWidth: 0.7,
+          dataPointWidth: 0.8,
           strokeUp: chartSettings.candleUpColor,
           strokeDown: chartSettings.candleDownColor,
         });
@@ -1191,11 +1192,12 @@ export const CandlestickChart = forwardRef<CandlestickChartHandle, CandlestickCh
         const series = new FastCandlestickRenderableSeries(wasmContext, {
           dataSeries: ohlcData,
           strokeThickness: 1,
-          dataPointWidth: 0.7,
+          dataPointWidth: 0.8,
           brushUp: chartSettings.candleUpColor,
           brushDown: chartSettings.candleDownColor,
-          strokeUp: chartSettings.candleUpColor,
-          strokeDown: chartSettings.candleDownColor,
+          // Slightly darker stroke for candle body definition (professional look)
+          strokeUp: chartSettings.candleUpColor + 'CC',
+          strokeDown: chartSettings.candleDownColor + 'CC',
         });
         candlestickSeriesRef.current = series;
         newSeries = series;

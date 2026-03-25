@@ -43,6 +43,7 @@ import { DashboardPage } from '@/pages/DashboardPage'
 import { ChartPage } from '@/pages/ChartPage'
 import { PatternsPage } from '@/pages/PatternsPage'
 import { LandingPage } from '@/pages/LandingPage'
+import { ChangelogPage } from '@/pages/ChangelogPage'
 import { useSettingsStore } from '@/store/settings'
 import { useLiveStore } from '@/live'
 
@@ -874,6 +875,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/landing" element={<LandingPage />} />
+      <Route path="/changelog" element={<ChangelogPage />} />
       <Route path="/*" element={<AppShell />} />
     </Routes>
   )

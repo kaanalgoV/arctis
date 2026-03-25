@@ -100,9 +100,9 @@ export const DEFAULT_CHART_SETTINGS: ChartSettings = {
   candleUpColor: '#5CB8F0',    // Arctic Frost ice blue (bull candles)
   candleDownColor: '#EF4136',  // Red (bear candles)
   chartBackground: '#0F1318',  // Dark surface (matches --color-surface-primary)
-  gridLineColor: 'rgba(255,255,255,0.04)',
+  gridLineColor: 'rgba(255,255,255,0.03)',
   axisLabelColor: '#6E7681',
-  crosshairColor: 'rgba(255,255,255,0.3)',
+  crosshairColor: 'rgba(255,255,255,0.2)',
   cursorLabelBg: '#222830',
   cursorLabelBorder: '#5CB8F0',   // Ice blue border (Arctic Frost brand)
   sessionLineColor: '#334155',
