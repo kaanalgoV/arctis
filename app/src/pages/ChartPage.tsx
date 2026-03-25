@@ -218,9 +218,10 @@ export function ChartPage({
   // Convert raw zones to PriceZone[] for CandlestickChart
   const priceZones = useMemo(() => convertZonesToPriceZones(zones), [zones])
 
-  // Convert pattern annotations to TradeMarker[]
+  // Pattern markers DISABLED — showing BUY+SELL simultaneously confuses the user.
+  // Only re-enable when signals are precise and show ONE clear direction.
   const markers = useMemo(
-    () => convertAnnotationsToMarkers(patternAnnotations),
+    () => undefined as ReturnType<typeof convertAnnotationsToMarkers>,  // was: convertAnnotationsToMarkers(patternAnnotations)
     [patternAnnotations],
   )
 
