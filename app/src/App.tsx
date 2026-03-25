@@ -267,11 +267,25 @@ function AppShell() {
   // ── Chart bars via hook (REST + WebSocket auto-reconnect) ──────────────────
   const { bars, isLoading, error } = useMarketData({ pauseWs: mode === 'replay' })
   const { wsStatus } = useMarketStore()
-  // Live store must be read BEFORE isConnected (was causing "before initialization" error)
-  const liveConnected = useLiveStore((s) => s.isConnected)
   const livePrice = useLiveStore((s) => s.lastPrice)
-  // isConnected = true only when live data is actually flowing (Rithmic or WS)
-  const isConnected = liveConnected || wsStatus === 'connected'
+  const liveConnected = useLiveStore((s) => s.isConnected)
+
+  // Poll Rithmic connection status from engine /api/live/status (every 10s)
+  const [rithmicConnected, setRithmicConnected] = useState(false)
+  useEffect(() => {
+    const check = () => {
+      fetch(`${engineUrl}/api/live/status`)
+        .then(r => r.ok ? r.json() : null)
+        .then(d => { if (d) setRithmicConnected(!!d.rithmic_connected) })
+        .catch(() => setRithmicConnected(false))
+    }
+    check()
+    const id = setInterval(check, 10_000)
+    return () => clearInterval(id)
+  }, [engineUrl])
+
+  // Connected = Rithmic live feed OR WS bar stream OR liveStore
+  const isConnected = rithmicConnected || liveConnected || wsStatus === 'connected'
   const barsCount = bars.length
 
   // ── Analysis via hook (replaces 10 parallel fetches) ──────────────────────
