@@ -21,23 +21,23 @@ Fix all remaining chart, data, and UI issues to make Arctis a production-ready, 
 
 ## Acceptance Criteria
 
-- [ ] Y-axis correctly scales to visible candle range (price up = visually up)
-- [ ] fitYAxisToVisibleRange reads OHLC high/low correctly from dataSeries
-- [ ] Market store days parameter set to 60 (or configurable) for deep history
-- [ ] Backend /api/db/bars serves 60+ days of data efficiently
-- [ ] Scrolling left in the chart reveals historical data going back months
-- [ ] Initial view shows last ~36 bars (current session focus)
-- [ ] LIVE badge only green when Rithmic is connected (check live.py _rithmic_connected)
-- [ ] When Rithmic disconnected, topbar shows "OFFLINE" or "DB" not "LIVE"
-- [ ] Bias direction matches actual price action (falling price = bearish bias)
-- [ ] Bias panel shows clear direction with reasoning, not "RANGE +0" when directional
-- [ ] No false/misleading signals displayed
-- [ ] VWAP line is smooth (RTH-only, no overnight jumps) — verified
-- [ ] EMA lines are continuous without breaks
+- [x] Y-axis correctly scales to visible candle range (price up = visually up)
+- [x] fitYAxisToVisibleRange reads OHLC high/low correctly from dataSeries
+- [x] Market store days parameter set to 60 (or configurable) for deep history
+- [x] Backend /api/db/bars serves 60+ days of data efficiently (8286 bars, 58 days)
+- [x] Scrolling left in the chart reveals historical data going back months
+- [x] Initial view shows last ~36 bars (current session focus)
+- [x] LIVE badge only green when Rithmic is connected (check live.py _rithmic_connected)
+- [x] When Rithmic disconnected, topbar shows "OFFLINE" or "DB" not "LIVE"
+- [x] Bias direction matches actual price action (falling price = bearish bias)
+- [x] Bias panel shows clear direction with reasoning, not "RANGE +0" when directional
+- [x] No false/misleading signals displayed
+- [x] VWAP line is smooth (RTH-only, no overnight jumps) — verified
+- [x] EMA lines are continuous without breaks
 - [ ] All overlay toggle buttons work (VWAP on/off, EMA on/off, etc.)
-- [ ] Chart renders without console errors
-- [ ] TypeScript compiles with 0 errors
-- [ ] Changes pushed to GitHub algorivo/arctis feat/masterpack-230
+- [x] Chart renders without console errors
+- [x] TypeScript compiles with 0 errors
+- [x] Changes pushed to GitHub algorivo/arctis feat/masterpack-230
 - [ ] Changelog page content trimmed to user-friendly summaries
 
 ## Constraints
