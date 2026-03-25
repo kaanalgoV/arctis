@@ -267,8 +267,10 @@ function AppShell() {
   // ── Chart bars via hook (REST + WebSocket auto-reconnect) ──────────────────
   const { bars, isLoading, error } = useMarketData({ pauseWs: mode === 'replay' })
   const { wsStatus } = useMarketStore()
+  // Live store must be read BEFORE isConnected (was causing "before initialization" error)
+  const liveConnected = useLiveStore((s) => s.isConnected)
+  const livePrice = useLiveStore((s) => s.lastPrice)
   // isConnected = true only when live data is actually flowing (Rithmic or WS)
-  // bars.length > 0 just means DB data loaded — NOT live connected
   const isConnected = liveConnected || wsStatus === 'connected'
   const barsCount = bars.length
 
@@ -351,11 +353,7 @@ function AppShell() {
   const lastClose = bars.at(-1)?.close
 
   // ── Current price: prefer live price when available, fall back to lastClose ──
-  // useLiveStore is populated by liveClient when the live WebSocket service
-  // (port 28081) is running.  When offline it stays null and we fall back to
-  // the last REST-fetched close price.
-  const livePrice = useLiveStore((s) => s.lastPrice)
-  const liveConnected = useLiveStore((s) => s.isConnected)
+  // livePrice + liveConnected are declared above (before isConnected)
   const currentPrice = livePrice ?? lastClose ?? null
 
   // ── Right panel toggle ────────────────────────────────────────────────────
