@@ -267,7 +267,9 @@ function AppShell() {
   // ── Chart bars via hook (REST + WebSocket auto-reconnect) ──────────────────
   const { bars, isLoading, error } = useMarketData({ pauseWs: mode === 'replay' })
   const { wsStatus } = useMarketStore()
-  const isConnected = wsStatus === 'connected' || bars.length > 0
+  // isConnected = true only when live data is actually flowing (Rithmic or WS)
+  // bars.length > 0 just means DB data loaded — NOT live connected
+  const isConnected = liveConnected || wsStatus === 'connected'
   const barsCount = bars.length
 
   // ── Analysis via hook (replaces 10 parallel fetches) ──────────────────────
@@ -751,7 +753,12 @@ function AppShell() {
                 : undefined
             }
           >
-            {signalsData == null ? <PanelSkeleton lines={4} label="Connecting..." /> : <SignalsPanel data={signalsData as SignalsAPIData} lastUpdateTs={analysisLastUpdateTs} />}
+            {signalsData == null ? <PanelSkeleton lines={4} label="Connecting..." /> : <SignalsPanel data={{
+              ...(signalsData as SignalsAPIData),
+              // Override bias from the dedicated bias endpoint (more accurate with live price)
+              bias: (biasData as any)?.bias_state?.state ?? (signalsData as any)?.bias ?? 'RANGE',
+              bias_score: (biasData as any)?.bias_state?.score ?? (signalsData as any)?.bias_score ?? 0,
+            }} lastUpdateTs={analysisLastUpdateTs} />}
           </RightPanelSection>
 
           <RightPanelDivider />

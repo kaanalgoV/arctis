@@ -90,6 +90,17 @@ async def get_signals(
     session_ctx = get_current_session()
 
     signals = detect_signals(bars, tick_size=tick_size)
+
+    # --- Bias data (so SignalsPanel can show correct bias micro-strip) ---
+    try:
+        from arctis.analysis.bias_state import calculate_bias_state
+        bias_obj = calculate_bias_state(bars)
+        bias_state = bias_obj.state.value if hasattr(bias_obj, 'state') else str(bias_obj.state) if hasattr(bias_obj, 'state') else "RANGE"
+        bias_score = getattr(bias_obj, 'score', 0)
+    except Exception:
+        bias_state = "RANGE"
+        bias_score = 0
+
     return {
         "signals": [
             {
@@ -122,6 +133,9 @@ async def get_signals(
         "bar_count": len(bars),
         "market": market,
         "tick_size": tick_size,
+        "bias": bias_state,
+        "bias_state": bias_state,
+        "bias_score": bias_score,
         # --- Shared meta block ---
         "current_price": round(current_price, 2) if current_price is not None else None,
         "session": session_ctx.value,
