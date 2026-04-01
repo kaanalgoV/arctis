@@ -28,6 +28,7 @@ export function useMarketData(options?: { pauseWs?: boolean }) {
   const wsRef = useRef<WebSocket | null>(null)
   const reconnectTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const reconnectAttempt = useRef(0)
+  const retryTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   // REST initial load (supports AbortSignal for cleanup)
   const loadBars = useCallback(async (signal?: AbortSignal) => {
@@ -38,7 +39,10 @@ export function useMarketData(options?: { pauseWs?: boolean }) {
       const url = `${engineUrl}/api/db/bars?symbol=${symbol}&days=${days}&timeframe=${timeframe}`
       const res = await fetch(url, signal ? { signal } : undefined)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const data = await res.json()
+      if (res.status === 204) return
+      const text = await res.text()
+      if (!text) return
+      const data = JSON.parse(text)
       const loadedBars: Bar[] = data.bars || []
       setBars(loadedBars)
       if (loadedBars.length > 0) {
@@ -46,7 +50,11 @@ export function useMarketData(options?: { pauseWs?: boolean }) {
       }
     } catch (e) {
       if (e instanceof DOMException && e.name === 'AbortError') return
-      setError(e instanceof Error ? e.message : 'Failed to load bars')
+      const msg = e instanceof Error ? e.message : 'Failed to load bars'
+      setError(msg)
+      // Auto-retry after 5s on failure
+      clearTimeout(retryTimer.current)
+      retryTimer.current = setTimeout(() => { void loadBars() }, 5000)
     } finally {
       setIsLoading(false)
     }
@@ -75,16 +83,20 @@ export function useMarketData(options?: { pauseWs?: boolean }) {
             setDataSource('live')
             break
           case 'snapshot':
-            // Only use WS snapshot if it has MORE bars than current set
-            // (prevents replacing a full REST load with a small WS snapshot)
+            // Merge WS snapshot with existing bars so we never lose the
+            // 31-day REST history.  The snapshot carries the full current
+            // trading day, so merging fills any gap between the last REST
+            // bar and the live stream while keeping all older history.
             if (Array.isArray(msg.bars)) {
               const snapshotBars = msg.bars as Bar[]
               setBars(prev => {
-                if (snapshotBars.length >= prev.length) {
-                  return snapshotBars
-                }
-                // WS snapshot is smaller — ignore, keep REST data
-                return prev
+                if (prev.length === 0) return snapshotBars
+                if (snapshotBars.length === 0) return prev
+                // Build a map keyed by timestamp — incoming wins on conflict
+                const map = new Map<number, Bar>()
+                for (const bar of prev) map.set(bar.timestamp, bar)
+                for (const bar of snapshotBars) map.set(bar.timestamp, bar)
+                return Array.from(map.values()).sort((a, b) => a.timestamp - b.timestamp)
               })
               if (snapshotBars.length > 0) {
                 setLastBarTs(snapshotBars[snapshotBars.length - 1].timestamp)
@@ -126,7 +138,10 @@ export function useMarketData(options?: { pauseWs?: boolean }) {
     ws.onclose = () => {
       wsRef.current = null
       setDataSource('db')
-      const delay = Math.min(1000 * Math.pow(2, reconnectAttempt.current), 30000)
+      // Exponential backoff with jitter, capped at 10s (trading — every second counts)
+      const base = Math.min(1000 * Math.pow(2, reconnectAttempt.current), 10000)
+      const jitter = Math.random() * base * 0.3 // 0-30% jitter
+      const delay = Math.round(base + jitter)
       reconnectAttempt.current++
       setWsStatus('reconnecting')
       reconnectTimer.current = setTimeout(connectWs, delay)
@@ -225,8 +240,10 @@ export function useMarketData(options?: { pauseWs?: boolean }) {
       try {
         const url = `${engineUrl}/api/db/bars?symbol=${symbol}&days=1&timeframe=${timeframe}`
         const res = await fetch(url)
-        if (!res.ok) return
-        const data = await res.json()
+        if (!res.ok || res.status === 204) return
+        const text = await res.text()
+        if (!text) return
+        const data = JSON.parse(text)
         const freshBars: Bar[] = data.bars || []
         if (freshBars.length === 0) return
 
@@ -246,6 +263,7 @@ export function useMarketData(options?: { pauseWs?: boolean }) {
     return () => {
       abortController.abort()
       clearInterval(refreshId)
+      clearTimeout(retryTimer.current)
     }
   }, [symbol, timeframe, days, engineUrl, setLastBarTs])
 
@@ -261,10 +279,24 @@ export function useMarketData(options?: { pauseWs?: boolean }) {
     if (!isLoading && bars.length > 0) {
       connectWs()
     }
+
+    // Auto-reconnect when tab regains focus (trading — stale data is dangerous)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && !options?.pauseWs) {
+        if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
+          clearTimeout(reconnectTimer.current)
+          reconnectAttempt.current = 0
+          connectWs()
+        }
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
     return () => {
       clearTimeout(reconnectTimer.current)
       wsRef.current?.close()
       wsRef.current = null
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
   }, [symbol, options?.pauseWs]) // Reconnect on symbol change or pause toggle
 

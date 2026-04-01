@@ -20,13 +20,13 @@ import type { AnnotationContext } from './types';
 // Dimensions
 // ---------------------------------------------------------------------------
 
-const ENTRY_SIZE = 30;
-const EXIT_SIZE = 26;
-const LABEL_FONT_SIZE = 11;
-const LABEL_CHAR_WIDTH = 6.8; // monospace approximate
-const LABEL_H = 20;
-const LABEL_PAD_X = 8;
-const LABEL_RADIUS = 4;
+const ENTRY_SIZE = 24;
+const EXIT_SIZE = 22;
+const LABEL_FONT_SIZE = 9;
+const LABEL_CHAR_WIDTH = 5.6; // monospace approximate
+const LABEL_H = 16;
+const LABEL_PAD_X = 6;
+const LABEL_RADIUS = 3;
 
 // ---------------------------------------------------------------------------
 // SVG label pill — dark background with colored text

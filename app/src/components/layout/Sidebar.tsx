@@ -51,10 +51,10 @@ function SidebarNavItem({ item, isActive, onClick }: SidebarNavItemProps) {
         onClick={() => onClick(item.id)}
         title={item.label}
         className={cn(
-          'relative flex items-center justify-center',
+          'relative flex items-center justify-center cursor-pointer',
           'w-10 h-10 rounded-[var(--radius-md)]',
           'transition-colors duration-150',
-          'outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent)]',
+          'outline-none focus-visible:ring-2 focus-visible:ring-[#5CB8F0]/50',
           isActive
             ? 'bg-[var(--color-accent-muted)] text-[var(--color-accent)]'
             : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-raised)] hover:text-[var(--color-text-secondary)]',
@@ -128,6 +128,15 @@ export function Sidebar({ activeItem, defaultActive = 'chart', onNavigate }: Sid
 
         {/* Connection status dot */}
         <ConnectionDot />
+
+        {/* Version branding */}
+        <span
+          className="font-mono text-[8px] leading-none tracking-wider mb-1"
+          style={{ color: 'var(--color-text-inactive)', writingMode: 'vertical-rl', textOrientation: 'mixed' }}
+          title="Arctis v0.1.0"
+        >
+          v0.1
+        </span>
       </div>
     </aside>
   )

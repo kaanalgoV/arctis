@@ -1,0 +1,26 @@
+[
+  {
+    "id": "7b096ee6-3943-4ffe-8582-ec39fdea0c80",
+    "type": "rectangle",
+    "x1": 254.90618478083772,
+    "y1": 5891.663266846362,
+    "x2": 386.4072075803036,
+    "y2": 5889.298617789757,
+    "x3": null,
+    "y3": null,
+    "color": "#5CB8F0",
+    "lineWidth": 2.0,
+    "lineStyle": "solid",
+    "opacity": 1.0,
+    "text": null,
+    "fontSize": null,
+    "levels": null,
+    "fillColor": null,
+    "fillOpacity": null,
+    "borderColor": null,
+    "borderWidth": null,
+    "locked": false,
+    "visible": true,
+    "createdAt": "2026-03-27T21:09:37.799Z"
+  }
+]

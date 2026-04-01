@@ -9,7 +9,10 @@ import { SectionDivider } from '@/components/effects/SectionDivider'
 import { ScrollProgress } from '@/components/effects/ScrollProgress'
 import { ParallaxBlobs } from '@/components/effects/ParallaxBlobs'
 
+const EngineShowcase = dynamic(() => import('@/components/sections/EngineShowcase').then(m => ({ default: m.EngineShowcase })))
 const ProductShowcase = dynamic(() => import('@/components/sections/ProductShowcase').then(m => ({ default: m.ProductShowcase })))
+const ReplayShowcase = dynamic(() => import('@/components/sections/ReplayShowcase').then(m => ({ default: m.ReplayShowcase })))
+const SignalShowcase = dynamic(() => import('@/components/sections/SignalShowcase').then(m => ({ default: m.SignalShowcase })))
 const Comparison = dynamic(() => import('@/components/sections/Comparison').then(m => ({ default: m.Comparison })))
 const Testimonials = dynamic(() => import('@/components/sections/Testimonials').then(m => ({ default: m.Testimonials })))
 const FAQ = dynamic(() => import('@/components/sections/FAQ').then(m => ({ default: m.FAQ })))
@@ -28,10 +31,16 @@ export default function Home() {
       <SectionDivider />
       <TrustBar />
       <SectionDivider />
+      <EngineShowcase />
+      <SectionDivider glow />
       <Features />
       <SectionDivider glow />
       <ProductShowcase />
       <SectionDivider />
+      <ReplayShowcase />
+      <SectionDivider />
+      <SignalShowcase />
+      <SectionDivider glow />
       <Comparison />
       <SectionDivider />
       <Testimonials />

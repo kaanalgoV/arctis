@@ -1,0 +1,502 @@
+'use client'
+
+import { motion } from 'framer-motion'
+import {
+  fadeInUp,
+  engineStaggerContainer,
+  engineCardItem,
+  viewportOnce,
+} from '@/lib/animations'
+
+// ─── Mini Chart Illustrations ───────────────────────────────────────────────
+
+function MarktstrukturIllustration() {
+  return (
+    <svg
+      width="240"
+      height="120"
+      viewBox="0 0 240 120"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className="w-full"
+    >
+      {/* Grid */}
+      <line x1="0" y1="30" x2="240" y2="30" stroke="rgba(92,184,240,0.04)" strokeWidth="1" />
+      <line x1="0" y1="60" x2="240" y2="60" stroke="rgba(92,184,240,0.04)" strokeWidth="1" />
+      <line x1="0" y1="90" x2="240" y2="90" stroke="rgba(92,184,240,0.04)" strokeWidth="1" />
+
+      {/* Price action zigzag */}
+      <polyline
+        points="10,80 35,50 55,65 80,30 105,50 130,18 155,38 180,22 205,42 230,32"
+        stroke="#5AAED8"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+      />
+      {/* Swing High markers */}
+      <circle cx="80" cy="30" r="5" fill="none" stroke="#34D399" strokeWidth="1.5" />
+      <circle cx="130" cy="18" r="5" fill="none" stroke="#34D399" strokeWidth="1.5" />
+      <circle cx="180" cy="22" r="5" fill="none" stroke="#34D399" strokeWidth="1.5" />
+      {/* Swing Low markers */}
+      <circle cx="55" cy="65" r="5" fill="none" stroke="#F87171" strokeWidth="1.5" />
+      <circle cx="105" cy="50" r="5" fill="none" stroke="#F87171" strokeWidth="1.5" />
+      {/* Trend line */}
+      <line
+        x1="55"
+        y1="65"
+        x2="230"
+        y2="32"
+        stroke="#5AAED8"
+        strokeWidth="1"
+        strokeDasharray="4 3"
+        opacity="0.4"
+      />
+      {/* Labels */}
+      <text x="80" y="22" fill="#34D399" fontSize="8" fontFamily="monospace" textAnchor="middle">SH</text>
+      <text x="55" y="80" fill="#F87171" fontSize="8" fontFamily="monospace" textAnchor="middle">SL</text>
+      {/* BOS label with arrow */}
+      <text x="155" y="100" fill="#5AAED8" fontSize="9" fontFamily="monospace" textAnchor="middle" opacity="0.7">BOS</text>
+      <line x1="130" y1="95" x2="180" y2="95" stroke="#5AAED8" strokeWidth="1" opacity="0.4" />
+      <polygon points="180,93 180,97 184,95" fill="#5AAED8" opacity="0.4" />
+    </svg>
+  )
+}
+
+function ConfluenceIllustration() {
+  const factors = [
+    { label: 'VWAP', value: 0.85 },
+    { label: 'EMA', value: 0.72 },
+    { label: 'RSI', value: 0.60 },
+    { label: 'VOL', value: 0.90 },
+    { label: 'SES', value: 0.45 },
+    { label: 'STR', value: 0.80 },
+    { label: 'BIAS', value: 0.95 },
+  ]
+
+  return (
+    <svg
+      width="240"
+      height="120"
+      viewBox="0 0 240 120"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className="w-full"
+    >
+      {factors.map((f, i) => {
+        const y = 6 + i * 15
+        const barWidth = f.value * 140
+        const color = f.value >= 0.7 ? '#34D399' : f.value >= 0.5 ? '#5AAED8' : '#949DA8'
+        return (
+          <g key={f.label}>
+            <text x="4" y={y + 10} fill="#949DA8" fontSize="8" fontFamily="monospace">{f.label}</text>
+            <rect x="44" y={y} width={barWidth} height="10" rx="2" fill={color} opacity={0.15 + f.value * 0.5} />
+            <text x={44 + barWidth + 4} y={y + 9} fill={color} fontSize="7" fontFamily="monospace" opacity="0.7">
+              {Math.round(f.value * 100)}%
+            </text>
+          </g>
+        )
+      })}
+      {/* Score badge */}
+      <rect x="200" y="30" width="34" height="34" rx="6" fill="#5AAED8" opacity="0.15" />
+      <rect x="200" y="30" width="34" height="34" rx="6" stroke="#5AAED8" strokeWidth="1" opacity="0.3" fill="none" />
+      <text x="217" y="53" fill="#5AAED8" fontSize="16" fontFamily="monospace" textAnchor="middle" fontWeight="bold">8</text>
+      <text x="217" y="24" fill="#949DA8" fontSize="7" fontFamily="monospace" textAnchor="middle">SCORE</text>
+    </svg>
+  )
+}
+
+function ZonesIllustration() {
+  return (
+    <svg
+      width="240"
+      height="120"
+      viewBox="0 0 240 120"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className="w-full"
+    >
+      {/* Value Area High */}
+      <rect x="50" y="15" width="180" height="10" rx="1" fill="#5AAED8" opacity="0.06" />
+      <line x1="50" y1="20" x2="230" y2="20" stroke="#5AAED8" strokeWidth="1" strokeDasharray="3 2" opacity="0.5" />
+      <text x="232" y="23" fill="#949DA8" fontSize="7" fontFamily="monospace">VAH</text>
+
+      {/* POC — strongest line */}
+      <rect x="50" y="45" width="180" height="12" rx="1" fill="#5AAED8" opacity="0.12" />
+      <line x1="50" y1="51" x2="230" y2="51" stroke="#5AAED8" strokeWidth="2" opacity="0.8" />
+      <text x="232" y="54" fill="#5AAED8" fontSize="7" fontFamily="monospace" fontWeight="bold">POC</text>
+
+      {/* Value Area Low */}
+      <rect x="50" y="80" width="180" height="10" rx="1" fill="#5AAED8" opacity="0.06" />
+      <line x1="50" y1="85" x2="230" y2="85" stroke="#5AAED8" strokeWidth="1" strokeDasharray="3 2" opacity="0.5" />
+      <text x="232" y="88" fill="#949DA8" fontSize="7" fontFamily="monospace">VAL</text>
+
+      {/* Volume profile histogram on the left */}
+      {[10, 18, 32, 48, 55, 42, 28, 18, 12, 8].map((w, i) => (
+        <rect
+          key={i}
+          x="10"
+          y={8 + i * 10.5}
+          width={w}
+          height="7"
+          rx="1.5"
+          fill="#5AAED8"
+          opacity={0.12 + (w / 55) * 0.45}
+        />
+      ))}
+
+      {/* Naked POC marker */}
+      <circle cx="120" cy="105" r="3.5" fill="#FBBF24" opacity="0.7" />
+      <text x="128" y="108" fill="#FBBF24" fontSize="7" fontFamily="monospace" opacity="0.7">nPOC</text>
+    </svg>
+  )
+}
+
+function ContextIllustration() {
+  // Deterministic daily session bars
+  const dayHeights = [35, 28, 42, 30, 48, 38, 44, 25, 50, 32, 46, 40, 36, 52]
+
+  return (
+    <svg
+      width="240"
+      height="120"
+      viewBox="0 0 240 120"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className="w-full"
+    >
+      {/* 14 day bars */}
+      {dayHeights.map((h, i) => {
+        const x = 10 + i * 16
+        const y = 90 - h
+        const isToday = i === 13
+        return (
+          <g key={i}>
+            <rect
+              x={x}
+              y={y}
+              width="10"
+              height={h}
+              rx="2"
+              fill="#5AAED8"
+              opacity={isToday ? 0.8 : 0.08 + (i / 14) * 0.3}
+            />
+            {isToday && (
+              <>
+                <text x={x + 5} y={y - 5} fill="#5AAED8" fontSize="7" fontFamily="monospace" textAnchor="middle">NOW</text>
+                <rect x={x - 1} y={y - 1} width="12" height={h + 2} rx="2.5" stroke="#5AAED8" strokeWidth="1" fill="none" opacity="0.4" />
+              </>
+            )}
+          </g>
+        )
+      })}
+      {/* Timeline */}
+      <line x1="10" y1="96" x2="234" y2="96" stroke="#353D48" strokeWidth="1" />
+      <text x="14" y="108" fill="#6E7681" fontSize="7" fontFamily="monospace">-14d</text>
+      <text x="214" y="108" fill="#5AAED8" fontSize="7" fontFamily="monospace">heute</text>
+      {/* Bars count label */}
+      <text x="120" y="115" fill="#6E7681" fontSize="6" fontFamily="monospace" textAnchor="middle" opacity="0.6">5,460 Bars</text>
+    </svg>
+  )
+}
+
+// ─── Engine Capability Data ─────────────────────────────────────────────────
+
+interface EngineCapability {
+  id: string
+  title: string
+  metric: string
+  metricLabel: string
+  description: string
+  illustration: React.ComponentType
+}
+
+const capabilities: EngineCapability[] = [
+  {
+    id: 'structure',
+    title: 'Marktstruktur',
+    metric: '~3 Bars',
+    metricLabel: 'Trendwechsel-Erkennung vor dem Breakout',
+    description:
+      'Arctis erkennt Swing Highs, Swing Lows, Trendrichtung und Strukturbrueche automatisch. Du siehst sofort, ob der Markt bullish, bearish oder in einer Range ist.',
+    illustration: MarktstrukturIllustration,
+  },
+  {
+    id: 'confluence',
+    title: 'Confluence Engine',
+    metric: '68%',
+    metricLabel: 'Trefferquote bei Score 5+',
+    description:
+      '7 unabhaengige Faktoren — VWAP, EMA, RSI, Volumen, Session, Struktur, Bias — werden zu einem Score verdichtet. Ab Score 5+ steigt die Trefferquote signifikant.',
+    illustration: ConfluenceIllustration,
+  },
+  {
+    id: 'zones',
+    title: 'Praezise Zonen',
+    metric: '0.25pt',
+    metricLabel: 'POC-Genauigkeit',
+    description:
+      'Support und Resistance basierend auf echtem Volumenprofil: POC, Value Area, Naked POCs. Keine willkuerlichen Linien — echte Preisniveaus.',
+    illustration: ZonesIllustration,
+  },
+  {
+    id: 'context',
+    title: '14 Tage Kontext',
+    metric: '5,460',
+    metricLabel: 'Bars Kontext pro Symbol',
+    description:
+      'Arctis laedt automatisch 14 Handelstage. Du siehst nicht nur den heutigen Chart, sondern die gesamte Marktgeschichte die relevant ist.',
+    illustration: ContextIllustration,
+  },
+]
+
+// ─── Engine Card ────────────────────────────────────────────────────────────
+
+function EngineCard({ capability, featured = false }: { capability: EngineCapability; featured?: boolean }) {
+  const Illustration = capability.illustration
+
+  return (
+    <motion.div
+      variants={engineCardItem}
+      className={`glass-card relative overflow-hidden rounded-2xl transition-transform duration-300 ease-out hover:-translate-y-0.5 ${featured ? 'p-8' : 'p-6'}`}
+      style={{ willChange: 'transform' }}
+    >
+      {/* Accent top border */}
+      <div
+        aria-hidden="true"
+        className="absolute inset-x-0 top-0 h-px"
+        style={{
+          background: featured
+            ? 'linear-gradient(90deg, transparent 0%, rgba(90,174,216,0.6) 30%, rgba(90,174,216,0.8) 50%, rgba(90,174,216,0.6) 70%, transparent 100%)'
+            : 'linear-gradient(90deg, transparent 0%, rgba(90,174,216,0.4) 50%, transparent 100%)',
+        }}
+      />
+
+      {/* Subtle radial glow on featured card */}
+      {featured && (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0"
+          style={{
+            background: 'radial-gradient(ellipse 60% 50% at 80% 0%, rgba(92,184,240,0.06) 0%, transparent 70%)',
+          }}
+        />
+      )}
+
+      {/* Illustration container */}
+      <div className={`rounded-lg border border-frost-border-subtle bg-arctic-primary/50 p-4 ${featured ? 'mb-6' : 'mb-5'}`}>
+        <Illustration />
+      </div>
+
+      {/* Key metric badge */}
+      <div className="mb-3 flex items-baseline gap-2">
+        <span className={`font-mono font-bold text-ice ${featured ? 'text-3xl' : 'text-2xl'}`}>{capability.metric}</span>
+        <span className="text-xs text-frost-muted">{capability.metricLabel}</span>
+      </div>
+
+      {/* Title */}
+      <h3 className={`font-mono font-semibold uppercase tracking-wider text-ice ${featured ? 'text-base' : 'text-sm'}`}>
+        {capability.title}
+      </h3>
+
+      {/* Description */}
+      <p className={`mt-2 leading-relaxed text-frost-secondary ${featured ? 'text-base' : 'text-sm'}`}>
+        {capability.description}
+      </p>
+    </motion.div>
+  )
+}
+
+// ─── Data Flow Visualization ────────────────────────────────────────────────
+
+function DataFlowVisualization() {
+  const stages = [
+    { label: 'Raw Bars', color: '#949DA8' },
+    { label: 'Analyse', color: '#5AAED8' },
+    { label: 'Confluence', color: '#5CB8F0' },
+    { label: 'Signal', color: '#34D399' },
+  ]
+
+  return (
+    <div className="relative overflow-hidden rounded-xl border border-frost-border-subtle bg-arctic-primary/50 px-6 py-8">
+      <style>{`
+        @keyframes flowDot {
+          0% { transform: translateX(0); opacity: 0; }
+          10% { opacity: 1; }
+          90% { opacity: 1; }
+          100% { transform: translateX(calc(100% + 20px)); opacity: 0; }
+        }
+        @keyframes stagePulse {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(92,184,240,0); }
+          50% { box-shadow: 0 0 12px 2px rgba(92,184,240,0.15); }
+        }
+        @keyframes stageLight {
+          0%, 100% { opacity: 0.5; }
+          50% { opacity: 1; }
+        }
+      `}</style>
+
+      <div className="flex items-center justify-between gap-2">
+        {stages.map((stage, i) => (
+          <div key={stage.label} className="flex items-center gap-2" style={{ flex: i < stages.length - 1 ? 1 : 'none' }}>
+            {/* Stage node */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              transition={{ delay: i * 0.4, duration: 0.5 }}
+              className="flex flex-col items-center gap-2 shrink-0"
+            >
+              <div
+                className="flex items-center justify-center rounded-lg"
+                style={{
+                  width: 48,
+                  height: 48,
+                  border: `1.5px solid ${stage.color}`,
+                  background: `${stage.color}10`,
+                  animation: `stagePulse 3s ease-in-out ${i * 0.4}s infinite`,
+                }}
+              >
+                <div
+                  className="rounded-full"
+                  style={{
+                    width: 8,
+                    height: 8,
+                    background: stage.color,
+                    boxShadow: `0 0 8px ${stage.color}`,
+                    animation: `stageLight 2s ease-in-out ${i * 0.4}s infinite`,
+                  }}
+                />
+              </div>
+              <span className="text-frost-muted font-mono text-[10px] text-center whitespace-nowrap">
+                {stage.label}
+              </span>
+            </motion.div>
+
+            {/* Connecting line with animated dots */}
+            {i < stages.length - 1 && (
+              <div className="relative flex-1 mx-1" style={{ height: 2 }}>
+                <div
+                  className="absolute inset-0 rounded-full"
+                  style={{ background: 'rgba(92,184,240,0.1)' }}
+                />
+                {[0, 1, 2].map((dotIdx) => (
+                  <div
+                    key={dotIdx}
+                    className="absolute top-1/2 -translate-y-1/2 rounded-full"
+                    style={{
+                      width: 4,
+                      height: 4,
+                      background: stages[i + 1].color,
+                      boxShadow: `0 0 6px ${stages[i + 1].color}`,
+                      animation: `flowDot 2s linear ${i * 0.4 + dotIdx * 0.6}s infinite`,
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ─── EngineShowcase Section ─────────────────────────────────────────────────
+
+export function EngineShowcase() {
+  return (
+    <section id="engine" className="section-padding relative">
+      {/* Background glow */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 overflow-hidden"
+      >
+        <div
+          className="absolute left-1/2 top-1/3 -translate-x-1/2 -translate-y-1/2"
+          style={{
+            width: '900px',
+            height: '600px',
+            background:
+              'radial-gradient(ellipse at center, rgba(90,174,216,0.04) 0%, transparent 70%)',
+          }}
+        />
+      </div>
+
+      <div className="section-container relative z-10">
+        {/* Section Header */}
+        <motion.div
+          className="mb-12 text-center lg:mb-16"
+          variants={fadeInUp}
+          initial="hidden"
+          whileInView="visible"
+          viewport={viewportOnce}
+        >
+          <p className="mb-4 text-sm font-medium uppercase tracking-[0.15em] text-ice">
+            Engine
+          </p>
+          <h2 className="font-display text-3xl font-bold text-frost-white sm:text-4xl lg:text-5xl">
+            Was Arctis sieht,
+            <br />
+            <span className="text-gradient-frost">bevor du es siehst.</span>
+          </h2>
+        </motion.div>
+
+        {/* Data Flow Visualization */}
+        <motion.div
+          className="mb-10"
+          variants={fadeInUp}
+          initial="hidden"
+          whileInView="visible"
+          viewport={viewportOnce}
+        >
+          <DataFlowVisualization />
+        </motion.div>
+
+        {/* Asymmetric grid — featured first card spans full width */}
+        <motion.div
+          className="relative"
+          variants={engineStaggerContainer}
+          initial="hidden"
+          whileInView="visible"
+          viewport={viewportOnce}
+        >
+          {/* Connecting lines between cards — subtle visual flow */}
+          <div aria-hidden="true" className="pointer-events-none absolute inset-0 hidden lg:block" style={{ zIndex: 0 }}>
+            {/* Vertical connector from featured card to row below */}
+            <div
+              className="absolute left-1/2 -translate-x-1/2"
+              style={{
+                top: 'calc(50% - 80px)',
+                width: '1px',
+                height: '60px',
+                background: 'linear-gradient(180deg, rgba(90,174,216,0.2) 0%, rgba(90,174,216,0.05) 100%)',
+              }}
+            />
+            {/* Horizontal connector across bottom row */}
+            <div
+              className="absolute left-[15%] right-[15%]"
+              style={{
+                bottom: 'calc(50% - 20px)',
+                height: '1px',
+                background: 'linear-gradient(90deg, transparent 0%, rgba(90,174,216,0.12) 20%, rgba(90,174,216,0.12) 80%, transparent 100%)',
+              }}
+            />
+          </div>
+
+          {/* Featured card — Marktstruktur — full width */}
+          <div className="relative z-10 mb-4 lg:mb-6">
+            <EngineCard capability={capabilities[0]} featured />
+          </div>
+
+          {/* Bottom row — 3 smaller cards, asymmetric widths */}
+          <div className="relative z-10 grid grid-cols-1 gap-4 md:grid-cols-3 lg:gap-6">
+            {capabilities.slice(1).map((cap) => (
+              <EngineCard key={cap.id} capability={cap} />
+            ))}
+          </div>
+        </motion.div>
+      </div>
+    </section>
+  )
+}

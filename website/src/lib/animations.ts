@@ -132,6 +132,50 @@ export const heroImageReveal: Variants = {
   },
 }
 
+// ─── Hero Word-by-Word Stagger ──────────────────────────
+
+export const heroWordContainer: Variants = {
+  hidden: {},
+  visible: {
+    transition: {
+      staggerChildren: 0.08,
+      delayChildren: 0.1,
+    },
+  },
+}
+
+export const heroWord: Variants = {
+  hidden: { opacity: 0, y: 20, filter: 'blur(8px)' },
+  visible: {
+    opacity: 1,
+    y: 0,
+    filter: 'blur(0px)',
+    transition: { duration: 0.6, ease: [0.25, 0.46, 0.45, 0.94] },
+  },
+}
+
+// ─── Engine Card Stagger (100ms delay per card) ──────────
+
+export const engineStaggerContainer: Variants = {
+  hidden: {},
+  visible: {
+    transition: {
+      staggerChildren: 0.1,
+      delayChildren: 0.1,
+    },
+  },
+}
+
+export const engineCardItem: Variants = {
+  hidden: { opacity: 0, y: 30, scale: 0.97 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: { duration: 0.7, ease: [0.25, 0.46, 0.45, 0.94] },
+  },
+}
+
 // ─── Viewport Settings ──────────────────────────────────
 
 export const viewportOnce = {

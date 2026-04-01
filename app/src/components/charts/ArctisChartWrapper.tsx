@@ -210,7 +210,7 @@ function buildIndicatorMap(
       label: 'EMA 21',
       params: { period: 21 },
       style: {
-        color: '#58A6FF',  // lighter blue
+        color: '#7DCBF5',  // ice blue hover variant
         lineWidth: 1,
         lineStyle: 'solid',
         visible: true,
@@ -357,7 +357,7 @@ export function ArctisChartWrapper({
     // Target 1 line
     levels.push({
       price: signalLines.target1Price,
-      color: '#34D399',
+      color: '#00B775',
       label: `TP1 ${signalLines.target1Price.toFixed(2)}`,
       dash: [6, 4],
       thickness: 1,
@@ -367,7 +367,7 @@ export function ArctisChartWrapper({
     if (signalLines.target2Price != null) {
       levels.push({
         price: signalLines.target2Price,
-        color: '#34D399',
+        color: '#00B775',
         label: `TP2 ${signalLines.target2Price.toFixed(2)}`,
         dash: [8, 4],
         thickness: 1,

@@ -34,7 +34,7 @@ async def run_backtest_endpoint(
     from arctis.analysis.backtester import run_backtest
 
     bars = fetch_bars_as_models(market=market.value, days=days, timeframe=timeframe.value)
-    report = run_backtest(bars)
+    report = run_backtest(bars, market_root=market.value)
 
     return {
         "total_trades": report.total_trades,
@@ -87,7 +87,7 @@ async def get_zones(
     - priority: 1=highest (used for draw order)
     """
     bars = _load_bars(market, timeframe)
-    zones = calculate_zones(bars)
+    zones = calculate_zones(bars, market=market.value)
 
     return {
         "zones": [
@@ -133,7 +133,7 @@ async def get_signals(
         return {"signals": [], "bias": "RANGE", "bias_score": 0}
 
     # Calculate zones to extract key price levels
-    zones = calculate_zones(bars)
+    zones = calculate_zones(bars, market=market.value)
     poc: float | None = None
     vah: float | None = None
     val: float | None = None
@@ -195,6 +195,7 @@ async def get_signals(
         ib_low=ib_low,
         naked_pocs=naked_poc_prices,
         key_levels=kl_dicts,
+        market_root=market.value,
     )
 
     return {

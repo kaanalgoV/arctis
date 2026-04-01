@@ -244,13 +244,12 @@ async def live_status():
     }
 
 
-@router.post("/rithmic/login")
-async def rithmic_login(
-    username: str = Query(...),
-    password: str = Query(...),
-    server: str = Query(default="Rithmic Paper Trading"),
-):
-    """Authenticate with Rithmic and start streaming real market data."""
+async def connect_rithmic(username: str, password: str, server: str = "Rithmic Paper Trading") -> dict:
+    """Connect to Rithmic and start streaming. Returns status dict.
+
+    This is the core connection logic used by both the HTTP endpoint and
+    the auto-connect startup event.
+    """
     global _rithmic_client, _rithmic_task, _rithmic_connected, _rithmic_info
 
     # If already connected, disconnect first
@@ -324,6 +323,16 @@ async def rithmic_login(
             "connected": False,
             "error": str(exc),
         }
+
+
+@router.post("/rithmic/login")
+async def rithmic_login(
+    username: str = Query(...),
+    password: str = Query(...),
+    server: str = Query(default="Rithmic Paper Trading"),
+):
+    """Authenticate with Rithmic and start streaming real market data."""
+    return await connect_rithmic(username=username, password=password, server=server)
 
 
 @router.post("/rithmic/logout")

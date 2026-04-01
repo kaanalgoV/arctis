@@ -95,7 +95,7 @@ def _build_travis_context(
             pass
 
         try:
-            sigs = detect_signals(bars)
+            sigs = detect_signals(bars, market_root=market[:2].upper() if market else "NQ")
             recent_signals = [
                 f"{s.direction.upper()} {s.signal_type} E:{s.entry_price:.0f} SL:{s.stop_price:.0f}"
                 for s in sigs[-3:]

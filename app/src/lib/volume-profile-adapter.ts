@@ -12,9 +12,9 @@ import type { Bar } from '@/types/contracts'
 import type { DailyVolumeProfile } from '@/types/analysis'
 import type { DayVolumeProfile } from '@/components/charts/CandlestickChart'
 
-// Number of price bins per day — higher = finer resolution
-// NQ has ~50-150pt daily range, so 60 bins ≈ 1-2.5pt per bin
-const DEFAULT_BIN_COUNT = 60
+// Number of price bins per day — higher = finer/smoother resolution
+// NQ has ~50-150pt daily range, so 200 bins ≈ 0.3-0.75pt per bin (smooth histogram)
+const DEFAULT_BIN_COUNT = 200
 
 /**
  * Parse an ISO date string ("2026-03-20") from a Unix timestamp (seconds).
@@ -166,7 +166,6 @@ export function buildDayVolumeProfiles(
   bars: Bar[],
   dailyProfiles?: DailyVolumeProfile[] | null,
   binCount = DEFAULT_BIN_COUNT,
-  maxDays = 3,  // Only compute VP for last N days (performance)
 ): DayVolumeProfile[] {
   if (bars.length === 0) return []
 
@@ -193,12 +192,10 @@ export function buildDayVolumeProfiles(
 
   const result: DayVolumeProfile[] = []
 
-  // Only process the last N days for performance (VP with 60 bins * 30 days = 1800 annotations)
-  const dayKeys = [...dayGroups.keys()].sort()
-  const recentDays = new Set(dayKeys.slice(-maxDays))
+  // Process ALL days — no maxDays limit. 120 bins * 28 days = ~3360 annotations,
+  // which SciChart handles fine with BoxAnnotation batching.
 
   for (const [dateStr, group] of dayGroups) {
-    if (!recentDays.has(dateStr)) continue // Skip old days
     const { indices } = group
     if (indices.length === 0) continue
 

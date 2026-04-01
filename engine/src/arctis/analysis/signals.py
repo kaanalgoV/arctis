@@ -1,9 +1,45 @@
-"""Trade signal detection — Optimized v3 (2026-03-25).
+"""Trade signal detection — Optimized v9 (2026-03-27).
 
 Optimization history:
   v1 (original): 14 trades, 28.6% WR, PF 0.94 — almost breakeven
   v2 (2026-03-24): Targeted fixes based on 90-day Jan-Mar 2026 backtest
   v3 (2026-03-25): Precise entry/stop/target prices, session-aware confluence thresholds
+  v5 (2026-03-27): March backtest: 13 trades, 61.5% WR, PF 6.07, Avg R +1.54
+  v6 (2026-03-27): OR Breakout learning system — 6 config iterations on Feb-Mar data
+    - Backtest results (Feb 25 - Mar 27, 23 trading days):
+      ES: PF 2.77, 46.2% WR, 13 trades, +38.25pt (+$1912)
+      NQ: PF 1.67, 27.3% WR, 22 trades (poor — NQ OR breakout marginal)
+  v7 (2026-03-29): Data-driven 10-hour sprint with deep analysis on 22 trading days
+    - NEW: market_root parameter for market-specific signal tuning
+    - ORB: Market-specific stop placement (data-driven):
+      NQ: ATR-based stop (1x ATR) — 59% WR, PF 3.17 (vs 27% WR with full OR stop)
+      ES: 0.75x OR stop — PF 4.96, 64% WR (best stop mode for ES)
+    - ORB: NQ OR range filter: skip OR > 35pts (14% WR above 35pts)
+      NQ sweet spot: OR 25-35pts = 50% WR; >35pts = 14% WR
+    - ORB: Extended window to bars 30-90 (was 30-60) — more trade opportunities
+    - Daily Breakout: Now requires VWAP alignment for confirmation
+      Finding: VWAP-aligned PDH/PDL breakouts: ES 64% WR, NQ 53% WR
+      Without VWAP alignment: significantly worse
+    - Daily Breakout: RVOL >= 0.7 required (ES: 64% WR with filter vs 50% without)
+    - POC Rejection: Min confluence raised to 3 (was 2)
+      Finding: POC rejections only 33-36% WR at 1.5R — need higher selectivity
+    - POC Rejection: Min R:R raised to 2.0 (was 1.5) — marginal signal needs bigger payoff
+    - Backtest results (Feb 25 - Mar 27, v7):
+      See ENGINE_LEARNINGS.md for full analysis
+  v8 (2026-03-31): NQ profitability sprint — systematic optimization of 300+ configs
+    - NQ was losing money (PF 0.56, -5152 USD) with v7 ORB-only approach
+    - Tested: OR breakout sweep (6 stop modes x 4 RR x 3 confluence x 3 windows)
+    - Tested: 4 alternative strategies (VWAP MR, PDH/PDL, OR Fade, EMA Pullback)
+    - Winner: VWAP Mean Reversion — PF 2.11, 60.6% WR, +3929 USD (33 trades)
+    - NEW: vwap_bounce signal completely redesigned (was disabled at 22% WR)
+      Old: 3-bar momentum + position-in-range + fixed 10pt threshold = 22% WR
+      New: reversal bar + 1x ATR threshold + 1R target = 60.6% WR
+    - ORB: Both NQ and ES now use 0.5x OR stop (was ATR for NQ, 0.75x for ES)
+      NQ 0.5x OR: PF 1.33, +2913 USD (was PF 0.56 with full OR stop)
+      ES 0.5x OR: PF 3.39, +10754 USD (was PF 1.84 with full OR stop)
+    - ORB window extended to 120 bars (was 90)
+    - Combined NQ result: PF 1.55, 51% WR, +6841 USD (was -5152 USD)
+    - Combined ES result: PF 3.39, 55% WR, +10754 USD
 
 v2 changes:
   1. DAILY BREAKOUT: Now requires intraday breakout (not gap-open).
@@ -67,19 +103,22 @@ from arctis.analysis.sessions import Session, classify_session, get_current_sess
 # NQ: 1 tick = 0.25 points. Entry offsets and stop bounds are expressed in ticks.
 _NQ_TICK_SIZE: float = 0.25
 
-# v3: tighter stop cap (10 pts = 40 ticks) to keep R:R meaningful
-_MAX_STOP_TICKS: int = 40
-_MIN_STOP_TICKS: int = 8   # 2 pts — no hairline stops
+# v9: Market-adaptive stop cap. The old fixed 10pt (40 ticks) cap blocked
+# ALL NQ ORB signals and most ES ORB signals because 0.5x OR range is
+# typically 20-60pt for NQ and 8-21pt for ES.
+# These are now DEFAULT values, overridden per-market in detect_signals().
+_MAX_STOP_TICKS: int = 240   # v9: 60pt default (NQ-friendly)
+_MIN_STOP_TICKS: int = 12  # v4: 3 pts — wider stops survive noise better (was 8/2pts)
 
 # Legacy alias: used in existing _stop_within_limit()
-_MAX_STOP_POINTS: float = _MAX_STOP_TICKS * _NQ_TICK_SIZE  # 10.0
+_MAX_STOP_POINTS: float = _MAX_STOP_TICKS * _NQ_TICK_SIZE  # 60.0
 
 # Entry offset: number of ticks BEYOND the trigger level to enter
 # (avoids entering right at the level where rejection is likely)
 _ENTRY_OFFSET_TICKS: int = 2   # 0.50 pts for NQ
 
-# Minimum R:R from AlgoView mbo_confluence_nq (CRV 1.35)
-_MIN_RR: float = 1.35
+# Minimum R:R — raised to 1.5:1 for better signal quality (was 1.35)
+_MIN_RR: float = 1.50
 
 # Breakeven trigger: move stop to entry when 35% of target distance is reached
 _DEFAULT_BREAKEVEN_PCT: float = 0.35
@@ -88,15 +127,22 @@ _DEFAULT_BREAKEVEN_PCT: float = 0.35
 # Bar 0 = 09:30, Bar 14 = 09:44 (opening volatility — skip)
 _SKIP_BARS_OPENING_END: int = 3    # bars 0-2 (first 15min only, was 15)
 
-# ORB requires this many confirmations (stricter than other signals)
-_ORB_MIN_CONFLUENCE: int = 3
-_ORB_MIN_VOLUME_FACTOR: float = 1.2
+# ORB requires this many confirmations
+# v9: Lowered from 3 to 2 — audit showed ORB never fired for NQ because
+# confluence=3 is too strict with 5 conditions (bias+vol+structure+velocity+vwap).
+# ORB is inherently confirmed by the breakout itself + volume.
+_ORB_MIN_CONFLUENCE: int = 2
+# v9: Lowered from 1.2 to 1.0 — many valid ORBs have normal volume, not 1.2x.
+# The RVOL >= 0.7 filter in _try_build_signal already blocks thin volume.
+_ORB_MIN_VOLUME_FACTOR: float = 1.0
 
-# Session-specific minimum confluence thresholds (v3)
-# NY Open: market is most efficient, any valid setup should fire
+# Session-specific minimum confluence thresholds (v6)
+# v6: NY Open raised to 2 (was 1 — ALL ES losses in backtest had confluence=2,
+#      the old minimum. Raising to 2 means only signals with 2+ raw confirmations
+#      fire, eliminating the weakest entries.)
 # Midday / other RTH: require at least 2 confirmations
 _SESSION_MIN_CONFLUENCE: dict[str, int] = {
-    Session.NY_OPEN.value:     1,
+    Session.NY_OPEN.value:     2,
     Session.MIDDAY.value:      2,
     Session.AFTERNOON.value:   2,
     Session.POWER_HOUR.value:  2,
@@ -246,9 +292,13 @@ def _is_vwap_aligned(direction: str, price: float, vwap: float | None) -> bool:
     return price < vwap
 
 
-def _stop_within_limit(entry: float, stop: float) -> bool:
-    """True if the stop distance does not exceed MAX_STOP_POINTS (40 ticks = 10 pts)."""
-    return abs(entry - stop) <= _MAX_STOP_POINTS
+def _stop_within_limit(entry: float, stop: float, max_pts: float = 0.0) -> bool:
+    """True if the stop distance does not exceed the max stop points.
+
+    v9: max_pts parameter allows market-specific limits. If 0, uses global default.
+    """
+    limit = max_pts if max_pts > 0 else _MAX_STOP_POINTS
+    return abs(entry - stop) <= limit
 
 
 # ---------------------------------------------------------------------------
@@ -423,6 +473,7 @@ def detect_signals(
     vwap: float | None = None,
     session_bar_idx: int | None = None,
     tick_size: float = _NQ_TICK_SIZE,
+    market_root: str = "NQ",
 ) -> list[TradeSignal]:
     """Detect high-quality trade signals based on profitable AlgoView strategies.
 
@@ -460,9 +511,55 @@ def detect_signals(
     session_bar_idx: Bar index within the current RTH session (0-based).
                      When None, falls back to len(bars) - 1 (legacy behaviour).
     tick_size:       Instrument tick size (default 0.25 for NQ/ES).
+    market_root:     Market root symbol ("NQ", "ES") for market-specific parameters.
     """
     if len(bars) < 50:
         return []
+
+    # v7: Market-specific configuration (data-driven from deep analysis sprint)
+    _mkt = market_root.upper()
+    _is_es = _mkt == "ES"
+    _is_nq = _mkt == "NQ"
+
+    # v9: Market-specific max stop points — the old 10pt global cap blocked
+    # ALL NQ ORB signals (NQ OR ranges are 48-229pt, 0.5x = 24-115pt) and
+    # most ES ORB signals (ES OR ranges are 7-43pt, 0.5x = 4-21pt).
+    # New limits: NQ 60pt (captures 0.5x of OR up to 120pt range),
+    #             ES 25pt (captures 0.5x of OR up to 50pt range).
+    _max_stop_pts: float = 60.0 if _is_nq else 25.0
+
+    # ORB parameters — different optimal configs per market
+    # v8: Both NQ and ES use 0.5x OR stop with RR 2.0.
+    # March backtest: NQ 0.5x OR stop PF 1.33 (18 trades), ES 0.5x OR stop PF 3.39
+    # NQ was ATR-based (v7) but 0.5x OR outperformed in full audit (+2913 USD vs +640)
+    _orb_max_or_range: float = 999.0   # no range filter needed with 0.5x OR stop
+    _orb_stop_mode: str = "or_fraction"  # both markets: fraction of OR range
+    _orb_stop_fraction: float = 0.5   # 0.5x OR range as stop distance
+    _orb_atr_mult: float = 1.0       # unused (kept for fallback)
+    # ORB window: extended to bar 120 (was 90) for more NQ opportunities
+    _orb_max_bar: int = 120
+
+    # v8 NEW: VWAP Mean Reversion — NQ primary signal
+    # March backtest: PF 2.11, 60.6% WR, 33 trades, +3929 USD
+    # Parameters: 1x ATR distance from VWAP, reversal bar, 1R target, max bar 120
+    # v9: VWAP MR — NQ only. ES VWAP MR is -19pt (38% WR) in March audit.
+    _vwap_mr_enabled: bool = _is_nq  # NQ: +42pt, 54% WR; ES: -19pt, disabled
+    # v9: raised from 1.0 to 1.5 — audit showed 1x ATR fires too often near VWAP
+    # where price oscillates naturally. 1.5x ATR requires meaningful extension.
+    _vwap_mr_atr_threshold: float = 1.5  # distance > 1.5x ATR from VWAP
+    _vwap_mr_rr: float = 1.0  # 1R target (quick profit taking)
+    _vwap_mr_max_bar: int = 120  # only first 120 bars
+    _vwap_mr_max_risk: float = 60.0  # max risk in points
+    _vwap_mr_min_risk: float = 2.0  # min risk in points
+
+    # v9: Daily breakout — ES only. NQ daily breakout is -157pt (27% WR) in March audit.
+    _daily_breakout_enabled: bool = _is_es  # ES: +92pt, 43% WR; NQ: -157pt, disabled
+    # Daily breakout: require VWAP alignment (ES: 64% WR with, NQ: 53% with)
+    _daily_require_vwap: bool = True  # v7: data shows VWAP alignment is a strong filter
+
+    # POC rejection: raise selectivity (33-36% WR at 1.5R is marginal)
+    _poc_min_confluence: int = 3   # v7: was 2, need more confirmation for marginal signal
+    _poc_min_rr: float = 2.0      # v7: was 1.5, need bigger payoff for lower WR signal
 
     # Determine session from the last bar's timestamp.
     # Fallback: if the last bar appears stale (e.g. bars from a historical dataset
@@ -482,8 +579,11 @@ def detect_signals(
     # Session-specific minimum confluence (v3)
     _session_min_conf: int = _SESSION_MIN_CONFLUENCE.get(current_session_str, _DEFAULT_MIN_CONFLUENCE)
 
-    # Session filter — no signals during opening trap (first 15 bars)
-    if not _in_session_filter(bars):
+    # Session filter — no signals during opening trap (first 3 bars)
+    # When session_bar_idx is provided (e.g. by backtest), use it directly
+    # instead of _in_session_filter which relies on wall-clock date.
+    _effective_bar_idx = session_bar_idx if session_bar_idx is not None else _bar_index_in_session(bars)
+    if _effective_bar_idx < _SKIP_BARS_OPENING_END:
         return []
 
     signals: list[TradeSignal] = []
@@ -571,11 +671,11 @@ def detect_signals(
         stop = _round_tick(stop, tick_size)
         target = _round_tick(target, tick_size)
 
-        # Stop distance filter: must be within MIN_STOP_TICKS..MAX_STOP_TICKS
+        # Stop distance filter: must be within MIN_STOP_TICKS..market-specific max
         stop_dist_ticks = _ticks(entry - stop, tick_size)
         if stop_dist_ticks < _MIN_STOP_TICKS:
             return None
-        if not _stop_within_limit(entry, stop):
+        if not _stop_within_limit(entry, stop, max_pts=_max_stop_pts):
             return None
 
         # R:R filter
@@ -585,6 +685,12 @@ def detect_signals(
         reward = abs(target - entry)
         rr = reward / risk
         if rr < _MIN_RR:
+            return None
+
+        # v6: Volume confirmation — RVOL < 0.7 blocked (was 0.5).
+        # Backtest shows RVOL >= 0.7 significantly improves signal quality.
+        # Low-volume entries are the primary source of false breakouts.
+        if avg_volume > 0 and last.volume < avg_volume * 0.7:
             return None
 
         # Confluence filter — NY Open session gets a +1 boost (higher-quality window)
@@ -626,44 +732,63 @@ def detect_signals(
         return sig
 
     # ── 1. ORB Break ──────────────────────────────────────────────────────────
-    # ORB = Opening Range Breakout. Price breaks above OR high or below OR low
-    # with momentum (high volume bar) immediately after the OR closes.
+    # v7: Market-specific OR breakout with data-driven stop placement.
     #
     # KEY: Only fire when the LAST bar is the BREAKOUT BAR (bars[-2] was inside
-    # the OR, bars[-1] is the first close outside). This prevents re-entering
-    # the same ORB signal at every subsequent checkpoint.
+    # the OR, bars[-1] is the first close outside).
     #
-    # ATR-based stop (not or_low/or_high — NQ OR range is 100-300+ pts).
-    # Only within bars 30-60 (tight window: first 30 bars after OR closes).
+    # v7 Stop placement (data-driven from deep analysis of 22 trading days):
+    #   NQ: 1x ATR stop — gives 59% WR, PF 3.17 (full OR stop only 27% WR at 1.5R)
+    #   ES: 0.75x OR stop — gives PF 4.96, 64% WR (best mode for ES)
+    # v7 OR range filter:
+    #   NQ: Skip OR > 35pts (14% WR above 35pts). Sweet spot is 0-35pts (50% WR).
+    #   ES: No filter needed (profitable across all ranges).
+    # v7 Window: bars 30-90 (was 30-60) for more opportunities.
     if or_high is not None and or_low is not None:
         or_range = or_high - or_low
         bar_idx_orb = session_bar_idx if session_bar_idx is not None else _bar_index_in_session(bars)
-        if or_range > 0 and avg_volume > 0 and bar_idx_orb >= 30 and bar_idx_orb <= 60:
+        # v7: Market-specific OR range filter
+        or_range_ok = or_range <= _orb_max_or_range
+        if or_range > 0 and avg_volume > 0 and bar_idx_orb >= 30 and bar_idx_orb <= _orb_max_bar and or_range_ok:
             high_volume = last.volume > avg_volume * _ORB_MIN_VOLUME_FACTOR
-            # FIRST-BAR confirmation: prior bar was inside (or at) the OR
-            prior_inside_or_high = len(bars) >= 2 and bars[-2].close <= or_high * 1.001
-            prior_inside_or_low = len(bars) >= 2 and bars[-2].close >= or_low * 0.999
+            # v9: Relaxed first-bar check — prior bar was inside OR OR within 0.3% of boundary.
+            # Old check (1.001 = 0.1%) was too strict for NQ where a few points difference
+            # is normal.  Allow up to 0.3% overshoot for the prior bar.
+            prior_inside_or_high = len(bars) >= 2 and bars[-2].close <= or_high * 1.003
+            prior_inside_or_low = len(bars) >= 2 and bars[-2].close >= or_low * 0.997
 
             if last_price > or_high and allow_long and high_volume and prior_inside_or_high:
                 # Entry: OR_High + 1 tick (confirmation above level)
                 entry = _round_tick(or_high + tick_size, tick_size)
-                # Stop: swing stop over last 10 bars, capped at MIN/MAX
-                stop = _swing_stop(bars, "long", tick_size, lookback=10)
-                stop_dist = abs(entry - stop)
-                if stop_dist >= atr * 0.5 and _stop_within_limit(entry, stop):
+                # v7: Market-specific stop placement
+                if _orb_stop_mode == "atr":
+                    # NQ: ATR-based stop (1x ATR) — tighter, higher WR
+                    stop_dist = atr * _orb_atr_mult
+                    stop = _round_tick(entry - stop_dist, tick_size)
+                else:
+                    # ES: Fraction of OR range (0.75x) — captures OR structure
+                    stop_dist = or_range * _orb_stop_fraction
+                    stop = _round_tick(entry - stop_dist, tick_size)
+                # Clamp stop within bounds
+                stop_ticks = _ticks(entry - stop, tick_size)
+                if stop_ticks < _MIN_STOP_TICKS:
+                    stop = _round_tick(entry - _MIN_STOP_TICKS * tick_size, tick_size)
+                    stop_dist = abs(entry - stop)
+                if _stop_within_limit(entry, stop, max_pts=_max_stop_pts) and stop_dist >= atr * 0.3:
                     target = targets_above[0] if targets_above else entry + stop_dist * 2
                     sig = _try_build_signal(
                         "long", "orb_break", entry, stop, target, last.timestamp,
                         (
                             f"ORB Breakout Long: Close {last.close:.2f} > OR High {or_high:.2f},"
                             f" Vol {last.volume:.0f} > {_ORB_MIN_VOLUME_FACTOR}x Avg,"
-                            f" Entry {entry:.2f}, Stop {stop:.2f}"
+                            f" Entry {entry:.2f}, Stop {stop:.2f} ({_mkt} {_orb_stop_mode})"
                         ),
                         min_confluence=_ORB_MIN_CONFLUENCE,
                         reasoning=(
                             f"Price broke Opening Range ({or_low:.2f}-{or_high:.2f}) to the upside"
                             f" with {last.volume:.0f} volume ({_ORB_MIN_VOLUME_FACTOR}x avg)."
                             f" Entry above OR high at {entry:.2f}."
+                            f" Stop: {_orb_stop_mode} mode for {_mkt}."
                         ),
                         invalidation=f"Below OR High {or_high:.2f} (failed breakout)",
                         cap_level=prev_high,
@@ -674,9 +799,18 @@ def detect_signals(
             if last_price < or_low and allow_short and high_volume and prior_inside_or_low:
                 # Entry: OR_Low - 1 tick
                 entry = _round_tick(or_low - tick_size, tick_size)
-                stop = _swing_stop(bars, "short", tick_size, lookback=10)
-                stop_dist = abs(stop - entry)
-                if stop_dist >= atr * 0.5 and _stop_within_limit(entry, stop):
+                # v7: Market-specific stop placement
+                if _orb_stop_mode == "atr":
+                    stop_dist = atr * _orb_atr_mult
+                    stop = _round_tick(entry + stop_dist, tick_size)
+                else:
+                    stop_dist = or_range * _orb_stop_fraction
+                    stop = _round_tick(entry + stop_dist, tick_size)
+                stop_ticks = _ticks(stop - entry, tick_size)
+                if stop_ticks < _MIN_STOP_TICKS:
+                    stop = _round_tick(entry + _MIN_STOP_TICKS * tick_size, tick_size)
+                    stop_dist = abs(stop - entry)
+                if _stop_within_limit(entry, stop, max_pts=_max_stop_pts) and stop_dist >= atr * 0.3:
                     target = targets_below[0] if targets_below else entry - stop_dist * 2
                     sig = _try_build_signal(
                         "short", "orb_break", entry, stop, target, last.timestamp,
@@ -697,10 +831,11 @@ def detect_signals(
                     if sig:
                         signals.append(sig)
 
-    # ── 2. POC Rejection (v2: 3-bar approach + rejection bar + volume) ──────────
+    # ── 2. POC Rejection (v7: raised selectivity) ──────────────────────────────
     # POC acts as a magnet in ALL market conditions — price is drawn to it and
     # often rejects. Allow mean-reversion regardless of bias direction.
-    # Require: 3 bars approaching from one side + rejection candle closes through POC
+    # v7: POC rejections only 33-36% WR at 1.5R — marginal signal.
+    #     Raised min_confluence to 3 (was 2) and min R:R to 2.0 (was 1.5).
     if poc is not None and len(bars) >= 4:
         b_m3 = bars[-4]
         b_m2 = bars[-3]
@@ -737,7 +872,7 @@ def detect_signals(
                     f" Vol {last.volume:.0f} vs Avg {avg_volume:.0f},"
                     f" Entry {entry:.2f}, Stop {stop:.2f}"
                 ),
-                min_confluence=2,
+                min_confluence=_poc_min_confluence,
                 reasoning=(
                     f"Price approached POC {poc:.2f} from below over 3 bars,"
                     f" then reversed above it with volume {last.volume:.0f}"
@@ -776,7 +911,7 @@ def detect_signals(
                     f" Vol {last.volume:.0f} vs Avg {avg_volume:.0f},"
                     f" Entry {entry:.2f}, Stop {stop:.2f}"
                 ),
-                min_confluence=2,
+                min_confluence=_poc_min_confluence,
                 reasoning=(
                     f"Price approached POC {poc:.2f} from above over 3 bars,"
                     f" then reversed below it with volume {last.volume:.0f}"
@@ -794,100 +929,89 @@ def detect_signals(
     # It is deliberately excluded from v2. The "touching VA" setup without
     # reliable orderflow data is not statistically significant.
 
-    # ── 3b. VWAP Bounce (v3 — mean-reversion, RANGE-only) ────────────────────
-    # When price has moved far from VWAP and starts to reverse back.
-    # v3 changes:
-    #  - Threshold reduced: 2.5x ATR (was 3.5x) — catches more setups
-    #  - Stop: last bar low/high + 0.8 ATR buffer (not extreme low) → stays within 25pt limit
-    #  - Target: partial reversion (50% back to VWAP) if VWAP is too far, else full VWAP
-    #  - Bias still restricted to ranging states, AND direction-specific bias filter
-    #  - ATR filter: skip if ATR > 15 pts (high-volatility trending days, not ranging)
-    #  - Session filter: only bars 30-180 (skip late-day illiquid setups)
+    # ── 3b. VWAP Mean Reversion (v9 — bias-filtered) ────────────────────────
+    # v8: Completely redesigned based on NQ March optimization sprint.
+    # v9: Added bias filter — audit showed VWAP MR fired in wrong direction
+    #     on 7/8 NQ failure days (went LONG when day was TREND DOWN, etc.).
+    #     Fix: Do NOT fire VWAP MR long when bias is SHORT/RANGE_SHORT,
+    #          do NOT fire VWAP MR short when bias is LONG/RANGE_LONG.
+    #     Also: wider stop buffer (1.0pt instead of 0.50pt) and 1.5x ATR
+    #           distance threshold (was 1.0x — too trigger-happy).
+    #
+    # Key design:
+    #   1. Reversal detection: close < prev bar low (short) / close > prev bar high (long)
+    #   2. ATR-based distance threshold (1.5x ATR from VWAP)
+    #   3. 1R target (quick profit taking)
+    #   4. Stop: recent 5-bar extreme + 1.0pt buffer
+    #   5. Bias filter: do not fire contra-trend
+    #   6. Lower confluence requirement (1) — the reversal bar IS the confirmation
     vwap_bar_idx = session_bar_idx if session_bar_idx is not None else _bar_index_in_session(bars)
-    if (vwap is not None and vwap > 0 and len(bars) >= 8
-            and atr <= 15.0           # not a high-volatility trending day
-            and vwap_bar_idx >= 3     # past first 15min opening (relaxed from 30)
-            and vwap_bar_idx <= 300): # during RTH (relaxed from 180)
+    if (_vwap_mr_enabled and vwap is not None and vwap > 0 and len(bars) >= 8
+            and vwap_bar_idx >= 3
+            and vwap_bar_idx <= _vwap_mr_max_bar):
         distance_from_vwap = last_price - vwap  # positive = above, negative = below
 
-        # LONG VWAP Bounce: price below VWAP, reversing up
-        # Only when bias is NOT bearish (RANGE_SHORT/SHORT) — don't fade downtrends
-        # LONG VWAP Bounce: price meaningfully below VWAP (>5 points for NQ)
-        # Removed ATR multiplier (was 2.5x ATR which is unreachable with multi-day ATR)
-        # Removed bias filter (price action at VWAP is the signal, not bias)
-        if distance_from_vwap < -5.0:  # at least 5 points below VWAP
-            all_below_vwap = all(b.close < vwap for b in bars[-6:-1])
-            bar_range_last = last.high - last.low
-            bounce_confirmed = (
-                len(bars) >= 3
-                and last.close > bars[-2].close
-                and bars[-2].close > bars[-3].close  # 3-bar momentum up
-                and bar_range_last > 0
-                and last.close > (last.low + bar_range_last * 0.65)  # strong up-close
-            )
-            if bounce_confirmed and all_below_vwap:
-                # Entry: VWAP - 2 ticks offset (price still below VWAP, bouncing toward it)
-                entry = _round_tick(last_price + _ENTRY_OFFSET_TICKS * tick_size, tick_size)
-                stop = _swing_stop(bars, "long", tick_size, lookback=10)
-                stop_dist = abs(entry - stop)
-                if stop_dist <= _MAX_STOP_POINTS and stop_dist >= atr * 0.5:
-                    dist_to_vwap = abs(vwap - entry)
-                    target = vwap if dist_to_vwap / stop_dist >= _MIN_RR else entry + stop_dist * _MIN_RR * 1.1
+        # v9: Bias guard — do not fight strong directional bias
+        _vwap_mr_allow_long = bias_state not in ("SHORT", "RANGE_SHORT")
+        _vwap_mr_allow_short = bias_state not in ("LONG", "RANGE_LONG")
+
+        # LONG VWAP MR: price far below VWAP + reversal bar (close > prev bar high)
+        if distance_from_vwap < -atr * _vwap_mr_atr_threshold and _vwap_mr_allow_long:
+            reversal_bar = len(bars) >= 2 and last.close > bars[-2].high
+            if reversal_bar:
+                entry = _round_tick(last_price, tick_size)
+                # Stop: lowest low of last 5 bars - 1.0pt buffer (v9: wider from 0.50)
+                lookback_start = max(0, len(bars) - 6)
+                stop_raw = min(b.low for b in bars[lookback_start:]) - 1.0
+                stop = _round_tick(stop_raw, tick_size)
+                risk = entry - stop
+                if _vwap_mr_min_risk <= risk <= _vwap_mr_max_risk:
+                    target = _round_tick(entry + risk * _vwap_mr_rr, tick_size)
                     sig = _try_build_signal(
                         "long", "vwap_bounce", entry, stop, target, last.timestamp,
                         (
-                            f"VWAP Bounce Long: Price {distance_from_vwap:.1f}pts"
-                            f" below VWAP {vwap:.2f}, 3-bar bounce confirmed,"
-                            f" Entry {entry:.2f}, Stop {stop:.2f}"
+                            f"VWAP MR Long: Price {abs(distance_from_vwap):.1f}pts below"
+                            f" VWAP {vwap:.2f} ({abs(distance_from_vwap)/atr:.1f}x ATR),"
+                            f" reversal bar confirmed, Entry {entry:.2f}, Stop {stop:.2f}"
                         ),
-                        min_confluence=2,
+                        min_confluence=1,  # reversal bar is the confirmation
                         reasoning=(
                             f"Price extended {abs(distance_from_vwap):.1f}pts below VWAP {vwap:.2f}"
-                            f" and has started a mean-reversion bounce (3-bar up momentum)."
-                            f" Entry at {entry:.2f} (current close + 2 ticks)."
+                            f" ({abs(distance_from_vwap)/atr:.1f}x ATR). Reversal bar: close"
+                            f" {last.close:.2f} > prev high {bars[-2].high:.2f}."
+                            f" Mean-reversion with 1R target at {target:.2f}."
                         ),
-                        invalidation=f"Below {stop:.2f} (swing low + 1 tick)",
-                        cap_level=vwap,
+                        invalidation=f"Below {stop:.2f} (5-bar low - buffer)",
                     )
                     if sig:
                         signals.append(sig)
 
-        # SHORT VWAP Bounce: price above VWAP, reversing down
-        # Only when bias is NOT bullish (RANGE_LONG/LONG) — don't fade uptrends
-        # SHORT VWAP Bounce: price meaningfully above VWAP (>5 points for NQ)
-        elif distance_from_vwap > 5.0:  # at least 5 points above VWAP
-            all_above_vwap = all(b.close > vwap for b in bars[-6:-1])
-            bar_range_last = last.high - last.low
-            bounce_confirmed = (
-                len(bars) >= 3
-                and last.close < bars[-2].close
-                and bars[-2].close < bars[-3].close  # 3-bar momentum down
-                and bar_range_last > 0
-                and last.close < (last.low + bar_range_last * 0.35)  # strong down-close
-            )
-            if bounce_confirmed and all_above_vwap:
-                # Entry: current price - 2 ticks (fading the extension)
-                entry = _round_tick(last_price - _ENTRY_OFFSET_TICKS * tick_size, tick_size)
-                stop = _swing_stop(bars, "short", tick_size, lookback=10)
-                stop_dist = abs(stop - entry)
-                if stop_dist <= _MAX_STOP_POINTS and stop_dist >= atr * 0.5:
-                    dist_to_vwap = abs(entry - vwap)
-                    target = vwap if dist_to_vwap / stop_dist >= _MIN_RR else entry - stop_dist * _MIN_RR * 1.1
+        # SHORT VWAP MR: price far above VWAP + reversal bar (close < prev bar low)
+        elif distance_from_vwap > atr * _vwap_mr_atr_threshold and _vwap_mr_allow_short:
+            reversal_bar = len(bars) >= 2 and last.close < bars[-2].low
+            if reversal_bar:
+                entry = _round_tick(last_price, tick_size)
+                lookback_start = max(0, len(bars) - 6)
+                stop_raw = max(b.high for b in bars[lookback_start:]) + 1.0
+                stop = _round_tick(stop_raw, tick_size)
+                risk = stop - entry
+                if _vwap_mr_min_risk <= risk <= _vwap_mr_max_risk:
+                    target = _round_tick(entry - risk * _vwap_mr_rr, tick_size)
                     sig = _try_build_signal(
                         "short", "vwap_bounce", entry, stop, target, last.timestamp,
                         (
-                            f"VWAP Bounce Short: Price {distance_from_vwap:.1f}pts"
-                            f" above VWAP {vwap:.2f}, 3-bar reversal confirmed,"
-                            f" Entry {entry:.2f}, Stop {stop:.2f}"
+                            f"VWAP MR Short: Price {distance_from_vwap:.1f}pts above"
+                            f" VWAP {vwap:.2f} ({distance_from_vwap/atr:.1f}x ATR),"
+                            f" reversal bar confirmed, Entry {entry:.2f}, Stop {stop:.2f}"
                         ),
-                        min_confluence=2,
+                        min_confluence=1,  # reversal bar is the confirmation
                         reasoning=(
                             f"Price extended {distance_from_vwap:.1f}pts above VWAP {vwap:.2f}"
-                            f" and has started a mean-reversion reversal (3-bar down momentum)."
-                            f" Entry at {entry:.2f} (current close - 2 ticks)."
+                            f" ({distance_from_vwap/atr:.1f}x ATR). Reversal bar: close"
+                            f" {last.close:.2f} < prev low {bars[-2].low:.2f}."
+                            f" Mean-reversion with 1R target at {target:.2f}."
                         ),
-                        invalidation=f"Above {stop:.2f} (swing high + 1 tick)",
-                        cap_level=vwap,
+                        invalidation=f"Above {stop:.2f} (5-bar high + buffer)",
                     )
                     if sig:
                         signals.append(sig)
@@ -897,9 +1021,10 @@ def detect_signals(
     # Trend continuation entries near VWAP are not statistically reliable
     # without orderflow confirmation. Removed to preserve PF.
 
-    # ── 4. BOS / Naked POC Magnet (100% WR in paper trade, small sample) ──────
-    # Price trending toward an unvisited (naked) POC with confirmed momentum.
-    if naked_pocs and len(bars) >= 3:
+    # ── 4. BOS / Naked POC Magnet — REMOVED in v4 (0% WR in March backtest) ──
+    # The naked POC magnet thesis works in theory but with simulated data and
+    # without real L2 orderflow, the entries are unreliable. 0% WR in backtests.
+    if False and naked_pocs and len(bars) >= 3:  # v4: disabled
         momentum_up = bars[-1].close > bars[-2].close > bars[-3].close
         momentum_down = bars[-1].close < bars[-2].close < bars[-3].close
 
@@ -953,14 +1078,13 @@ def detect_signals(
                 if sig:
                     signals.append(sig)
 
-    # ── 5. Daily Breakout (v2: Intraday only, close-confirmed, ATR stop) ────────
-    # Key fixes vs v1:
-    #  - NO gap-open signals: if the open already gapped past PDH/PDL, skip
-    #  - CLOSE confirmation: last bar must CLOSE above PDH (not just spike)
-    #  - ATR-based stop: 1.5x ATR below the breakout bar's low
-    #  - Min stop distance: 1.0 ATR (prevents 1-tick stops)
-    #  - Bar index filter: only bars 15-120 (fresh breakout in first 120 min)
-    if prev_high is not None and prev_low is not None:
+    # ── 5. Daily Breakout (v9: ES only, VWAP-aligned) ────────────────────────
+    # v7 changes:
+    #  - VWAP alignment required (ES: 64% WR with alignment, NQ: 53%)
+    #  - RVOL >= 0.7 enforced via _try_build_signal (already there)
+    #  - Bar window kept at 3-150 (data shows early entries are best)
+    # v9: Disabled for NQ (27% WR, -157pt in March audit). ES only.
+    if _daily_breakout_enabled and prev_high is not None and prev_low is not None:
         bar_idx = session_bar_idx if session_bar_idx is not None else _bar_index_in_session(bars)
 
         gapped_above_pdh = (or_high is not None and or_high >= prev_high
@@ -969,23 +1093,28 @@ def detect_signals(
                             and or_high is not None and or_high <= prev_low * 1.001)
 
         # Long daily breakout: INTRADAY break of PDH
-        decisive_long = last.close > prev_high + atr * 0.3
-        prior_above_pdh = len(bars) >= 2 and bars[-2].close > prev_high
+        # v9: relaxed decisive threshold from 0.2 to 0.1 ATR
+        decisive_long = last.close > prev_high + atr * 0.1
+        # v9: relaxed prior bar check from 0.999 to 0.998 (allow 0.2% approach)
+        prior_near_pdh = len(bars) >= 2 and bars[-2].close >= prev_high * 0.998
+        # v7: VWAP alignment check for daily breakout
+        vwap_ok_long = (not _daily_require_vwap) or vwap_long
 
         if (decisive_long
-                and prior_above_pdh
+                and prior_near_pdh
                 and not gapped_above_pdh
                 and allow_long
                 and avg_volume > 0
-                and bar_idx >= 15
-                and bar_idx <= 120):
+                and bar_idx >= 3
+                and bar_idx <= 150
+                and vwap_ok_long):  # v7: require VWAP alignment
 
             # Entry: PDH + 1 tick (close confirmation above level)
             entry = _round_tick(prev_high + tick_size, tick_size)
             stop = _swing_stop(bars, "long", tick_size, lookback=10)
             stop_dist = abs(entry - stop)
 
-            if stop_dist >= atr * 1.0 and _stop_within_limit(entry, stop):
+            if stop_dist >= atr * 1.0 and _stop_within_limit(entry, stop, max_pts=_max_stop_pts):
                 risk = stop_dist
                 target = entry + risk * 2.0
                 if targets_above:
@@ -997,12 +1126,12 @@ def detect_signals(
                     "long", "daily_breakout", entry, stop, target, last.timestamp,
                     (
                         f"Daily Breakout Long: Close {last.close:.2f} > PDH {prev_high:.2f},"
-                        f" intraday (no gap), Entry {entry:.2f}, Stop {stop:.2f}"
+                        f" intraday (no gap), VWAP aligned, Entry {entry:.2f}, Stop {stop:.2f}"
                     ),
                     min_confluence=2,
                     reasoning=(
                         f"Price broke above Previous Day High {prev_high:.2f} intraday"
-                        f" (not a gap — bar index {bar_idx})."
+                        f" (not a gap — bar index {bar_idx}). VWAP aligned."
                         f" Entry above PDH at {entry:.2f}. Stop at swing low {stop:.2f}."
                     ),
                     invalidation=f"Close back below PDH {prev_high:.2f}",
@@ -1011,23 +1140,28 @@ def detect_signals(
                     signals.append(sig)
 
         # Short daily breakout: INTRADAY break of PDL
-        decisive_short = last.close < prev_low - atr * 0.3
-        prior_below_pdl = len(bars) >= 2 and bars[-2].close < prev_low
+        # v9: relaxed from 0.2 to 0.1 ATR
+        decisive_short = last.close < prev_low - atr * 0.1
+        # v9: relaxed from 1.001 to 1.002
+        prior_near_pdl = len(bars) >= 2 and bars[-2].close <= prev_low * 1.002
+        # v7: VWAP alignment check
+        vwap_ok_short = (not _daily_require_vwap) or vwap_short
 
         if (decisive_short
-                and prior_below_pdl
+                and prior_near_pdl
                 and not gapped_below_pdl
                 and allow_short
                 and avg_volume > 0
-                and bar_idx >= 15
-                and bar_idx <= 120):
+                and bar_idx >= 3
+                and bar_idx <= 150
+                and vwap_ok_short):  # v7: require VWAP alignment
 
             # Entry: PDL - 1 tick
             entry = _round_tick(prev_low - tick_size, tick_size)
             stop = _swing_stop(bars, "short", tick_size, lookback=10)
             stop_dist = abs(stop - entry)
 
-            if stop_dist >= atr * 1.0 and _stop_within_limit(entry, stop):
+            if stop_dist >= atr * 1.0 and _stop_within_limit(entry, stop, max_pts=_max_stop_pts):
                 risk = stop_dist
                 target = entry - risk * 2.0
                 if targets_below:
@@ -1039,12 +1173,12 @@ def detect_signals(
                     "short", "daily_breakout", entry, stop, target, last.timestamp,
                     (
                         f"Daily Breakout Short: Close {last.close:.2f} < PDL {prev_low:.2f},"
-                        f" intraday (no gap), Entry {entry:.2f}, Stop {stop:.2f}"
+                        f" intraday (no gap), VWAP aligned, Entry {entry:.2f}, Stop {stop:.2f}"
                     ),
                     min_confluence=2,
                     reasoning=(
                         f"Price broke below Previous Day Low {prev_low:.2f} intraday"
-                        f" (not a gap — bar index {bar_idx})."
+                        f" (not a gap — bar index {bar_idx}). VWAP aligned."
                         f" Entry below PDL at {entry:.2f}. Stop at swing high {stop:.2f}."
                     ),
                     invalidation=f"Close back above PDL {prev_low:.2f}",
@@ -1065,7 +1199,7 @@ def detect_signals(
                 entry = _round_tick(sz_high + _ENTRY_OFFSET_TICKS * tick_size, tick_size)
                 # Stop: consolidation low (structure break invalidates setup)
                 stop = _round_tick(sz_low - tick_size, tick_size)
-                if _stop_within_limit(entry, stop):
+                if _stop_within_limit(entry, stop, max_pts=_max_stop_pts):
                     extension = sz_range * 0.75
                     target = sz_high + extension
                     for t in targets_above:
@@ -1093,7 +1227,7 @@ def detect_signals(
             if last_price < sz_low and allow_short:
                 entry = _round_tick(sz_low - _ENTRY_OFFSET_TICKS * tick_size, tick_size)
                 stop = _round_tick(sz_high + tick_size, tick_size)
-                if _stop_within_limit(entry, stop):
+                if _stop_within_limit(entry, stop, max_pts=_max_stop_pts):
                     extension = sz_range * 0.75
                     target = sz_low - extension
                     for t in targets_below:
@@ -1117,6 +1251,63 @@ def detect_signals(
                     )
                     if sig:
                         signals.append(sig)
+
+    # ── Post-filter 1: Enforce bias direction consistency ─────────────────
+    # If bias is clearly directional (LONG/SHORT, not RANGE), remove signals
+    # that contradict the bias. RANGE_LONG/RANGE_SHORT allow bias-aligned
+    # signals plus mean-reversion (poc_rejection, vwap_bounce).
+    # v8: Disabled for NQ — bias accuracy only 47% (worse than coin flip).
+    _MEAN_REVERSION_TYPES = {"poc_rejection", "vwap_bounce"}
+
+    if not _is_nq:  # v8: skip bias filter for NQ (unreliable at 47%)
+        if bias_state in ("LONG",):
+            signals = [
+                s for s in signals
+                if s.direction == "long" or s.signal_type in _MEAN_REVERSION_TYPES
+            ]
+        elif bias_state in ("SHORT",):
+            signals = [
+                s for s in signals
+                if s.direction == "short" or s.signal_type in _MEAN_REVERSION_TYPES
+            ]
+        elif bias_state in ("RANGE_LONG",):
+            signals = [
+                s for s in signals
+                if s.direction == "long" or s.signal_type in _MEAN_REVERSION_TYPES
+            ]
+        elif bias_state in ("RANGE_SHORT",):
+            signals = [
+                s for s in signals
+                if s.direction == "short" or s.signal_type in _MEAN_REVERSION_TYPES
+            ]
+
+    # ── Post-filter 2: Prevent conflicting simultaneous signals ────────────
+    # If both LONG and SHORT signals exist, keep only the direction that
+    # aligns with bias. If bias is RANGE (neutral), keep the one with
+    # higher confluence count, then higher R:R.
+    has_long = any(s.direction == "long" for s in signals)
+    has_short = any(s.direction == "short" for s in signals)
+
+    if has_long and has_short:
+        if bias_state in ("LONG", "RANGE_LONG"):
+            signals = [s for s in signals if s.direction == "long"]
+        elif bias_state in ("SHORT", "RANGE_SHORT"):
+            signals = [s for s in signals if s.direction == "short"]
+        else:
+            # RANGE: keep the best direction (highest confluence, then R:R)
+            long_best = max(
+                (s for s in signals if s.direction == "long"),
+                key=lambda s: (s.confluence_count, s.risk_reward),
+            )
+            short_best = max(
+                (s for s in signals if s.direction == "short"),
+                key=lambda s: (s.confluence_count, s.risk_reward),
+            )
+            if (long_best.confluence_count, long_best.risk_reward) >= \
+               (short_best.confluence_count, short_best.risk_reward):
+                signals = [s for s in signals if s.direction == "long"]
+            else:
+                signals = [s for s in signals if s.direction == "short"]
 
     # Sort by confidence (high first) then R:R descending
     _conf_order = {"high": 0, "medium": 1}

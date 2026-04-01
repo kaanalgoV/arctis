@@ -166,7 +166,7 @@ export function FeedPanel({ items, loading, error, onItemClick, relativeTimestam
         body: JSON.stringify({ question: context, context: item }),
       })
     } catch {
-      // silently ignore — Travis endpoint may be offline
+      // silently ignore — Arctis AI endpoint may be offline
     } finally {
       setAskingTravis(null)
     }
@@ -258,7 +258,7 @@ export function FeedPanel({ items, loading, error, onItemClick, relativeTimestam
               className={cn(
                 'flex items-center gap-1 px-2 py-1 relative',
                 'text-[9px] font-medium transition-colors leading-none rounded-full',
-                'focus:outline-none',
+                'outline-none focus-visible:ring-2 focus-visible:ring-[#5CB8F0]/50',
                 isActive
                   ? 'text-[var(--color-accent,#5CB8F0)]'
                   : 'text-[var(--color-text-inactive)] hover:text-[var(--color-text-secondary)]',
@@ -358,7 +358,7 @@ export function FeedPanel({ items, loading, error, onItemClick, relativeTimestam
                   </span>
                 </div>
 
-                {/* Ask Travis button — visible on hover */}
+                {/* Ask Arctis button — visible on hover */}
                 <div className="flex justify-end opacity-0 group-hover:opacity-100 transition-opacity duration-100">
                   <button
                     type="button"
@@ -381,10 +381,10 @@ export function FeedPanel({ items, loading, error, onItemClick, relativeTimestam
                       border: '1px solid var(--color-accent)',
                       opacity: isAskingThis ? 0.5 : undefined,
                     }}
-                    title="Ask Travis about this event"
+                    title="Ask Arctis about this event"
                   >
                     <MessageCircle size={8} strokeWidth={2} />
-                    {isAskingThis ? 'Asking...' : 'Ask Travis'}
+                    {isAskingThis ? 'Asking...' : 'Ask Arctis'}
                   </button>
                 </div>
               </div>

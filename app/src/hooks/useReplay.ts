@@ -3,6 +3,7 @@ import { useSettingsStore } from '../store/settings'
 
 interface SimStatus {
   active: boolean
+  paused: boolean
   speed: number
   visible_bars: number
   total_bars: number
@@ -15,7 +16,8 @@ interface SimStatus {
 export function useReplay(market: string, timeframe: string) {
   const engineUrl = useSettingsStore((s) => s.engineUrl)
   const [isPlaying, setIsPlaying] = useState(false)
-  const [speed, setSpeed] = useState(1)
+  const [isPaused, setIsPaused] = useState(false)
+  const [speed, setSpeedLocal] = useState(5)
   const [replayDate, setReplayDate] = useState<string | null>(null)
   const [progress, setProgress] = useState(0)
   const [simStatus, setSimStatus] = useState<SimStatus | null>(null)
@@ -38,7 +40,7 @@ export function useReplay(market: string, timeframe: string) {
         // Silently fail — engine may be unreachable
       })
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [market])
+  }, [market, engineUrl])
 
   const start = async (date?: string) => {
     const targetDate = date ?? replayDate
@@ -49,8 +51,11 @@ export function useReplay(market: string, timeframe: string) {
     })
     if (targetDate) params.set('date', targetDate)
     try {
-      await fetch(`${engineUrl}/api/sim/start?${params.toString()}`, { method: 'POST' })
-      setIsPlaying(true)
+      const r = await fetch(`${engineUrl}/api/sim/start?${params.toString()}`, { method: 'POST' })
+      if (r.ok) {
+        setIsPlaying(true)
+        setIsPaused(false)
+      }
     } catch {
       // Silently fail
     }
@@ -66,7 +71,10 @@ export function useReplay(market: string, timeframe: string) {
       setProgress(data.progress_pct ?? 0)
       if (!data.active) {
         setIsPlaying(false)
+        setIsPaused(false)
         setProgress(100)
+      } else if (data.paused) {
+        setIsPaused(true)
       }
     } catch {
       // Silently fail
@@ -80,18 +88,29 @@ export function useReplay(market: string, timeframe: string) {
       // Silently fail
     }
     setIsPlaying(false)
+    setIsPaused(false)
     setProgress(0)
     setSimStatus(null)
   }
 
-  // Pause: stop polling without resetting state or calling backend stop.
-  // The sim keeps running server-side; resume() re-enables polling.
-  const pause = () => {
-    setIsPlaying(false)
-    // simStatus and progress are intentionally preserved for resume
+  const pause = async () => {
+    try {
+      await fetch(`${engineUrl}/api/sim/pause`, { method: 'POST' })
+    } catch {
+      // Silently fail
+    }
+    setIsPaused(true)
+    // Keep isPlaying true so the chart still shows replay bars
+    // But stop the poll interval from running fast
   }
 
-  const resume = () => {
+  const resume = async () => {
+    try {
+      await fetch(`${engineUrl}/api/sim/resume`, { method: 'POST' })
+    } catch {
+      // Silently fail
+    }
+    setIsPaused(false)
     setIsPlaying(true)
   }
 
@@ -107,6 +126,16 @@ export function useReplay(market: string, timeframe: string) {
     }
   }, [engineUrl, pollStatus])
 
+  const setSpeed = useCallback(async (newSpeed: number) => {
+    setSpeedLocal(newSpeed)
+    // If sim is active, update backend speed without restarting
+    try {
+      await fetch(`${engineUrl}/api/sim/speed?speed=${newSpeed}`, { method: 'POST' })
+    } catch {
+      // Silently fail — speed is already set locally for next start
+    }
+  }, [engineUrl])
+
   const changeDate = (direction: 'prev' | 'next') => {
     if (availableDates.length === 0 || !replayDate) return
     const idx = availableDates.indexOf(replayDate)
@@ -117,8 +146,8 @@ export function useReplay(market: string, timeframe: string) {
     }
   }
 
-  // Poll status while playing — interval adapts to speed so bars stream smoothly.
-  // At speed N bars/s we want at most ~2 bars per poll cycle, so interval = max(100, 1000/speed) ms.
+  // Poll status while playing (and not paused).
+  // When paused, poll slowly just to keep UI in sync.
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
@@ -130,7 +159,11 @@ export function useReplay(market: string, timeframe: string) {
       return
     }
 
-    const intervalMs = Math.max(100, Math.round(1000 / speed))
+    // Paused: slow poll (1s) to keep status in sync
+    // Playing: fast poll adapted to speed
+    const intervalMs = isPaused
+      ? 1000
+      : Math.max(100, Math.round(1000 / speed))
 
     pollRef.current = setInterval(() => void pollStatus(), intervalMs)
 
@@ -140,10 +173,11 @@ export function useReplay(market: string, timeframe: string) {
         pollRef.current = null
       }
     }
-  }, [isPlaying, speed, pollStatus])
+  }, [isPlaying, isPaused, speed, pollStatus])
 
   return {
     isPlaying,
+    isPaused,
     speed,
     progress,
     simStatus,

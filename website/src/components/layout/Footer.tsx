@@ -90,18 +90,40 @@ function DiscordIcon({ size = 18 }: { size?: number }) {
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
-const FOOTER_COLUMNS = [
+interface FooterLink {
+  label: string
+  href: string
+}
+
+interface FooterColumn {
+  heading: string
+  links: FooterLink[]
+}
+
+const FOOTER_COLUMNS: FooterColumn[] = [
   {
     heading: 'Product',
-    links: ['Features', 'Pricing', 'Changelog', 'Roadmap', 'System Status'],
+    links: [
+      { label: 'Features', href: '#features' },
+      { label: 'Pricing', href: '#pricing' },
+      { label: 'Engine', href: '#engine' },
+    ],
   },
   {
     heading: 'Resources',
-    links: ['Documentation', 'Blog', 'API Reference', 'Community', 'Support'],
+    links: [
+      { label: 'Anmelden', href: 'http://localhost:5174/login' },
+      { label: 'Changelog', href: '/changelog' },
+      { label: 'Support', href: 'mailto:support@arctis.app' },
+    ],
   },
   {
-    heading: 'Company',
-    links: ['About', 'Careers', 'Contact', 'Press Kit', 'Security'],
+    heading: 'Legal',
+    links: [
+      { label: 'Privacy Policy', href: '/privacy' },
+      { label: 'Terms of Service', href: '/terms' },
+      { label: 'Imprint', href: '/imprint' },
+    ],
   },
 ]
 
@@ -127,7 +149,7 @@ function FooterColumnGroup() {
       <div className="col-span-2 md:col-span-1">
         <FooterLogo />
         <p className="mt-3 text-sm leading-relaxed text-frost-muted">
-          Analysis infrastructure for futures markets.
+          Analyse-Infrastruktur fuer Futures-Maerkte.
         </p>
         {/* Social row */}
         <div className="mt-4 flex items-center gap-4">
@@ -163,12 +185,12 @@ function FooterColumnGroup() {
           </h3>
           <ul className="space-y-3">
             {col.links.map((link) => (
-              <li key={link}>
+              <li key={link.label}>
                 <a
-                  href="#"
+                  href={link.href}
                   className="text-sm text-frost-muted transition-colors duration-200 hover:text-frost-secondary"
                 >
-                  {link}
+                  {link.label}
                 </a>
               </li>
             ))}
@@ -190,7 +212,7 @@ function Newsletter() {
             Platform Updates
           </p>
           <p className="mt-0.5 text-sm text-frost-muted">
-            Release notes and platform announcements. No marketing email.
+            Release Notes und Plattform-Neuigkeiten. Kein Marketing-Spam.
           </p>
         </div>
 
@@ -222,7 +244,7 @@ function Newsletter() {
               'transition-colors duration-200 hover:bg-ice-light',
             )}
           >
-            Subscribe
+            Abonnieren
           </button>
         </form>
       </div>
@@ -240,13 +262,17 @@ function BottomBar() {
         </p>
         <nav aria-label="Legal links">
           <ul className="flex items-center gap-6">
-            {['Privacy Policy', 'Terms of Service', 'Cookie Policy'].map((item) => (
-              <li key={item}>
+            {[
+              { label: 'Privacy Policy', href: '/privacy' },
+              { label: 'Terms of Service', href: '/terms' },
+              { label: 'Imprint', href: '/imprint' },
+            ].map((item) => (
+              <li key={item.label}>
                 <a
-                  href="#"
+                  href={item.href}
                   className="text-xs text-frost-muted transition-colors duration-200 hover:text-frost-secondary"
                 >
-                  {item}
+                  {item.label}
                 </a>
               </li>
             ))}

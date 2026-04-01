@@ -21,6 +21,8 @@ export class YAxisDragZoomModifier extends ChartModifierBase2D {
   private lastY = 0;
   private isOverYAxis = false;
   private readonly sensitivity: number;
+  /** Called when the user starts dragging the Y-axis (manual zoom mode) */
+  onManualDragStart?: () => void;
 
   constructor(sensitivity = 0.005) {
     super();
@@ -48,6 +50,8 @@ export class YAxisDragZoomModifier extends ChartModifierBase2D {
       this.isDragging = true;
       this.lastY = args.mousePoint.y;
       args.handled = true;
+      // Notify that user entered manual Y-axis mode
+      this.onManualDragStart?.();
     }
   }
 

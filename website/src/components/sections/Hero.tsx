@@ -2,10 +2,11 @@
 
 import { useRef } from 'react'
 import { motion, useScroll, useTransform } from 'framer-motion'
-import { ArrowRight, Download, ChevronDown, TrendingUp } from 'lucide-react'
+import { ArrowRight, LogIn, ChevronDown, TrendingUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
-  heroTextReveal,
+  heroWordContainer,
+  heroWord,
   heroImageReveal,
   fadeInUp,
   staggerContainer,
@@ -14,9 +15,8 @@ import {
 } from '@/lib/animations'
 import { FrostParticles } from '@/components/effects/FrostParticles'
 
-// ─── Candlestick data — 30 candles, realistic NQ-like uptrend with pullbacks ──
+// ─── Candlestick data — 40 candles, realistic NQ-like uptrend with pullbacks ──
 
-// Price values are in a 0–220 range for SVG coordinates
 const CANDLES = [
   // Initial base / accumulation
   { open: 38, close: 52, high: 56, low: 34, bull: true },
@@ -53,7 +53,7 @@ const CANDLES = [
   { open: 158, close: 148, high: 160, low: 145, bull: false },
   { open: 148, close: 164, high: 169, low: 146, bull: true },
   { open: 164, close: 172, high: 176, low: 161, bull: true },
-  // Last candle — slight pullback, still bullish structure
+  // Last candle — slight pullback
   { open: 172, close: 166, high: 174, low: 163, bull: false },
 ]
 
@@ -68,10 +68,10 @@ const VOLUMES = [
 ]
 
 const CHART_H = 148
-const CHART_MAX = 185   // slightly above highest high for padding
-const CHART_MIN = 20    // slightly below lowest low
+const CHART_MAX = 185
+const CHART_MIN = 20
 
-// EMA-like smooth path through the midpoints of each candle (simplified)
+// EMA-like smooth path through the midpoints
 const EMA_POINTS = [
   45, 49, 51, 55, 58,
   66, 70, 76, 85, 86,
@@ -81,39 +81,79 @@ const EMA_POINTS = [
   148, 151, 154, 162, 166,
 ]
 
+// VWAP line — slightly different from EMA, converges in ranges
+const VWAP_POINTS = [
+  46, 47, 50, 52, 56,
+  62, 67, 74, 82, 84,
+  83, 85, 87, 92, 100,
+  102, 106, 109, 114, 117,
+  124, 130, 135, 132, 136,
+  144, 149, 152, 158, 162,
+]
+
+// Session separator indices (where new sessions start)
+const SESSION_BREAKS = [10, 20]
+
 function CandlestickChart() {
   const CANDLE_W = 9
   const CANDLE_GAP = 3
   const STEP = CANDLE_W + CANDLE_GAP
   const totalW = CANDLES.length * STEP - CANDLE_GAP
+  const VOL_H = 28
 
   const scaleY = (val: number) => {
     const range = CHART_MAX - CHART_MIN
     return CHART_H - ((val - CHART_MIN) / range) * CHART_H
   }
 
-  // Build smooth EMA SVG path
-  const emaPath = EMA_POINTS.reduce((path, val, i) => {
-    const x = i * STEP + CANDLE_W / 2
-    const y = scaleY(val)
-    if (i === 0) return `M ${x} ${y}`
-    const prev = i > 0 ? EMA_POINTS[i - 1] : val
-    const prevX = (i - 1) * STEP + CANDLE_W / 2
-    const prevY = scaleY(prev)
-    const cx1 = prevX + STEP * 0.5
-    const cx2 = x - STEP * 0.5
-    return `${path} C ${cx1} ${prevY}, ${cx2} ${y}, ${x} ${y}`
-  }, '')
+  // Build smooth path for a set of data points
+  const buildPath = (points: number[]) =>
+    points.reduce((path, val, i) => {
+      const x = i * STEP + CANDLE_W / 2
+      const y = scaleY(val)
+      if (i === 0) return `M ${x} ${y}`
+      const prevY = scaleY(points[i - 1])
+      const prevX = (i - 1) * STEP + CANDLE_W / 2
+      const cx1 = prevX + STEP * 0.5
+      const cx2 = x - STEP * 0.5
+      return `${path} C ${cx1} ${prevY}, ${cx2} ${y}, ${x} ${y}`
+    }, '')
+
+  const emaPath = buildPath(EMA_POINTS)
+  const vwapPath = buildPath(VWAP_POINTS)
+
+  // Supply and demand zone bands
+  const demandZoneTop = 105
+  const demandZoneBot = 88
+  const supplyZoneTop = 170
+  const supplyZoneBot = 155
 
   return (
     <svg
-      viewBox={`0 0 ${totalW} ${CHART_H}`}
+      viewBox={`0 0 ${totalW} ${CHART_H + VOL_H + 6}`}
       preserveAspectRatio="none"
       className="w-full"
-      style={{ height: CHART_H }}
+      style={{ height: CHART_H + VOL_H + 6 }}
       aria-hidden="true"
     >
-      {/* Horizontal grid lines at 20%, 40%, 60%, 80% */}
+      <defs>
+        {/* Gradient for demand zone */}
+        <linearGradient id="demandZoneGrad" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%" stopColor="rgba(92,184,240,0.06)" />
+          <stop offset="100%" stopColor="rgba(92,184,240,0.01)" />
+        </linearGradient>
+        {/* Gradient for supply zone */}
+        <linearGradient id="supplyZoneGrad" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%" stopColor="rgba(248,113,113,0.01)" />
+          <stop offset="100%" stopColor="rgba(248,113,113,0.05)" />
+        </linearGradient>
+        {/* Candle fade-in mask */}
+        <clipPath id="chartArea">
+          <rect x="0" y="0" width={totalW} height={CHART_H} />
+        </clipPath>
+      </defs>
+
+      {/* ── Grid lines at 20%, 40%, 60%, 80% ── */}
       {[0.2, 0.4, 0.6, 0.8].map((frac) => (
         <line
           key={frac}
@@ -126,7 +166,103 @@ function CandlestickChart() {
         />
       ))}
 
-      {/* EMA line — ice color, subtle */}
+      {/* ── Session separators ── */}
+      {SESSION_BREAKS.map((idx) => {
+        const x = idx * STEP - CANDLE_GAP / 2
+        return (
+          <g key={`session-${idx}`}>
+            <line
+              x1={x}
+              y1={0}
+              x2={x}
+              y2={CHART_H + VOL_H + 6}
+              stroke="rgba(92,184,240,0.08)"
+              strokeWidth="1"
+              strokeDasharray="3 5"
+            />
+            {/* Session label */}
+            <text
+              x={x + 4}
+              y={8}
+              fill="rgba(92,184,240,0.18)"
+              fontSize="6"
+              fontFamily="monospace"
+            >
+              SESSION
+            </text>
+          </g>
+        )
+      })}
+
+      {/* ── Supply zone (resistance) ── */}
+      <rect
+        x={0}
+        y={scaleY(supplyZoneTop)}
+        width={totalW}
+        height={scaleY(supplyZoneBot) - scaleY(supplyZoneTop)}
+        fill="url(#supplyZoneGrad)"
+      />
+      <line
+        x1="0"
+        y1={scaleY(supplyZoneTop)}
+        x2={totalW}
+        y2={scaleY(supplyZoneTop)}
+        stroke="rgba(248,113,113,0.1)"
+        strokeWidth="0.5"
+        strokeDasharray="4 4"
+      />
+      <line
+        x1="0"
+        y1={scaleY(supplyZoneBot)}
+        x2={totalW}
+        y2={scaleY(supplyZoneBot)}
+        stroke="rgba(248,113,113,0.08)"
+        strokeWidth="0.5"
+        strokeDasharray="4 4"
+      />
+
+      {/* ── Demand zone (support) ── */}
+      <rect
+        x={0}
+        y={scaleY(demandZoneTop)}
+        width={totalW}
+        height={scaleY(demandZoneBot) - scaleY(demandZoneTop)}
+        fill="url(#demandZoneGrad)"
+      />
+      <line
+        x1="0"
+        y1={scaleY(demandZoneTop)}
+        x2={totalW}
+        y2={scaleY(demandZoneTop)}
+        stroke="rgba(92,184,240,0.12)"
+        strokeWidth="0.5"
+        strokeDasharray="4 4"
+      />
+      <line
+        x1="0"
+        y1={scaleY(demandZoneBot)}
+        x2={totalW}
+        y2={scaleY(demandZoneBot)}
+        stroke="rgba(92,184,240,0.08)"
+        strokeWidth="0.5"
+        strokeDasharray="4 4"
+      />
+
+      {/* ── VWAP line — purple-tinted with draw animation ── */}
+      <path
+        d={vwapPath}
+        fill="none"
+        stroke="rgba(168,130,240,0.30)"
+        strokeWidth="1.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeDasharray="300"
+        style={{
+          animation: 'drawLine 2s ease-out 0.8s both',
+        }}
+      />
+
+      {/* ── EMA line — ice color with draw animation ── */}
       <path
         d={emaPath}
         fill="none"
@@ -134,63 +270,95 @@ function CandlestickChart() {
         strokeWidth="1.5"
         strokeLinecap="round"
         strokeLinejoin="round"
+        strokeDasharray="300"
+        style={{
+          animation: 'drawLine 2.2s ease-out 0.6s both',
+        }}
       />
 
-      {/* Demand zone highlight */}
-      <rect
-        x={0}
-        y={scaleY(105)}
-        width={totalW}
-        height={scaleY(88) - scaleY(105)}
-        fill="rgba(92,184,240,0.025)"
-      />
-      <line
-        x1="0"
-        y1={scaleY(105)}
-        x2={totalW}
-        y2={scaleY(105)}
-        stroke="rgba(92,184,240,0.12)"
-        strokeWidth="0.5"
-        strokeDasharray="4 4"
-      />
+      {/* ── Candlesticks with staggered build-up animation ── */}
+      <g clipPath="url(#chartArea)">
+        {CANDLES.map((c, i) => {
+          const x = i * STEP
+          const cx = x + CANDLE_W / 2
+          const color = c.bull ? '#34D399' : '#F87171'
+          const bodyTop = scaleY(Math.max(c.open, c.close))
+          const bodyBot = scaleY(Math.min(c.open, c.close))
+          const bodyH = Math.max(1.5, bodyBot - bodyTop)
+          const wickTop = scaleY(c.high)
+          const wickBot = scaleY(c.low)
+          const isLivePulse = i >= CANDLES.length - 4
+          const staggerDelay = 0.3 + i * 0.05
+          return (
+            <g
+              key={i}
+              style={{
+                transformOrigin: `${cx}px ${CHART_H}px`,
+                animation: isLivePulse
+                  ? `candleBuild 0.4s cubic-bezier(0.25,0.46,0.45,0.94) ${staggerDelay}s both, candlePulse 3s ease-in-out ${i * 0.3}s infinite`
+                  : `candleBuild 0.4s cubic-bezier(0.25,0.46,0.45,0.94) ${staggerDelay}s both`,
+              }}
+            >
+              {/* Wick */}
+              <line
+                x1={cx}
+                y1={wickTop}
+                x2={cx}
+                y2={wickBot}
+                stroke={color}
+                strokeWidth="0.8"
+                opacity="0.55"
+              />
+              {/* Body */}
+              <rect
+                x={x}
+                y={bodyTop}
+                width={CANDLE_W}
+                height={bodyH}
+                rx="1.5"
+                fill={color}
+                opacity={c.bull ? 0.82 : 0.72}
+              />
+            </g>
+          )
+        })}
+      </g>
 
-      {/* Candles */}
-      {CANDLES.map((c, i) => {
-        const x = i * STEP
-        const cx = x + CANDLE_W / 2
-        const color = c.bull ? '#34D399' : '#F87171'
-        const bodyTop = scaleY(Math.max(c.open, c.close))
-        const bodyBot = scaleY(Math.min(c.open, c.close))
-        const bodyH = Math.max(1.5, bodyBot - bodyTop)
-        const wickTop = scaleY(c.high)
-        const wickBot = scaleY(c.low)
-        return (
-          <g key={i}>
-            {/* Wick */}
-            <line
-              x1={cx}
-              y1={wickTop}
-              x2={cx}
-              y2={wickBot}
-              stroke={color}
-              strokeWidth="0.8"
-              opacity="0.55"
-            />
-            {/* Body */}
+      {/* ── Volume bars at bottom ── */}
+      <g transform={`translate(0, ${CHART_H + 4})`}>
+        {/* Volume separator line */}
+        <line
+          x1="0"
+          y1="0"
+          x2={totalW}
+          y2="0"
+          stroke="rgba(92,184,240,0.06)"
+          strokeWidth="0.5"
+        />
+        {VOLUMES.map((v, i) => {
+          const x = i * STEP
+          const h = Math.round(v * (VOL_H - 4)) + 2
+          const color = CANDLES[i].bull
+            ? 'rgba(52,211,153,0.30)'
+            : 'rgba(248,113,113,0.25)'
+          return (
             <rect
+              key={i}
               x={x}
-              y={bodyTop}
+              y={VOL_H - h}
               width={CANDLE_W}
-              height={bodyH}
-              rx="1.5"
+              height={h}
+              rx="1"
               fill={color}
-              opacity={c.bull ? 0.82 : 0.72}
+              style={{
+                animation: `candleFadeIn 0.2s ease-out ${0.8 + i * 0.03}s both`,
+              }}
             />
-          </g>
-        )
-      })}
+          )
+        })}
+      </g>
 
-      {/* Last price marker line */}
+      {/* ── Last price marker line ── */}
       <line
         x1="0"
         y1={scaleY(166)}
@@ -200,7 +368,206 @@ function CandlestickChart() {
         strokeWidth="0.6"
         strokeDasharray="3 3"
       />
+
+      {/* ── Live price pulsing indicator (last candle) ── */}
+      <circle
+        cx={29 * STEP + CANDLE_W / 2}
+        cy={scaleY(166)}
+        r="2.5"
+        fill="#34D399"
+        opacity="0.8"
+        style={{
+          animation: 'liveDot 1.5s ease-in-out infinite',
+        }}
+      />
+      <circle
+        cx={29 * STEP + CANDLE_W / 2}
+        cy={scaleY(166)}
+        r="5"
+        fill="none"
+        stroke="#34D399"
+        strokeWidth="0.8"
+        opacity="0.3"
+        style={{
+          animation: 'liveDot 1.5s ease-in-out 0.3s infinite',
+        }}
+      />
+      {/* ── Blinking live dot next to last candle ── */}
+      <circle
+        cx={29 * STEP + CANDLE_W + 6}
+        cy={scaleY(CANDLES[CANDLES.length - 1].close)}
+        r="2"
+        fill="#34D399"
+        style={{
+          animation: 'liveDot 1.5s ease-in-out infinite',
+          filter: 'drop-shadow(0 0 3px rgba(52,211,153,0.8))',
+        }}
+      />
+
+      {/* ── Signal arrow indicator — bullish signal on candle 24 (demand zone bounce) ── */}
+      <g>
+        {/* Signal arrow with pop animation */}
+        <g
+          style={{
+            transformOrigin: `${24 * STEP + CANDLE_W / 2}px ${scaleY(125)}px`,
+            animation: 'signalPop 0.5s cubic-bezier(0.25,0.46,0.45,0.94) 2.2s both',
+          }}
+        >
+          <polygon
+            points={`${24 * STEP + CANDLE_W / 2 - 5},${scaleY(120)} ${24 * STEP + CANDLE_W / 2 + 5},${scaleY(120)} ${24 * STEP + CANDLE_W / 2},${scaleY(132)}`}
+            fill="#34D399"
+            opacity="0.85"
+            style={{
+              filter: 'drop-shadow(0 0 6px rgba(52,211,153,0.6))',
+            }}
+          />
+          {/* Signal label */}
+          <text
+            x={24 * STEP + CANDLE_W / 2}
+            y={scaleY(116)}
+            fill="#34D399"
+            fontSize="5"
+            fontFamily="monospace"
+            textAnchor="middle"
+            fontWeight="bold"
+          >
+            LONG
+          </text>
+        </g>
+
+        {/* Entry line — fades in after signal */}
+        <line
+          x1={24 * STEP}
+          y1={scaleY(128)}
+          x2={29 * STEP + CANDLE_W}
+          y2={scaleY(128)}
+          stroke="rgba(92,184,240,0.35)"
+          strokeWidth="0.8"
+          strokeDasharray="120"
+          style={{
+            animation: 'drawLine 1.2s ease-out 2.6s both',
+          }}
+        />
+        {/* Entry label */}
+        <text
+          x={29 * STEP + CANDLE_W + 3}
+          y={scaleY(128) + 3}
+          fill="rgba(92,184,240,0.5)"
+          fontSize="5"
+          fontFamily="monospace"
+          style={{ animation: 'profitCount 0.4s ease-out 3.2s both' }}
+        >
+          ENTRY
+        </text>
+
+        {/* Stop loss line */}
+        <line
+          x1={24 * STEP}
+          y1={scaleY(115)}
+          x2={29 * STEP + CANDLE_W}
+          y2={scaleY(115)}
+          stroke="rgba(248,113,113,0.25)"
+          strokeWidth="0.6"
+          strokeDasharray="120"
+          style={{
+            animation: 'drawLine 1s ease-out 2.8s both',
+          }}
+        />
+        {/* SL label */}
+        <text
+          x={29 * STEP + CANDLE_W + 3}
+          y={scaleY(115) + 3}
+          fill="rgba(248,113,113,0.4)"
+          fontSize="5"
+          fontFamily="monospace"
+          style={{ animation: 'profitCount 0.4s ease-out 3.4s both' }}
+        >
+          SL
+        </text>
+
+        {/* Target line */}
+        <line
+          x1={24 * STEP}
+          y1={scaleY(165)}
+          x2={29 * STEP + CANDLE_W}
+          y2={scaleY(165)}
+          stroke="rgba(52,211,153,0.30)"
+          strokeWidth="0.8"
+          strokeDasharray="120"
+          style={{
+            animation: 'drawLine 1s ease-out 3.0s both',
+          }}
+        />
+        {/* TP label */}
+        <text
+          x={29 * STEP + CANDLE_W + 3}
+          y={scaleY(165) + 3}
+          fill="rgba(52,211,153,0.5)"
+          fontSize="5"
+          fontFamily="monospace"
+          style={{ animation: 'profitCount 0.4s ease-out 3.6s both' }}
+        >
+          TP1
+        </text>
+
+        {/* Profit indicator — counting up badge */}
+        <g style={{ animation: 'profitCount 0.6s ease-out 3.8s both' }}>
+          <rect
+            x={27 * STEP}
+            y={scaleY(172)}
+            width="36"
+            height="14"
+            rx="3"
+            fill="rgba(52,211,153,0.15)"
+            stroke="rgba(52,211,153,0.3)"
+            strokeWidth="0.5"
+          />
+          <text
+            x={27 * STEP + 18}
+            y={scaleY(172) + 10}
+            fill="#34D399"
+            fontSize="7"
+            fontFamily="monospace"
+            textAnchor="middle"
+            fontWeight="bold"
+            style={{ animation: 'profitGlow 2s ease-in-out 4.2s infinite' }}
+          >
+            +3.2R
+          </text>
+        </g>
+      </g>
     </svg>
+  )
+}
+
+// ─── Word-by-word animated text line ─────────────────────
+
+function AnimatedWords({
+  text,
+  className,
+}: {
+  text: string
+  className?: string
+}) {
+  const words = text.split(' ')
+  return (
+    <motion.span
+      variants={heroWordContainer}
+      initial="hidden"
+      animate="visible"
+      className={cn('block', className)}
+    >
+      {words.map((word, i) => (
+        <motion.span
+          key={i}
+          variants={heroWord}
+          className="inline-block"
+          style={{ marginRight: '0.3em' }}
+        >
+          {word}
+        </motion.span>
+      ))}
+    </motion.span>
   )
 }
 
@@ -226,7 +593,78 @@ export function Hero() {
         'bg-arctic-base pt-24 pb-16',
       )}
     >
-      {/* ── Gradient atmosphere (parallax 0.1x) ─────────────────── */}
+      {/* ── Candle fade-in keyframes + Crystal glow ── */}
+      <style>{`
+        @keyframes candleFadeIn {
+          from { opacity: 0; transform: translateY(4px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes candleBuild {
+          from { transform: scaleY(0); opacity: 0; }
+          to { transform: scaleY(1); opacity: 1; }
+        }
+        @keyframes candlePulse {
+          0%, 100% { opacity: 0.7; }
+          50% { opacity: 1; }
+        }
+        @keyframes liveDot {
+          0%, 100% { opacity: 0.3; }
+          50% { opacity: 1; }
+        }
+        @keyframes drawLine {
+          from { stroke-dashoffset: 300; }
+          to { stroke-dashoffset: 0; }
+        }
+        @keyframes lineReveal {
+          from { stroke-dashoffset: 100%; }
+          to { stroke-dashoffset: 0; }
+        }
+        @keyframes signalPop {
+          0% { transform: scale(0); opacity: 0; }
+          50% { transform: scale(1.2); opacity: 1; }
+          100% { transform: scale(1); opacity: 1; }
+        }
+        @keyframes profitCount {
+          from { opacity: 0; transform: translateY(4px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes profitGlow {
+          0%, 100% { filter: drop-shadow(0 0 4px rgba(52,211,153,0.4)); }
+          50% { filter: drop-shadow(0 0 8px rgba(52,211,153,0.7)); }
+        }
+        @keyframes crystalRotate {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        @keyframes crystalGlow {
+          0%, 100% { filter: drop-shadow(0 0 12px rgba(92,184,240,0.3)) drop-shadow(0 0 40px rgba(92,184,240,0.1)); }
+          50% { filter: drop-shadow(0 0 20px rgba(92,184,240,0.5)) drop-shadow(0 0 60px rgba(92,184,240,0.15)); }
+        }
+        @keyframes crystalFloat {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-6px); }
+        }
+        @keyframes crystalCenterPulse {
+          0%, 100% { opacity: 0.7; r: 1.8; }
+          50% { opacity: 1; r: 2.2; }
+        }
+        @keyframes crystalOuterRotate {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        @keyframes crystalSparkle {
+          0%, 100% { opacity: 0; }
+          50% { opacity: 0.8; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          * {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+          }
+        }
+      `}</style>
+
+      {/* ── Gradient atmosphere (parallax 0.1x) ── */}
       <motion.div
         aria-hidden="true"
         className="pointer-events-none absolute inset-0"
@@ -259,20 +697,30 @@ export function Hero() {
               'radial-gradient(ellipse 50% 40% at 50% 42%, rgba(92,184,240,0.03) 0%, transparent 55%)',
           }}
         />
-        {/* Grid lines */}
+        {/* Grid lines — subtle dot grid */}
         <div
-          className="absolute inset-0 opacity-[0.03]"
+          className="absolute inset-0 opacity-[0.025]"
+          style={{
+            backgroundImage: `
+              radial-gradient(circle 1px, rgba(92,184,240,1) 1px, transparent 1px)
+            `,
+            backgroundSize: '40px 40px',
+          }}
+        />
+        {/* Cross-hatch grid lines */}
+        <div
+          className="absolute inset-0 opacity-[0.02]"
           style={{
             backgroundImage: `
               linear-gradient(rgba(92,184,240,1) 1px, transparent 1px),
               linear-gradient(90deg, rgba(92,184,240,1) 1px, transparent 1px)
             `,
-            backgroundSize: '60px 60px',
+            backgroundSize: '80px 80px',
           }}
         />
       </motion.div>
 
-      {/* ── Frost particles (parallax 0.15x) ────────────────────── */}
+      {/* ── Frost particles (parallax 0.15x) ── */}
       <motion.div
         aria-hidden="true"
         className="pointer-events-none absolute inset-0"
@@ -281,7 +729,7 @@ export function Hero() {
         <FrostParticles />
       </motion.div>
 
-      {/* ── Main content ────────────────────────────────────────── */}
+      {/* ── Main content ── */}
       <div className="relative z-10 w-full max-w-5xl px-6 text-center" style={{ zIndex: 2 }}>
         {/* Badge */}
         <motion.div
@@ -302,16 +750,115 @@ export function Hero() {
           </span>
         </motion.div>
 
-        {/* Headline */}
-        <motion.h1
-          variants={heroTextReveal}
-          initial="hidden"
-          animate="visible"
-          className="font-display mb-6 text-4xl font-bold leading-tight tracking-tight sm:text-5xl lg:text-7xl xl:text-8xl"
+        {/* ── Large Arctis Crystal — decorative floating accent with multi-layer animation ── */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 1.2, ease: [0.25, 0.46, 0.45, 0.94], delay: 0.15 }}
+          className="mb-6 flex justify-center"
+          style={{ animation: 'crystalFloat 4s ease-in-out infinite' }}
         >
-          <span className="text-frost-white block">Wisse welche Seite du handelst.</span>
-          <span className="text-gradient-frost block">Bevor die Glocke laeutet.</span>
-        </motion.h1>
+          <div className="relative" style={{ width: 80, height: 80 }}>
+            {/* Layer 1: Outer ring — slow rotation 40s */}
+            <svg
+              width="80"
+              height="80"
+              viewBox="0 0 80 80"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              aria-hidden="true"
+              className="absolute inset-0"
+              style={{ animation: 'crystalOuterRotate 40s linear infinite' }}
+            >
+              <circle cx="40" cy="40" r="38" stroke="#5CB8F0" strokeWidth="0.4" fill="none" opacity="0.12" />
+              <circle cx="40" cy="40" r="35" stroke="#5CB8F0" strokeWidth="0.3" fill="none" opacity="0.08" strokeDasharray="4 6" />
+            </svg>
+
+            {/* Layer 2: Inner crystal — glow + breathe */}
+            <div
+              className="absolute inset-0 flex items-center justify-center"
+              style={{ animation: 'crystalGlow 3s ease-in-out infinite' }}
+            >
+              <svg
+                width="64"
+                height="64"
+                viewBox="0 0 28 28"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                aria-hidden="true"
+                style={{ animation: 'crystalRotate 40s linear infinite' }}
+              >
+                {/* Vertical axis */}
+                <line x1="14" y1="2" x2="14" y2="26" stroke="#5CB8F0" strokeWidth="1.2" strokeLinecap="round" opacity="0.85" />
+                {/* Horizontal axis */}
+                <line x1="2" y1="14" x2="26" y2="14" stroke="#5CB8F0" strokeWidth="1.2" strokeLinecap="round" opacity="0.85" />
+                {/* Diagonal axes */}
+                <line x1="5.8" y1="5.8" x2="22.2" y2="22.2" stroke="#5CB8F0" strokeWidth="1.2" strokeLinecap="round" opacity="0.75" />
+                <line x1="22.2" y1="5.8" x2="5.8" y2="22.2" stroke="#5CB8F0" strokeWidth="1.2" strokeLinecap="round" opacity="0.75" />
+                {/* Inner ring — pulsing */}
+                <circle cx="14" cy="14" r="3.5" stroke="#5CB8F0" strokeWidth="0.9" fill="none" opacity="0.7" />
+                {/* Outer subtle ring */}
+                <circle cx="14" cy="14" r="7" stroke="#5CB8F0" strokeWidth="0.4" fill="none" opacity="0.25" strokeDasharray="2 2" />
+                {/* Branch tips — vertical */}
+                <line x1="14" y1="2" x2="11" y2="5.5" stroke="#5CB8F0" strokeWidth="0.8" strokeLinecap="round" opacity="0.65" />
+                <line x1="14" y1="2" x2="17" y2="5.5" stroke="#5CB8F0" strokeWidth="0.8" strokeLinecap="round" opacity="0.65" />
+                <line x1="14" y1="26" x2="11" y2="22.5" stroke="#5CB8F0" strokeWidth="0.8" strokeLinecap="round" opacity="0.65" />
+                <line x1="14" y1="26" x2="17" y2="22.5" stroke="#5CB8F0" strokeWidth="0.8" strokeLinecap="round" opacity="0.65" />
+                {/* Branch tips — horizontal */}
+                <line x1="2" y1="14" x2="5.5" y2="11" stroke="#5CB8F0" strokeWidth="0.8" strokeLinecap="round" opacity="0.65" />
+                <line x1="2" y1="14" x2="5.5" y2="17" stroke="#5CB8F0" strokeWidth="0.8" strokeLinecap="round" opacity="0.65" />
+                <line x1="26" y1="14" x2="22.5" y2="11" stroke="#5CB8F0" strokeWidth="0.8" strokeLinecap="round" opacity="0.65" />
+                <line x1="26" y1="14" x2="22.5" y2="17" stroke="#5CB8F0" strokeWidth="0.8" strokeLinecap="round" opacity="0.65" />
+                {/* Outer glow ring */}
+                <circle cx="14" cy="14" r="12" stroke="#5CB8F0" strokeWidth="0.5" fill="none" opacity="0.15" />
+                {/* Center glow dot — pulsing */}
+                <circle cx="14" cy="14" r="1.8" fill="#5CB8F0" opacity="0.9" style={{ animation: 'crystalCenterPulse 3s ease-in-out infinite' }} />
+                <circle cx="14" cy="14" r="0.8" fill="#fff" opacity="0.7" />
+              </svg>
+            </div>
+
+            {/* Layer 3: Sparkle dots — fade in/out randomly */}
+            {[
+              { x: 6, y: 8, delay: 0 },
+              { x: 72, y: 14, delay: 1.5 },
+              { x: 12, y: 68, delay: 3.0 },
+              { x: 68, y: 64, delay: 4.5 },
+              { x: 40, y: 4, delay: 2.0 },
+              { x: 40, y: 76, delay: 5.0 },
+            ].map((spark, i) => (
+              <div
+                key={i}
+                className="absolute rounded-full"
+                style={{
+                  left: spark.x,
+                  top: spark.y,
+                  width: 2,
+                  height: 2,
+                  background: '#5CB8F0',
+                  boxShadow: '0 0 4px rgba(92,184,240,0.8)',
+                  animation: `crystalSparkle 3s ease-in-out ${spark.delay}s infinite`,
+                }}
+              />
+            ))}
+          </div>
+        </motion.div>
+
+        {/* Headline — editorial typography with varied weights */}
+        <h1 className="font-display mb-6 leading-[1.05] tracking-tight">
+          <AnimatedWords
+            text="Wisse welche Seite"
+            className="text-frost-white text-3xl sm:text-4xl lg:text-6xl xl:text-7xl font-light"
+          />
+          <AnimatedWords
+            text="du handelst."
+            className="text-frost-white text-4xl sm:text-5xl lg:text-7xl xl:text-8xl font-bold"
+          />
+          <span className="block h-2 sm:h-3" />
+          <AnimatedWords
+            text="Bevor die Glocke laeutet."
+            className="text-gradient-frost text-3xl sm:text-4xl lg:text-6xl xl:text-7xl font-medium italic"
+          />
+        </h1>
 
         {/* Subheadline */}
         <motion.p
@@ -331,7 +878,8 @@ export function Hero() {
           animate="visible"
           className="flex flex-wrap items-center justify-center gap-4"
         >
-          <motion.button
+          <motion.a
+            href="http://localhost:5174/login"
             variants={staggerItem}
             whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.98 }}
@@ -355,47 +903,41 @@ export function Hero() {
               aria-hidden="true"
               className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/10 to-transparent transition-transform duration-700 group-hover:translate-x-full"
             />
-            <Download size={18} strokeWidth={2.2} />
+            <LogIn size={18} strokeWidth={2.2} />
             Jetzt starten
             <ArrowRight
               size={16}
               strokeWidth={2.2}
               className="transition-transform duration-200 group-hover:translate-x-0.5"
             />
-          </motion.button>
+          </motion.a>
 
-          <motion.button
-            variants={staggerItem}
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            transition={{ duration: 0.2 }}
-            className={cn(
-              'font-display group flex cursor-pointer items-center gap-2.5',
-              'rounded-xl border border-[#353D48] px-8 py-4 text-lg font-medium text-frost-white',
-              'transition-all duration-200 hover:border-[rgba(92,184,240,0.3)]',
-              'hover:bg-[rgba(92,184,240,0.08)] hover:text-ice-light',
-            )}
-          >
-            <span className="flex h-7 w-7 items-center justify-center rounded-full border border-current opacity-70 transition-opacity duration-200 group-hover:opacity-100">
-              <ArrowRight size={12} strokeWidth={2.5} />
-            </span>
-            Live Demo ansehen
-          </motion.button>
         </motion.div>
 
-        {/* Trust line */}
-        <motion.p
+        {/* Trust line — more prominent */}
+        <motion.div
           variants={fadeInUp}
           initial="hidden"
           animate="visible"
           transition={{ delay: 0.55 }}
-          className="font-sans mt-6 text-sm text-frost-muted"
+          className="mt-8 flex flex-wrap items-center justify-center gap-4"
         >
-          Kein Abo noetig zum Testen&nbsp;&middot;&nbsp;macOS Desktop App&nbsp;&middot;&nbsp;Deine Daten bleiben lokal
-        </motion.p>
+          {[
+            'Kostenlos testen',
+            'Web App',
+            'Deine Daten bleiben lokal',
+          ].map((text, i) => (
+            <span key={i} className="flex items-center gap-2 font-sans text-sm text-frost-muted">
+              <span
+                className="h-1 w-1 rounded-full bg-ice/40"
+              />
+              {text}
+            </span>
+          ))}
+        </motion.div>
       </div>
 
-      {/* ── Dashboard mockup ────────────────────────────────────── */}
+      {/* ── Dashboard mockup ── */}
       <motion.div
         variants={heroImageReveal}
         initial="hidden"
@@ -427,7 +969,7 @@ export function Hero() {
               className="flex items-center gap-3 border-b border-[#1E2530] px-4 py-2"
               style={{ background: 'rgba(10,13,18,0.85)' }}
             >
-              {/* Traffic lights — smaller, more muted */}
+              {/* Traffic lights */}
               <div className="flex items-center gap-[5px] shrink-0">
                 <span className="h-[9px] w-[9px] rounded-full" style={{ background: '#BF4B47', opacity: 0.85 }} />
                 <span className="h-[9px] w-[9px] rounded-full" style={{ background: '#A68528', opacity: 0.85 }} />
@@ -503,7 +1045,13 @@ export function Hero() {
                   <span
                     key={ind}
                     className="font-mono text-[9px] uppercase tracking-[0.1em]"
-                    style={{ color: i === 2 ? 'rgba(92,184,240,0.7)' : 'rgba(140,160,180,0.35)' }}
+                    style={{
+                      color: ind === 'VWAP'
+                        ? 'rgba(168,130,240,0.6)'
+                        : ind === 'BIAS'
+                          ? 'rgba(92,184,240,0.7)'
+                          : 'rgba(140,160,180,0.35)',
+                    }}
                   >
                     {ind}
                   </span>
@@ -535,11 +1083,11 @@ export function Hero() {
                 ))}
               </div>
 
-              {/* Chart + demand zone label */}
+              {/* Chart + zone labels */}
               <div className="relative flex-1 px-2 py-3">
                 <CandlestickChart />
 
-                {/* Current price label at ~top-right of chart */}
+                {/* Current price label */}
                 <div
                   className="absolute right-3 flex items-center gap-1"
                   style={{ top: '14%' }}
@@ -557,6 +1105,19 @@ export function Hero() {
                     }}
                   >
                     21,847
+                  </span>
+                </div>
+
+                {/* Supply zone label */}
+                <div
+                  className="pointer-events-none absolute right-3"
+                  style={{ top: '18%' }}
+                >
+                  <span
+                    className="font-mono text-[8px] uppercase tracking-[0.12em]"
+                    style={{ color: 'rgba(248,113,113,0.35)' }}
+                  >
+                    SUPPLY
                   </span>
                 </div>
 
@@ -650,7 +1211,6 @@ export function Hero() {
                   >
                     CVD
                   </span>
-                  {/* Mini sparkline for CVD */}
                   <svg viewBox="0 0 36 14" className="w-full" style={{ height: 14 }} aria-hidden="true">
                     <polyline
                       points="0,12 6,10 12,8 18,9 24,5 30,3 36,2"
@@ -669,31 +1229,6 @@ export function Hero() {
                   </span>
                 </div>
               </div>
-            </div>
-
-            {/* ── Volume strip ── */}
-            <div
-              className="flex items-end gap-[2px] border-t border-[#1E2530] px-3 py-1.5"
-              style={{ height: 28, background: 'rgba(6,9,14,0.7)' }}
-            >
-              <div
-                className="mr-1.5 shrink-0 self-end font-mono pb-0.5 uppercase tracking-[0.1em]"
-                style={{ fontSize: '8px', color: 'rgba(140,160,180,0.3)' }}
-              >
-                VOL
-              </div>
-              {VOLUMES.map((v, i) => (
-                <div
-                  key={i}
-                  className="flex-1 rounded-[1px]"
-                  style={{
-                    height: `${Math.round(v * 16) + 2}px`,
-                    background: CANDLES[i].bull
-                      ? 'rgba(52,211,153,0.25)'
-                      : 'rgba(248,113,113,0.22)',
-                  }}
-                />
-              ))}
             </div>
 
             {/* ── Analysis indicator strip ── */}
@@ -804,7 +1339,7 @@ export function Hero() {
         </motion.div>
       </motion.div>
 
-      {/* ── Scroll indicator ────────────────────────────────────── */}
+      {/* ── Scroll indicator ── */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}

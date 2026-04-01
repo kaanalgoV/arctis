@@ -10,8 +10,9 @@ Individual endpoints remain unchanged and fully operational.
 import asyncio
 import logging
 import time
+import threading
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 
 from arctis.models import Market, Timeframe
 from arctis.routes._common import load_bars as _load_bars, current_timestamp as _current_timestamp
@@ -20,6 +21,13 @@ from arctis.analysis.market_context import build_market_context, MarketContext
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api", tags=["snapshot"])
+
+# ---------------------------------------------------------------------------
+# Stale request tracking — prevents older snapshot requests from completing
+# when the user has already switched to a different market.
+# ---------------------------------------------------------------------------
+_latest_snapshot_request: dict[str, float] = {}
+_snapshot_lock = threading.Lock()
 
 
 # ---------------------------------------------------------------------------
@@ -502,7 +510,7 @@ def _build_bias(bars, market: str, timeframe: str, ctx: "MarketContext | None" =
 def _build_zones(bars, market: str, timeframe: str) -> dict:
     from arctis.analysis.zones import calculate_zones
 
-    zones = calculate_zones(bars)
+    zones = calculate_zones(bars, market=market)
 
     return {
         "zones": [
@@ -531,12 +539,13 @@ def _build_signals(bars, market: str, timeframe: str, ctx: "MarketContext | None
     from arctis.analysis.naked_poc import find_naked_pocs
     from arctis.analysis.signals import detect_signals
     from arctis.analysis.structure import classify_trend, detect_swings
+    from arctis.analysis.vwap import calculate_vwap
     from arctis.analysis.zones import calculate_zones
 
     if len(bars) < 50:
         return {"signals": [], "bias": "RANGE", "bias_score": 0}
 
-    zones = calculate_zones(bars)
+    zones = calculate_zones(bars, market=market)
     poc: float | None = None
     vah: float | None = None
     val: float | None = None
@@ -580,6 +589,20 @@ def _build_signals(bars, market: str, timeframe: str, ctx: "MarketContext | None
     except Exception:
         kl_dicts = []
 
+    # Compute VWAP — use MarketContext if available, otherwise calculate fresh.
+    # This was previously missing, causing VWAP MR signals and VWAP-aligned
+    # daily breakouts to NEVER fire (vwap was always None).
+    latest_vwap: float | None = None
+    if ctx is not None and ctx.vwap is not None:
+        latest_vwap = ctx.vwap
+    else:
+        try:
+            vwap_list = calculate_vwap(bars)
+            if vwap_list:
+                latest_vwap = vwap_list[-1].vwap
+        except Exception:
+            latest_vwap = None
+
     signals = detect_signals(
         bars,
         bias_state=bias.state.value,
@@ -595,6 +618,8 @@ def _build_signals(bars, market: str, timeframe: str, ctx: "MarketContext | None
         ib_low=ib_low,
         naked_pocs=naked_poc_prices,
         key_levels=kl_dicts,
+        vwap=latest_vwap,
+        market_root=market[:2].upper() if market else "NQ",
     )
 
     return {
@@ -686,6 +711,7 @@ async def _run(fn, *args):
 
 @router.get("/snapshot")
 async def get_analysis_snapshot(
+    request: Request,
     market: Market = Query(...),
     timeframe: Timeframe = Query(default=Timeframe.MIN_15),
     days: int = Query(default=5, ge=1, le=365),
@@ -703,6 +729,14 @@ async def get_analysis_snapshot(
     """
     market_str = market.value
     timeframe_str = timeframe.value
+
+    # Register this request as the latest for its market key.
+    # If a newer request arrives for the same market before this one finishes,
+    # the stale one will return 204 No Content instead of overwriting newer data.
+    request_ts = time.time()
+    snapshot_key = f"{market_str}:{timeframe_str}"
+    with _snapshot_lock:
+        _latest_snapshot_request[snapshot_key] = request_ts
 
     # Load bars once — shared across all sub-analyses.
     try:
@@ -758,6 +792,22 @@ async def get_analysis_snapshot(
         _run(_build_signals, bars, market_str, timeframe_str, ctx),
         return_exceptions=True,
     )
+
+    # Abort if a newer request for the same market arrived while we were computing.
+    with _snapshot_lock:
+        if _latest_snapshot_request.get(snapshot_key, 0) > request_ts:
+            logger.info(
+                "Snapshot for %s aborted — superseded by newer request",
+                snapshot_key,
+            )
+            from fastapi.responses import Response
+            return Response(status_code=204)
+
+    # Also abort if the client disconnected.
+    if await request.is_disconnected():
+        logger.info("Snapshot for %s aborted — client disconnected", snapshot_key)
+        from fastapi.responses import Response
+        return Response(status_code=204)
 
     errors: dict[str, str] = {}
 

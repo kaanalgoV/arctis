@@ -23,6 +23,7 @@ from arctis.analysis.bias_state import calculate_bias_state
 from arctis.analysis.structure import detect_swings, classify_trend
 from arctis.analysis.naked_poc import find_naked_pocs
 from arctis.analysis.key_levels import find_key_levels
+from arctis.analysis.vwap import calculate_vwap
 
 
 # ---------------------------------------------------------------------------
@@ -66,7 +67,7 @@ class BacktestReport:
 # Public API
 # ---------------------------------------------------------------------------
 
-def run_backtest(bars: list[OHLCVBar], max_bars_held: int = 60) -> BacktestReport:
+def run_backtest(bars: list[OHLCVBar], max_bars_held: int = 60, market_root: str = "NQ") -> BacktestReport:
     """Run backtest on all bars, generating signals at each day's checkpoints.
 
     For each trading day:
@@ -149,13 +150,24 @@ def run_backtest(bars: list[OHLCVBar], max_bars_held: int = 60) -> BacktestRepor
             kl_dicts = []
 
         # Generate signals at checkpoints (bar indices within current day)
-        checkpoints = [30, 45, 60, 90]
+        # v2: every 5 bars from 5 to 360 to catch signals throughout the day
+        checkpoints = list(range(5, min(len(current_day), 361), 5))
 
         for cp in checkpoints:
             if cp >= len(current_day):
                 break
 
             test_bars = context_bars + current_day[:cp]
+
+            # Calculate VWAP from today's bars so far
+            vwap_val = None
+            try:
+                vwap_data = calculate_vwap(current_day[:cp])
+                if vwap_data:
+                    vwap_val = vwap_data[-1].vwap
+            except Exception:
+                pass
+
             try:
                 signals = detect_signals(
                     test_bars,
@@ -167,6 +179,9 @@ def run_backtest(bars: list[OHLCVBar], max_bars_held: int = 60) -> BacktestRepor
                     ib_high, ib_low,
                     naked_poc_prices,
                     kl_dicts,
+                    vwap=vwap_val,
+                    session_bar_idx=cp,
+                    market_root=market_root,
                 )
             except Exception:
                 continue

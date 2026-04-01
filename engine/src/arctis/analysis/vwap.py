@@ -85,17 +85,6 @@ def calculate_vwap(bars: list[OHLCVBar]) -> list[VWAPData]:
             )
         )
 
-    # Only return VWAP for the most recent trading day (today).
-    # This prevents visual jumps between yesterday's and today's VWAP.
-    if results and prev_trading_day is not None:
-        today_results = [r for r in results if (
-            datetime.fromtimestamp(r.timestamp, tz=timezone.utc).astimezone(ET).hour * 60 +
-            datetime.fromtimestamp(r.timestamp, tz=timezone.utc).astimezone(ET).minute >= 570
-        ) and (
-            datetime.fromtimestamp(r.timestamp, tz=timezone.utc).astimezone(ET).date() ==
-            datetime.now(ET).date()
-        )]
-        if today_results:
-            return today_results
-
+    # Return VWAP for ALL loaded days (each day resets independently at RTH open).
+    # The chart handles per-session rendering — no need to filter server-side.
     return results

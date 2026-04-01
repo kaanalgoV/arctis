@@ -211,8 +211,11 @@ export function ReplayBar({
       {/* Proberun toggle */}
       <button
         onClick={onProberunToggle ?? (() => {})}
+        aria-label="Toggle proberun mode"
+        aria-pressed={proberunMode}
         className={cn(
           'px-2 py-0.5 text-[10px] font-mono rounded transition-colors cursor-pointer shrink-0',
+          'outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent)]',
           proberunMode
             ? 'bg-[var(--color-accent)] text-[var(--color-surface-base)] font-semibold'
             : 'bg-[var(--color-surface-raised)] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]',
@@ -230,6 +233,7 @@ export function ReplayBar({
           <button
             key={s}
             onClick={() => onSpeedChange?.(s)}
+            aria-label={`Speed ${s === 0.5 ? '0.5' : String(s)}x`}
             className={cn(
               'px-1.5 py-0.5 rounded cursor-pointer',
               'font-mono text-[10px] leading-none',

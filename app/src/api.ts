@@ -18,17 +18,28 @@ function getBaseUrl(): string {
   }
 }
 
-async function fetchJSON<T>(path: string, params?: Record<string, string>): Promise<T> {
+async function fetchJSON<T>(path: string, params?: Record<string, string>, init?: RequestInit): Promise<T> {
   const BASE_URL = getBaseUrl()
   const url = new URL(path, BASE_URL)
   if (params) {
     Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v))
   }
-  const res = await fetch(url.toString())
+  const res = await fetch(url.toString(), init)
+  if (res.status === 204) {
+    // No content (e.g. stale request superseded) — return empty object
+    return {} as T
+  }
   if (!res.ok) {
     throw new Error(`API error: ${res.status} ${res.statusText}`)
   }
-  return res.json()
+  // Guard against empty body responses
+  const text = await res.text()
+  if (!text) return {} as T
+  try {
+    return JSON.parse(text) as T
+  } catch {
+    throw new Error(`Invalid JSON from ${path}: ${text.substring(0, 100)}`)
+  }
 }
 
 export async function fetchMarkets(): Promise<MarketsResponse> {

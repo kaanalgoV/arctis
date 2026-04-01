@@ -44,10 +44,11 @@ import { ensureSciChartInitialized } from '@/lib/scichart-init';
 import { formatChartAxisTime } from '@/utils/chartTimeZone';
 
 // Configuration constants
-// Show ~10 hours of 5-minute bars on initial load (covers full trading day including premarket).
-// Show ~3 hours of 5min bars = 36 bars. Current session focus.
-// User scrolls left for more history. 36 bars gives good candle size.
-const INITIAL_VIEW_CANDLES = 36;
+// Initial visible range: show approximately the last 7 trading days.
+// The exact bar count is computed dynamically from timestamps in the data,
+// so this constant is only used as a fallback when timestamps are unavailable.
+const INITIAL_VIEW_DAYS = 7;
+const SECONDS_PER_DAY = 86400;
 
 // HMR cleanup for this module
 initHmrCleanup(import.meta.hot);
@@ -307,6 +308,11 @@ export const CandlestickChart = forwardRef<CandlestickChartHandle, CandlestickCh
   const wipAnnotationsRef = useRef<any[]>([]);
   const vpAnnotationsRef = useRef<BoxAnnotation[]>([]);
   const sessionBandsAnnotationsRef = useRef<BoxAnnotation[]>([]);
+  // When user manually drags Y-axis, suppress auto-fit until explicit reset (double-click Y-axis)
+  const yAxisManualModeRef = useRef(false);
+  // Auto-scroll: true when the right edge of visible range is near the last bar.
+  // Becomes false when the user manually pans left (respects manual mode).
+  const autoScrollRef = useRef(true);
   // Drawing modifier + ZoomPan refs for runtime toggling
   const drawingModifierRef = useRef<DrawingModifier | null>(null);
   const zoomPanModifierRef = useRef<ZoomPanModifier | null>(null);
@@ -399,6 +405,7 @@ export const CandlestickChart = forwardRef<CandlestickChartHandle, CandlestickCh
       // Fit Y-axis manually to the visible range (EAutoRange.Never is active)
       const yAxis = surfaceRef.current.yAxes.get(0);
       if (yAxis) {
+        yAxisManualModeRef.current = false; // reset manual mode on programmatic zoom
         fitYAxisToVisibleRange(yAxis, dataSeriesRef.current, startIndex, endIndex);
       }
     },
@@ -440,6 +447,7 @@ export const CandlestickChart = forwardRef<CandlestickChartHandle, CandlestickCh
     },
     zoomExtents: () => {
       if (surfaceRef.current) {
+        yAxisManualModeRef.current = false; // reset manual mode on zoom extents
         surfaceRef.current.zoomExtents();
       }
     },
@@ -641,22 +649,32 @@ export const CandlestickChart = forwardRef<CandlestickChartHandle, CandlestickCh
           axisLabelFill: lastPriceColor,
           axisLabelStroke: lastPriceColor,
         });
-        surface.annotations.add(lastPriceLine);
+        try { surface.annotations.add(lastPriceLine); } catch { /* surface mid-render */ }
         lastPriceLineRef.current = lastPriceLine;
       }
     }
 
-    // Smart initial zoom - show last N candles (today's session).
+    // Smart initial zoom — show the last 7 calendar days of data.
     // Only runs once on first data load; subsequent candle updates are incremental.
     if (!loadMoreTriggeredRef.current && !initialZoomDoneRef.current) {
       initialZoomDoneRef.current = true;
-      const totalCandles = candlesRef.current.length;
+      const allCandles = candlesRef.current;
+      const totalCandles = allCandles.length;
 
       const xAxis = surface.xAxes.get(0);
       const yAxis = surface.yAxes.get(0);
 
-      if (totalCandles > INITIAL_VIEW_CANDLES) {
-        const startIndex = totalCandles - INITIAL_VIEW_CANDLES;
+      // Compute the start index by finding the first bar within the last 7 days.
+      let startIndex = 0;
+      if (totalCandles > 1) {
+        const lastTs = allCandles[totalCandles - 1].time;
+        const cutoffTs = lastTs - INITIAL_VIEW_DAYS * SECONDS_PER_DAY;
+        // Binary-ish scan: find first index where time >= cutoffTs
+        startIndex = allCandles.findIndex((c) => c.time >= cutoffTs);
+        if (startIndex < 0) startIndex = 0;
+      }
+
+      if (startIndex > 0 && startIndex < totalCandles) {
         if (xAxis) {
           xAxis.visibleRange = new NumberRange(startIndex, totalCandles - 1);
         }
@@ -665,7 +683,7 @@ export const CandlestickChart = forwardRef<CandlestickChartHandle, CandlestickCh
           fitYAxisToVisibleRange(yAxis, dataSeriesRef.current, startIndex, totalCandles - 1);
         }
       } else {
-        // Fewer bars than the initial view — show all, fit Y once
+        // Fewer bars than 7 days — show all, fit Y once
         if (xAxis) {
           xAxis.visibleRange = new NumberRange(0, Math.max(0, totalCandles - 1));
         }
@@ -675,9 +693,24 @@ export const CandlestickChart = forwardRef<CandlestickChartHandle, CandlestickCh
       }
     }
 
-    // NOTE: No auto-scroll here. The user controls the view entirely.
-    // A new bar appended at the right edge does NOT move the viewport.
-    // This matches TradingView's behavior.
+    // Auto-scroll: when new bars arrive and the user was already viewing the
+    // right edge, shift the visible range so the latest bar stays visible.
+    // If the user has manually panned left, respect that and don't scroll.
+    if (initialZoomDoneRef.current && prevCount > 0 && count > prevCount && autoScrollRef.current) {
+      const xAxis = surface.xAxes.get(0);
+      const yAxis = surface.yAxes.get(0);
+      if (xAxis) {
+        const currentRange = xAxis.visibleRange;
+        const rangeWidth = currentRange.max - currentRange.min;
+        const newMax = count - 1;
+        const newMin = newMax - rangeWidth;
+        xAxis.visibleRange = new NumberRange(Math.max(0, newMin), newMax);
+        // Fit Y-axis to the new visible window
+        if (yAxis && !yAxisManualModeRef.current) {
+          fitYAxisToVisibleRange(yAxis, dataSeriesRef.current, Math.max(0, newMin), newMax);
+        }
+      }
+    }
   }, []);
 
   // Notify parent about Y-axis price range changes
@@ -699,6 +732,12 @@ export const CandlestickChart = forwardRef<CandlestickChartHandle, CandlestickCh
     const visibleRange = xAxis.visibleRange;
     const currentCandles = candlesRef.current;
     const dataLength = currentCandles.length;
+
+    // Auto-scroll tracking: if the right edge of the visible range includes
+    // the last bar (or is within 3 bars), keep auto-scrolling enabled.
+    // When the user manually pans left, disable auto-scroll.
+    const rightEdgeThreshold = 3;
+    autoScrollRef.current = visibleRange.max >= dataLength - 1 - rightEdgeThreshold;
 
     // Notify parent about visible range (for scrollbar)
     if (onVisibleRangeChange && dataLength > 0) {
@@ -933,7 +972,7 @@ export const CandlestickChart = forwardRef<CandlestickChartHandle, CandlestickCh
           strokeUp: chartSettings.candleUpColor + 'CC',
           strokeDown: chartSettings.candleDownColor + 'CC',
         });
-        sciChartSurface.renderableSeries.add(candlestickSeries);
+        try { sciChartSurface.renderableSeries.add(candlestickSeries); } catch { /* surface disposal race */ }
         candlestickSeriesRef.current = candlestickSeries;
         mainSeriesRef.current = candlestickSeries;
 
@@ -967,7 +1006,7 @@ export const CandlestickChart = forwardRef<CandlestickChartHandle, CandlestickCh
             stroke: '#ffffff00',
             strokeThickness: 0,
           });
-          sciChartSurface.renderableSeries.add(volumeSeries);
+          try { sciChartSurface.renderableSeries.add(volumeSeries); } catch { /* surface disposal race */ }
           volumeSeriesRef.current = volumeSeries;
         }
 
@@ -1008,7 +1047,11 @@ export const CandlestickChart = forwardRef<CandlestickChartHandle, CandlestickCh
             applyToAxes: true,
           }),
           // Y-axis drag to zoom: up = zoom in, down = zoom out (consistent behavior)
-          new YAxisDragZoomModifier(),
+          (() => {
+            const yDrag = new YAxisDragZoomModifier();
+            yDrag.onManualDragStart = () => { yAxisManualModeRef.current = true; };
+            return yDrag;
+          })(),
           // X-axis drag to zoom: right = zoom in, left = zoom out
           new XAxisDragZoomModifier(),
           // Crosshair with axis labels (no tooltip)
@@ -1055,32 +1098,34 @@ export const CandlestickChart = forwardRef<CandlestickChartHandle, CandlestickCh
       mounted = false;
       initializingRef.current = false;
       const surface = surfaceRef.current;
+      // Null out refs FIRST to prevent any running effects from accessing stale surface
+      surfaceRef.current = null;
+      dataSeriesRef.current = null;
+      xyMainDataSeriesRef.current = null;
+      volumeDataSeriesRef.current = null;
+      volumeSeriesRef.current = null;
+      mainSeriesRef.current = null;
+      labelProviderRef.current = null;
+      drawingModifierRef.current = null;
+      zoomPanModifierRef.current = null;
+      crosshairDataModifierRef.current = null;
+      lastPriceLineRef.current = null;
       if (surface) {
-        try {
-          if (!surface.isDeleted) {
-            // Clear renderable series, annotations & modifiers BEFORE delete
-            // so that any lingering WASM render-loop callbacks don't find
-            // deleted DataSeries.
-            surface.renderableSeries.clear();
-            surface.annotations.clear();
-            surface.chartModifiers.clear();
-            surface.delete();
-          }
-        } catch {
-          // Surface may already be in an invalid state — ignore
-        }
         unregisterSurface(surface);
-        surfaceRef.current = null;
-        dataSeriesRef.current = null;
-        xyMainDataSeriesRef.current = null;
-        volumeDataSeriesRef.current = null;
-        volumeSeriesRef.current = null;
-        mainSeriesRef.current = null;
-        labelProviderRef.current = null;
-        drawingModifierRef.current = null;
-        zoomPanModifierRef.current = null;
-        crosshairDataModifierRef.current = null;
-        lastPriceLineRef.current = null;
+        // Defer SciChart disposal to next microtask to avoid removeChild race
+        // between React unmounting DOM and SciChart's WASM render loop
+        queueMicrotask(() => {
+          try {
+            if (!surface.isDeleted) {
+              surface.renderableSeries.clear();
+              surface.annotations.clear();
+              surface.chartModifiers.clear();
+              surface.delete();
+            }
+          } catch {
+            // Surface already gone — safe to ignore
+          }
+        });
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1131,7 +1176,7 @@ export const CandlestickChart = forwardRef<CandlestickChartHandle, CandlestickCh
 
     // Remove the old main series (keep its DataSeries alive — we reuse the OHLC data)
     if (mainSeriesRef.current) {
-      surface.renderableSeries.remove(mainSeriesRef.current, false);
+      try { surface.renderableSeries.remove(mainSeriesRef.current, false); } catch { /* disposal race */ }
       mainSeriesRef.current = null;
     }
 
@@ -1206,7 +1251,7 @@ export const CandlestickChart = forwardRef<CandlestickChartHandle, CandlestickCh
     }
 
     // Insert at position 0 so main series is behind indicator overlays
-    surface.renderableSeries.insert(0, newSeries);
+    try { surface.renderableSeries.insert(0, newSeries); } catch { /* disposal race */ }
     mainSeriesRef.current = newSeries;
   }, [chartType, isInitializing, chartSettings]);
 
@@ -1225,13 +1270,37 @@ export const CandlestickChart = forwardRef<CandlestickChartHandle, CandlestickCh
     // When the user scrolls or zooms, we recompute the price range that covers
     // all candles in the new visible window and set visibleRange directly.
     // This does NOT run on every tick — only when the X range actually changes.
+    // SKIP auto-fit when user has manually dragged the Y-axis (manual mode).
     const fitYOnXChange = () => {
       if (!surface.isDeleted && yAxis) {
+        if (!yAxisManualModeRef.current) {
+          const { min, max } = xAxis.visibleRange;
+          fitYAxisToVisibleRange(yAxis, dataSeriesRef.current, min, max);
+        }
+        emitPriceRange();
+      }
+    };
+
+    // Double-click on Y-axis resets to auto-fit mode
+    const handleDblClick = (e: MouseEvent) => {
+      if (!yAxis || surface.isDeleted) return;
+      const axisRect = yAxis.viewRect;
+      if (!axisRect) return;
+      // Check if double-click is within Y-axis area
+      const domRect = surface.domCanvas2D?.getBoundingClientRect();
+      if (!domRect) return;
+      const relX = e.clientX - domRect.left;
+      const relY = e.clientY - domRect.top;
+      if (relX >= axisRect.left && relX <= axisRect.right &&
+          relY >= axisRect.top && relY <= axisRect.bottom) {
+        yAxisManualModeRef.current = false;
         const { min, max } = xAxis.visibleRange;
         fitYAxisToVisibleRange(yAxis, dataSeriesRef.current, min, max);
         emitPriceRange();
       }
     };
+    const domCanvas = surface.domCanvas2D;
+    domCanvas?.addEventListener('dblclick', handleDblClick);
 
     xAxis.visibleRangeChanged.subscribe(fitYOnXChange);
 
@@ -1242,6 +1311,7 @@ export const CandlestickChart = forwardRef<CandlestickChartHandle, CandlestickCh
 
     return () => {
       try {
+        domCanvas?.removeEventListener('dblclick', handleDblClick);
         if (!surface.isDeleted) {
           xAxis.visibleRangeChanged.unsubscribe(fitYOnXChange);
           if (onLoadMore) {
@@ -1336,18 +1406,29 @@ export const CandlestickChart = forwardRef<CandlestickChartHandle, CandlestickCh
     wipAnnotationsRef.current = [];
     surface.suspendUpdates();
 
+    // Safe annotation helpers — prevent DOM errors (insertBefore/removeChild)
+    // during concurrent SciChart + React updates (especially in replay mode)
+    const safeAdd = (ann: unknown) => {
+      try { surface.annotations.add(ann as Parameters<typeof surface.annotations.add>[0]); }
+      catch { /* annotation add failed — surface may be mid-render */ }
+    };
+    const safeClear = () => {
+      try { surface.annotations.clear(); }
+      catch { /* annotation clear failed — surface may be mid-render */ }
+    };
+
     try {
       // Remove existing annotations
-      surface.annotations.clear();
+      safeClear();
 
       // Re-add VP annotations managed by separate effect
       for (const ann of vpAnnotationsRef.current) {
-        surface.annotations.add(ann);
+        safeAdd(ann);
       }
 
       // Re-add session band annotations managed by separate effect
       for (const ann of sessionBandsAnnotationsRef.current) {
-        surface.annotations.add(ann);
+        safeAdd(ann);
       }
 
       // Create annotation context for builder functions
@@ -1362,19 +1443,19 @@ export const CandlestickChart = forwardRef<CandlestickChartHandle, CandlestickCh
       // Add render instruction annotations first (background layer)
       const renderInstructionAnnotations = createRenderInstructionAnnotations(indicators, ctx);
       for (const annotation of renderInstructionAnnotations) {
-        surface.annotations.add(annotation);
+        safeAdd(annotation);
       }
 
       // Add session separator lines
       const sessionSeparators = createSessionSeparators(sessionIndicesRef.current, ctx);
       for (const annotation of sessionSeparators) {
-        surface.annotations.add(annotation);
+        safeAdd(annotation);
       }
 
       // Add contract labels at rollover boundaries (background watermark)
       const contractLabels = createContractLabels(ctx);
       for (const annotation of contractLabels) {
-        surface.annotations.add(annotation);
+        safeAdd(annotation);
       }
 
       // Clear zone annotations ref for fresh tracking
@@ -1384,7 +1465,7 @@ export const CandlestickChart = forwardRef<CandlestickChartHandle, CandlestickCh
       if (zones && zones.length > 0) {
         const { annotations: zoneAnnotations, byTradeId } = createTradeZones(zones, ctx);
         for (const annotation of zoneAnnotations) {
-          surface.annotations.add(annotation);
+          safeAdd(annotation);
         }
         // Store for selection highlighting
         zoneAnnotationsRef.current = byTradeId;
@@ -1392,7 +1473,7 @@ export const CandlestickChart = forwardRef<CandlestickChartHandle, CandlestickCh
         // Add entry-exit connection lines with tick labels
         const tradeLineAnnotations = createTradeLines(zones, ctx);
         for (const annotation of tradeLineAnnotations) {
-          surface.annotations.add(annotation);
+          safeAdd(annotation);
         }
       }
 
@@ -1400,7 +1481,7 @@ export const CandlestickChart = forwardRef<CandlestickChartHandle, CandlestickCh
       if (markers && markers.length > 0) {
         const markerAnnotations = createTradeMarkers(markers, ctx);
         for (const annotation of markerAnnotations) {
-          surface.annotations.add(annotation);
+          safeAdd(annotation);
         }
       }
 
@@ -1416,12 +1497,12 @@ export const CandlestickChart = forwardRef<CandlestickChartHandle, CandlestickCh
             if (selectedDrawingIdRef.current === drawing.id) {
               (ann as unknown as { isSelected: boolean }).isSelected = true;
             }
-            surface.annotations.add(ann);
+            safeAdd(ann);
           }
         }
       }
 
-      // Render shaded price zones (correction zone, scenario targets, etc.)
+      // Render shaded price zones (analysis zones, signal risk/reward, etc.)
       // Signal zones (Risk/Reward) only cover the last 25 bars, not full chart.
       if (priceZones && priceZones.length > 0) {
         for (const zone of priceZones) {
@@ -1429,6 +1510,11 @@ export const CandlestickChart = forwardRef<CandlestickChartHandle, CandlestickCh
           const isSignalZone = zone.label === 'Risk' || zone.label === 'Reward';
           const zoneX1 = isSignalZone ? Math.max(0, candles.length - 25) : 0;
           const zoneX2 = candles.length;
+
+          // Determine border thickness: thicker for analysis zones, subtle for signals
+          const hasStroke = zone.stroke && zone.stroke !== 'transparent';
+          const strokeThickness = isSignalZone ? 0.5 : hasStroke ? 1.5 : 0;
+
           const box = new BoxAnnotation({
             x1: zoneX1,
             x2: zoneX2,
@@ -1436,23 +1522,29 @@ export const CandlestickChart = forwardRef<CandlestickChartHandle, CandlestickCh
             y2: zone.priceTop,
             fill: zone.fill,
             stroke: zone.stroke ?? 'transparent',
-            strokeThickness: zone.stroke ? 0.5 : 0,
+            strokeThickness,
           });
-          surface.annotations.add(box);
+          safeAdd(box);
 
-          // Optional label at right edge
+          // Zone label — rendered as a thin HorizontalLineAnnotation with label
           if (zone.label) {
+            // Place label at the top edge of the zone for area zones, center for lines
+            const isNarrow = Math.abs(zone.priceTop - zone.priceBottom) < 2;
+            const labelY = isNarrow
+              ? (zone.priceTop + zone.priceBottom) / 2
+              : zone.priceTop;
+
             const labelLine = new HorizontalLineAnnotation({
-              y1: (zone.priceTop + zone.priceBottom) / 2,
-              stroke: 'transparent',
+              y1: labelY,
+              stroke: zone.labelColor ?? zone.stroke ?? 'transparent',
               strokeThickness: 0,
               showLabel: true,
               labelPlacement: ELabelPlacement.BottomRight,
               labelValue: zone.label,
               isAxisLabelVisible: false,
-              opacity: 0.6,
+              opacity: 0.7,
             });
-            surface.annotations.add(labelLine);
+            safeAdd(labelLine);
           }
         }
       }
@@ -1485,7 +1577,7 @@ export const CandlestickChart = forwardRef<CandlestickChartHandle, CandlestickCh
               stroke: zoneBorder,
               strokeThickness: 0.5,
             });
-            surface.annotations.add(zone);
+            safeAdd(zone);
           }
 
           // Smart placement: alternate TopRight/BottomRight when labels are close
@@ -1509,7 +1601,7 @@ export const CandlestickChart = forwardRef<CandlestickChartHandle, CandlestickCh
               stroke: pl.color,
               strokeThickness: pl.thickness ?? 1,
             });
-            surface.annotations.add(lineBox);
+            safeAdd(lineBox);
             // Label at the right edge
             if (pl.label) {
               const labelLine = new HorizontalLineAnnotation({
@@ -1523,7 +1615,7 @@ export const CandlestickChart = forwardRef<CandlestickChartHandle, CandlestickCh
                 axisLabelFill: pl.color,
                 axisLabelStroke: pl.color,
               });
-              surface.annotations.add(labelLine);
+              safeAdd(labelLine);
             }
           } else {
             // Regular price levels (PDH/PDL/etc) span full width
@@ -1538,7 +1630,7 @@ export const CandlestickChart = forwardRef<CandlestickChartHandle, CandlestickCh
               isAxisLabelVisible: false,
               opacity: isSW ? 0.85 : 0.55,
             });
-            surface.annotations.add(line);
+            safeAdd(line);
           }
         }
       }
@@ -1548,7 +1640,8 @@ export const CandlestickChart = forwardRef<CandlestickChartHandle, CandlestickCh
       surface.resumeUpdates();
       isRebuildingRef.current = false;
     }
-  }, [markers, zones, candles, isInitializing, findCandleIndexWithFallback, chartSettings, sessionIndices, indicators, tickSize, pricePrecision, userDrawings, priceLevels, priceZones]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [markers, zones, candles.length, isInitializing, findCandleIndexWithFallback, chartSettings, sessionIndices, indicators, tickSize, pricePrecision, userDrawings, priceLevels, priceZones]);
 
   // Dedicated volume profile annotation effect — decoupled from main rebuild
   // Only triggers when volumeProfiles data changes
@@ -1574,26 +1667,39 @@ export const CandlestickChart = forwardRef<CandlestickChartHandle, CandlestickCh
         const dayWidth = profile.endIndex - profile.startIndex + 1;
         const maxBarWidth = dayWidth * 0.50; // 50% of day width for VP bars
 
+        // Compute bin height for overlap smoothing
+        const binHeight = profile.bins.length > 1
+          ? Math.abs(profile.bins[1].priceHigh - profile.bins[0].priceHigh)
+          : tickSize * 2;
+        // Overlap each bin by 40% of bin height for smooth blending
+        const overlapExtend = binHeight * 0.4;
+
         for (const bin of profile.bins) {
-          if (bin.normalized < 0.005) continue;
+          if (bin.normalized < 0.003) continue;
           const barWidth = bin.normalized * maxBarWidth;
-          // Overlap check: bin overlaps Value Area if midpoint is within VA range
           const binMid = (bin.priceLow + bin.priceHigh) / 2;
           const isVA = binMid >= profile.val && binMid <= profile.vah;
-          const fillColor = isVA ? 'rgba(92,184,240,0.22)' : 'rgba(255,255,255,0.07)';
+          // Smooth opacity curve using squared normalized for smoother falloff
+          const smoothNorm = Math.pow(bin.normalized, 0.7);
+          const baseOpacity = isVA ? 0.18 : 0.06;
+          const opacity = baseOpacity * (0.3 + 0.7 * smoothNorm);
+          const fillColor = isVA
+            ? `rgba(92,184,240,${opacity.toFixed(3)})`
+            : `rgba(255,255,255,${opacity.toFixed(3)})`;
 
-          // Grow bars from the LEFT edge of the day (standard VP layout)
+          // Extend bins slightly to overlap neighbors for smooth blended look
           const box = new BoxAnnotation({
             x1: profile.startIndex,
             x2: profile.startIndex + barWidth,
-            y1: bin.priceLow,
-            y2: bin.priceHigh,
+            y1: bin.priceLow - overlapExtend,
+            y2: bin.priceHigh + overlapExtend,
             fill: fillColor,
             stroke: 'transparent',
             strokeThickness: 0,
+            cornerRadius: 2,
           });
           newAnnotations.push(box);
-          surface.annotations.add(box);
+          try { surface.annotations.add(box); } catch { /* surface mid-render */ }
         }
 
         // POC line — full day width, thick amber bar
@@ -1608,7 +1714,7 @@ export const CandlestickChart = forwardRef<CandlestickChartHandle, CandlestickCh
           strokeThickness: 1,
         });
         newAnnotations.push(pocBox);
-        surface.annotations.add(pocBox);
+        try { surface.annotations.add(pocBox); } catch { /* surface mid-render */ }
 
         // VAH boundary — thin ice blue line
         const vaLineHeight = tickSize * 0.8;
@@ -1622,7 +1728,7 @@ export const CandlestickChart = forwardRef<CandlestickChartHandle, CandlestickCh
           strokeThickness: 1,
         });
         newAnnotations.push(vahBox);
-        surface.annotations.add(vahBox);
+        try { surface.annotations.add(vahBox); } catch { /* surface mid-render */ }
 
         // VAL boundary — thin ice blue line
         const valBox = new BoxAnnotation({
@@ -1635,7 +1741,7 @@ export const CandlestickChart = forwardRef<CandlestickChartHandle, CandlestickCh
           strokeThickness: 1,
         });
         newAnnotations.push(valBox);
-        surface.annotations.add(valBox);
+        try { surface.annotations.add(valBox); } catch { /* surface mid-render */ }
       }
 
       vpAnnotationsRef.current = newAnnotations;
@@ -1678,7 +1784,7 @@ export const CandlestickChart = forwardRef<CandlestickChartHandle, CandlestickCh
           strokeThickness: band.stroke ? 0.5 : 0,
         });
         newAnnotations.push(box);
-        surface.annotations.add(box);
+        try { surface.annotations.add(box); } catch { /* surface mid-render */ }
       }
 
       sessionBandsAnnotationsRef.current = newAnnotations;
@@ -1728,7 +1834,7 @@ export const CandlestickChart = forwardRef<CandlestickChartHandle, CandlestickCh
         }, tickSize, pricePrecision);
         wipAnnotationsRef.current = anns;
         for (const a of anns) {
-          surface.annotations.add(a);
+          try { surface.annotations.add(a); } catch { /* surface mid-render */ }
         }
       }
     } finally {
@@ -1798,7 +1904,7 @@ export const CandlestickChart = forwardRef<CandlestickChartHandle, CandlestickCh
       for (const [key, seriesList] of indicatorSeriesRef.current) {
         if (!activeKeys.has(key)) {
           for (const series of seriesList) {
-            surface.renderableSeries.remove(series);
+            try { surface.renderableSeries.remove(series); } catch { /* disposal race */ }
           }
           indicatorSeriesRef.current.delete(key);
         }
@@ -1815,7 +1921,7 @@ export const CandlestickChart = forwardRef<CandlestickChartHandle, CandlestickCh
             const existing = indicatorSeriesRef.current.get(key);
             if (existing) {
               for (const series of existing) {
-                surface.renderableSeries.remove(series);
+                try { surface.renderableSeries.remove(series); } catch { /* disposal race */ }
               }
               indicatorSeriesRef.current.delete(key);
             }
@@ -1842,7 +1948,7 @@ export const CandlestickChart = forwardRef<CandlestickChartHandle, CandlestickCh
                   labelPlacement: ELabelPlacement.TopRight,
                   labelValue: seriesName.replaceAll('_', ' '),
                 });
-                surface.annotations.add(line);
+                try { surface.annotations.add(line); } catch { /* surface mid-render */ }
               }
             }
             continue;
@@ -1914,7 +2020,7 @@ export const CandlestickChart = forwardRef<CandlestickChartHandle, CandlestickCh
                 strokeDashArray: LINE_DASH_ARRAYS[style.lineStyle],
               });
 
-              surface.renderableSeries.add(lineSeries);
+              try { surface.renderableSeries.add(lineSeries); } catch { /* disposal race */ }
               newSeriesList.push(lineSeries);
             }
           }
@@ -1922,7 +2028,7 @@ export const CandlestickChart = forwardRef<CandlestickChartHandle, CandlestickCh
           // Remove any extra series that are no longer needed
           if (existingSeries) {
             for (let i = newSeriesList.length; i < existingSeries.length; i++) {
-              surface.renderableSeries.remove(existingSeries[i]);
+              try { surface.renderableSeries.remove(existingSeries[i]); } catch { /* disposal race */ }
             }
           }
 
@@ -1939,9 +2045,10 @@ export const CandlestickChart = forwardRef<CandlestickChartHandle, CandlestickCh
   if (error || chartError) {
     return (
       <div className="relative h-full w-full flex items-center justify-center bg-[var(--color-bg-primary)]">
-        <div className="max-w-md rounded-xl border border-yellow-500/40 bg-yellow-900/20 p-6 text-center">
+        <div className="max-w-md rounded-xl p-6 text-center" style={{ border: '1px solid rgba(247,148,29,0.4)', background: 'rgba(247,148,29,0.08)' }}>
           <svg
-            className="mx-auto mb-4 h-12 w-12 text-yellow-400"
+            className="mx-auto mb-4 h-12 w-12"
+            style={{ color: 'var(--color-warning)' }}
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -1953,7 +2060,7 @@ export const CandlestickChart = forwardRef<CandlestickChartHandle, CandlestickCh
               d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
             />
           </svg>
-          <p className="text-sm text-yellow-300">{error || chartError}</p>
+          <p className="text-sm" style={{ color: 'var(--color-warning)' }}>{error || chartError}</p>
         </div>
       </div>
     );

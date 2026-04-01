@@ -29,7 +29,7 @@ interface ArctisResult {
   type?: 'status' | 'signal' | 'no_signal'
 }
 
-/** Structured response from the Travis MCP BFF. */
+/** Structured response from the Arctis AI BFF. */
 interface TravisStructuredResponse {
   kind: 'video' | 'explanation' | 'checklist' | 'playbook' | 'review'
   title: string
@@ -69,7 +69,7 @@ function SourceBadge({ source }: { source: TravisStructuredResponse['source'] })
     cache: {
       label: 'Cache',
       icon: <HardDrive size={9} />,
-      color: '#A78BFA',
+      color: 'var(--color-accent-hover)',
     },
     local_fallback: {
       label: 'Local',
@@ -95,7 +95,7 @@ function ConfidenceBar({ value }: { value: number }) {
   const pct = Math.round(value * 100)
   const color =
     pct >= 70 ? 'var(--color-profit)' :
-    pct >= 40 ? '#F0A500' :
+    pct >= 40 ? 'var(--color-warning)' :
     'var(--color-text-muted)'
 
   return (
@@ -116,15 +116,15 @@ function ConfidenceBar({ value }: { value: number }) {
   )
 }
 
-// ─── Travis Response Card ────────────────────────────────────────────────────
+// ─── Arctis AI Response Card ─────────────────────────────────────────────────
 
 function TravisCard({ response }: { response: TravisStructuredResponse }) {
   const kindColor: Record<string, string> = {
     checklist: 'var(--color-accent)',
     review: 'var(--color-profit)',
     explanation: 'var(--color-accent)',
-    video: '#F0A500',
-    playbook: '#A78BFA',
+    video: 'var(--color-warning)',
+    playbook: 'var(--color-accent-hover)',
   }
   const accent = kindColor[response.kind] ?? 'var(--color-accent)'
 
@@ -182,7 +182,7 @@ function TravisCard({ response }: { response: TravisStructuredResponse }) {
 function LegacyCard({ result }: { result: ArctisResult }) {
   const actionColor =
     result.action?.startsWith('EINSTEIGEN') ? 'var(--color-profit)' :
-    result.action?.startsWith('BEREIT') ? '#F0A500' :
+    result.action?.startsWith('BEREIT') ? 'var(--color-warning)' :
     result.action?.startsWith('VERPASST') ? 'var(--color-loss)' :
     'var(--color-text-muted)'
 
@@ -190,7 +190,7 @@ function LegacyCard({ result }: { result: ArctisResult }) {
     <div
       className="rounded-md px-2 py-1.5"
       style={{
-        background: result.type === 'signal' ? 'rgba(34,197,94,0.04)' : 'rgba(255,255,255,0.02)',
+        background: result.type === 'signal' ? 'var(--color-profit-muted)' : 'rgba(255,255,255,0.02)',
         borderLeft: `2px solid ${result.type === 'signal' ? 'var(--color-profit)' : result.type === 'no_signal' ? 'var(--color-text-muted)' : 'var(--color-accent)'}`,
       }}
     >
@@ -457,8 +457,9 @@ export function ArctisPanel({
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') void handleSend(input) }}
-          placeholder="Frag Travis..."
-          className="flex-1 bg-transparent border-none outline-none text-[11px]"
+          placeholder="Frag Arctis..."
+          className="flex-1 bg-transparent border-none outline-none focus-visible:ring-2 focus-visible:ring-[#5CB8F0]/50 rounded text-[11px]"
+          aria-label="Ask Arctis"
           style={{
             color: 'var(--color-text-primary)',
             fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
@@ -468,7 +469,8 @@ export function ArctisPanel({
         <button
           onClick={() => void handleSend(input)}
           disabled={isLoading || !input.trim()}
-          className="flex items-center justify-center w-6 h-6 rounded cursor-pointer transition-colors"
+          aria-label="Send message"
+          className="flex items-center justify-center w-7 h-7 rounded cursor-pointer transition-colors outline-none focus-visible:ring-2 focus-visible:ring-[#5CB8F0]/50"
           style={{
             background: input.trim() && !isLoading ? 'rgba(92,184,240,0.15)' : 'transparent',
             color: input.trim() && !isLoading ? 'var(--color-accent)' : 'var(--color-text-inactive)',

@@ -32,8 +32,8 @@ const tiers: PricingTier[] = [
     id: 'pro',
     icon: Sparkles,
     name: 'Pro',
-    price: { monthly: '$49/mo', annual: '$39/mo' },
-    priceNote: { annual: 'billed annually' },
+    price: { monthly: '49€/Monat', annual: '39€/Monat' },
+    priceNote: { annual: '468€/Jahr (spare 120€)' },
     features: [
       'ES & NQ — Live-Daten via Rithmic',
       'Arctis AI Marktanalyse mit Entry/Stop/Target',
@@ -42,7 +42,7 @@ const tiers: PricingTier[] = [
       'Automatische Setup-Erkennung (ORB, IB, POC, VA)',
       'Volumenprofil tagesbasiert (POC, VAH, VAL)',
       'Replay mit Proberun-Modus',
-      'Desktop App (macOS)',
+      'Web App (Browser-basiert)',
       'Priority Support',
     ],
     cta: 'Jetzt starten',
@@ -82,7 +82,7 @@ function BillingToggle({ isAnnual, onToggle }: BillingToggleProps) {
           !isAnnual ? 'text-frost-white' : 'text-frost-muted'
         )}
       >
-        Monthly
+        Monatlich
       </span>
 
       <button
@@ -101,7 +101,7 @@ function BillingToggle({ isAnnual, onToggle }: BillingToggleProps) {
           aria-hidden="true"
         />
         <span className="sr-only">
-          {isAnnual ? 'Switch to monthly billing' : 'Switch to annual billing'}
+          {isAnnual ? 'Zu monatlicher Abrechnung wechseln' : 'Zu jaehrlicher Abrechnung wechseln'}
         </span>
       </button>
 
@@ -112,10 +112,10 @@ function BillingToggle({ isAnnual, onToggle }: BillingToggleProps) {
             isAnnual ? 'text-frost-white' : 'text-frost-muted'
           )}
         >
-          Annual
+          Jaehrlich
         </span>
         <span className="rounded-full bg-profit/20 px-2 py-0.5 text-xs font-medium text-profit">
-          Save 20%
+          20% sparen
         </span>
       </div>
     </div>
@@ -163,12 +163,17 @@ function PriceDisplay({ tier, isAnnual }: PriceDisplayProps) {
         </AnimatePresence>
       </div>
 
-      <div className="mt-1.5 flex items-center gap-2 min-h-[20px]">
+      <div className="mt-1.5 flex flex-col gap-1 min-h-[20px]">
         {showStrikethrough && (
-          <span className="text-sm text-frost-muted line-through">$49</span>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-frost-muted line-through">49€/Monat</span>
+            <span className="rounded-full bg-profit/20 px-2 py-0.5 text-xs font-medium text-profit">
+              spare 20%
+            </span>
+          </div>
         )}
         {showStrikethrough && annualNote && (
-          <span className="text-xs text-frost-muted">{annualNote}</span>
+          <span className="text-sm font-semibold text-ice">{annualNote}</span>
         )}
         {staticNote && (
           <span className="text-sm text-frost-muted">{staticNote}</span>
@@ -260,7 +265,7 @@ function ProTierCard({ tier, isAnnual }: ProTierCardProps) {
       {/* Most Popular badge */}
       <div className="absolute -top-4 left-1/2 -translate-x-1/2">
         <span className="rounded-full bg-ice px-4 py-1.5 font-display text-xs font-semibold text-arctic-base">
-          Most Popular
+          Fuer aktive Trader
         </span>
       </div>
 
@@ -294,12 +299,13 @@ function ProTierCard({ tier, isAnnual }: ProTierCardProps) {
           ))}
         </ul>
 
-        <motion.button
+        <motion.a
+          href="http://localhost:5174/checkout"
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           transition={{ type: 'spring', stiffness: 400, damping: 25 }}
           className={cn(
-            'mt-8 w-full rounded-xl bg-ice px-6 py-3',
+            'mt-8 w-full block text-center rounded-xl bg-ice px-6 py-3',
             'font-display text-sm font-semibold text-arctic-base',
             'transition-colors duration-200',
             'hover:bg-ice-light',
@@ -309,7 +315,7 @@ function ProTierCard({ tier, isAnnual }: ProTierCardProps) {
           )}
         >
           {tier.cta}
-        </motion.button>
+        </motion.a>
       </div>
     </motion.div>
   )
@@ -349,9 +355,10 @@ function EnterpriseTierCard({ tier, isAnnual }: EnterpriseTierCardProps) {
         ))}
       </ul>
 
-      <button
+      <a
+        href="mailto:support@arctis.app"
         className={cn(
-          'mt-8 w-full rounded-xl border border-frost-border px-6 py-3',
+          'mt-8 w-full block text-center rounded-xl border border-frost-border px-6 py-3',
           'font-display text-sm font-medium text-frost-white',
           'transition-colors duration-200',
           'hover:border-frost-secondary hover:bg-arctic-raised',
@@ -359,7 +366,7 @@ function EnterpriseTierCard({ tier, isAnnual }: EnterpriseTierCardProps) {
         )}
       >
         {tier.cta}
-      </button>
+      </a>
     </motion.div>
   )
 }
@@ -367,7 +374,7 @@ function EnterpriseTierCard({ tier, isAnnual }: EnterpriseTierCardProps) {
 // ─── Pricing Section ──────────────────────────────────────────────────────────
 
 export function Pricing() {
-  const [isAnnual, setIsAnnual] = useState(false)
+  const [isAnnual, setIsAnnual] = useState(true)
 
   return (
     <section id="pricing" className="section-padding relative">
@@ -400,11 +407,11 @@ export function Pricing() {
             Pricing
           </p>
           <h2 className="font-display text-3xl font-bold text-frost-white sm:text-4xl">
-            Transparent pricing.{' '}
-            <span className="text-gradient-frost">No surprises.</span>
+            Transparente Preise.{' '}
+            <span className="text-gradient-frost">Keine Ueberraschungen.</span>
           </h2>
           <p className="mx-auto mt-4 max-w-xl text-lg text-frost-secondary">
-            Choose the plan that matches your trading operation. Upgrade or downgrade at any time.
+            Waehle den Plan der zu deinem Trading passt. Jederzeit upgraden oder kuendigen.
           </p>
         </motion.div>
 
@@ -461,7 +468,7 @@ export function Pricing() {
           whileInView="visible"
           viewport={viewportOnce}
         >
-          All plans include automatic updates. No trading data is stored on external servers.
+          Alle Plaene inkl. automatischer Updates. Keine Trading-Daten auf externen Servern.
         </motion.p>
       </div>
     </section>

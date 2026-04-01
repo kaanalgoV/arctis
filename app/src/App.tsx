@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, Navigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useMarketData } from '@/hooks/useMarketData'
 import { useAnalysis } from '@/hooks/useAnalysis'
@@ -42,9 +42,11 @@ type IChartApi = unknown
 import { DashboardPage } from '@/pages/DashboardPage'
 import { ChartPage } from '@/pages/ChartPage'
 import { PatternsPage } from '@/pages/PatternsPage'
-import { LandingPage } from '@/pages/LandingPage'
 import { ChangelogPage } from '@/pages/ChangelogPage'
+import { AuthPage } from '@/pages/AuthPage'
+import { CheckoutPage } from '@/pages/CheckoutPage'
 import { useSettingsStore } from '@/store/settings'
+import { useAuthStore } from '@/store/auth'
 import { useLiveStore } from '@/live'
 
 const SESSION_DISPLAY: Record<string, string> = {
@@ -210,6 +212,12 @@ function buildFeedItems(
 }
 
 function AppShell() {
+  // ── Auth guard — redirect to /login if not authenticated ────────────────
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />
+  }
+
   // ── Zustand store ──────────────────────────────────────────────────────────
   const {
     market,
@@ -265,9 +273,8 @@ function AppShell() {
   const [lastUpdate, setLastUpdate] = useState<string>('--:--:--')
 
   // ── Chart bars via hook (REST + WebSocket auto-reconnect) ──────────────────
-  const { bars, isLoading, error } = useMarketData({ pauseWs: mode === 'replay' })
+  const { bars, isLoading, error, livePrice } = useMarketData({ pauseWs: mode === 'replay' })
   const { wsStatus } = useMarketStore()
-  const livePrice = useLiveStore((s) => s.lastPrice)
   const liveConnected = useLiveStore((s) => s.isConnected)
 
   // Poll Rithmic connection status from engine /api/live/status (every 10s)
@@ -300,6 +307,7 @@ function AppShell() {
     bias: biasData,
     zones: zonesDataRaw,
     signals: signalsData,
+    error: analysisError,
   } = useAnalysis(mode === 'replay' ? 1500 : 5000)
 
   // ── Setups via hook ────────────────────────────────────────────────────────
@@ -332,10 +340,15 @@ function AppShell() {
   const replay = useReplay(market, timeframe)
 
   // ── Replay bars polling — fetches sim-visible bars during active replay ────
+  // Keep polling while isPlaying (even when paused) so the chart stays populated.
+  // Only clear bars when we leave replay mode entirely or stop the sim.
   useEffect(() => {
     if (mode !== 'replay' || !replay.isPlaying) {
-      replayBarCountRef.current = 0
-      setReplayBarsData([])
+      // Only clear bars if we're not in replay mode at all
+      if (mode !== 'replay') {
+        replayBarCountRef.current = 0
+        setReplayBarsData([])
+      }
       return
     }
 
@@ -358,10 +371,12 @@ function AppShell() {
       }
     }
 
+    // Poll faster when actively advancing, slower when paused
+    const intervalMs = replay.isPaused ? 2000 : 500
     void fetchReplayBars()
-    const interval = setInterval(() => void fetchReplayBars(), 1000)
+    const interval = setInterval(() => void fetchReplayBars(), intervalMs)
     return () => clearInterval(interval)
-  }, [mode, replay.isPlaying, market, timeframe])
+  }, [mode, replay.isPlaying, replay.isPaused, market, timeframe, engineUrl])
 
   // ── Last bar close ─────────────────────────────────────────────────────────
   const lastClose = bars.at(-1)?.close
@@ -393,7 +408,18 @@ function AppShell() {
       }
       return next
     })
+    // Keep settings store in sync so persisted overlays match local Set
+    useSettingsStore.getState().toggleOverlay(key)
   }, [])
+
+  // Sync activeOverlays from settings store when overlays change externally
+  const storeOverlays = useSettingsStore((s) => s.overlays)
+  useEffect(() => {
+    const keys = (Object.entries(storeOverlays) as [OverlayKey, boolean][])
+      .filter(([, v]) => v)
+      .map(([k]) => k)
+    setActiveOverlays(new Set<OverlayKey>(keys))
+  }, [storeOverlays])
 
   // ── Fetch /api/markets once on mount → populate store ────────────────────
   useEffect(() => {
@@ -450,6 +476,8 @@ function AppShell() {
           await replay.stop()
           setMode('live')
           storeSetDataSource('db')
+          replayBarCountRef.current = 0
+          setReplayBarsData([])
         }
         setActivePage(id)
       }
@@ -555,6 +583,8 @@ function AppShell() {
       if (next === 'live') {
         await replay.stop()
         storeSetDataSource('db')
+        replayBarCountRef.current = 0
+        setReplayBarsData([])
       } else if (next === 'replay') {
         storeSetDataSource('replay')
       }
@@ -566,7 +596,7 @@ function AppShell() {
   const replayCurrentBar = replay.simStatus?.visible_bars ?? 0
   const replayTotalBars = replay.simStatus?.total_bars ?? 0
   const activeBarsForReplay =
-    mode === 'replay' && replay.isPlaying && replayBarsData.length > 0
+    mode === 'replay' && replayBarsData.length > 0
       ? replayBarsData
       : bars
   const replayCurrentTime =
@@ -578,9 +608,9 @@ function AppShell() {
       ? formatBarTimeET(activeBarsForReplay[activeBarsForReplay.length - 1]?.timestamp ?? 0)
       : '--:--'
 
-  // chartBars: sim-filtered during replay, full dataset in live mode
+  // chartBars: sim-filtered during replay (including when paused), full dataset in live mode
   const chartBars =
-    mode === 'replay' && replay.isPlaying && replayBarsData.length > 0
+    mode === 'replay' && replayBarsData.length > 0
       ? replayBarsData
       : bars
 
@@ -866,6 +896,7 @@ function AppShell() {
                 }
               : null
           }
+          errorMessage={error || analysisError || null}
         />
       </div>
 
@@ -893,7 +924,8 @@ function AppShell() {
 export default function App() {
   return (
     <Routes>
-      <Route path="/landing" element={<LandingPage />} />
+      <Route path="/login" element={<AuthPage />} />
+      <Route path="/checkout" element={<CheckoutPage />} />
       <Route path="/changelog" element={<ChangelogPage />} />
       <Route path="/*" element={<AppShell />} />
     </Routes>

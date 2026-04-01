@@ -1,0 +1,5 @@
+{"ts": 1774645777.804785, "action": "drawing_created", "user_id": "default", "details": {"id": "7b096ee6-3943-4ffe-8582-ec39fdea0c80", "type": "rectangle", "symbol": "ES", "timeframe": "5min"}}
+{"ts": 1774726317.8252382, "action": "drawing_created", "user_id": "default", "details": {"id": "05016829-b2e0-4024-b247-cf69f3ff69f6", "type": "trendline", "symbol": "ESM6", "timeframe": "5min"}}
+{"ts": 1774813361.3143544, "action": "drawing_created", "user_id": "default", "details": {"id": "5d849d03-844c-41a7-ab70-75eee1435368", "type": "hline", "symbol": "ESM6", "timeframe": "5min"}}
+{"ts": 1774814008.1045735, "action": "drawing_deleted", "user_id": "default", "details": {"id": "05016829-b2e0-4024-b247-cf69f3ff69f6", "symbol": "ESM6", "timeframe": "5min"}}
+{"ts": 1774814010.0365357, "action": "drawing_deleted", "user_id": "default", "details": {"id": "5d849d03-844c-41a7-ab70-75eee1435368", "symbol": "ESM6", "timeframe": "5min"}}

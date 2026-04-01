@@ -1,7 +1,7 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { Download, ArrowRight, BarChart2 } from 'lucide-react'
+import { LogIn, ArrowRight, BarChart2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { blurReveal, fadeInUp, scaleIn, viewportOnce } from '@/lib/animations'
 
@@ -112,7 +112,8 @@ export function FinalCTA() {
           transition={{ delay: 0.2 }}
           className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4"
         >
-          <motion.button
+          <motion.a
+            href="http://localhost:5174/login"
             variants={scaleIn}
             whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.98 }}
@@ -135,29 +136,15 @@ export function FinalCTA() {
               aria-hidden="true"
               className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/10 to-transparent transition-transform duration-700 group-hover:translate-x-full"
             />
-            <Download size={18} strokeWidth={2.2} />
+            <LogIn size={18} strokeWidth={2.2} />
             Jetzt starten
             <ArrowRight
               size={16}
               strokeWidth={2.2}
               className="transition-transform duration-200 group-hover:translate-x-0.5"
             />
-          </motion.button>
+          </motion.a>
 
-          <motion.button
-            variants={scaleIn}
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            transition={{ duration: 0.2 }}
-            className={cn(
-              'font-display group flex cursor-pointer items-center gap-2.5',
-              'rounded-xl border border-frost-border px-10 py-4 text-lg font-medium text-frost-white',
-              'transition-all duration-200',
-              'hover:border-[rgba(92,184,240,0.3)] hover:bg-[rgba(92,184,240,0.08)]',
-            )}
-          >
-            Live Demo
-          </motion.button>
         </motion.div>
 
         {/* Trust line */}
@@ -169,7 +156,7 @@ export function FinalCTA() {
           transition={{ delay: 0.3 }}
           className="font-sans mt-6 text-sm text-frost-muted"
         >
-          Kein Abo zum Testen&nbsp;&middot;&nbsp;Deine Daten bleiben lokal&nbsp;&middot;&nbsp;macOS Desktop App
+          Kostenlos testen&nbsp;&middot;&nbsp;Deine Daten bleiben lokal&nbsp;&middot;&nbsp;Web App
         </motion.p>
       </div>
     </section>

@@ -643,7 +643,7 @@ export function DashboardPage({ onNavigateToChart, onOpenInWorkspace }: Dashboar
                 lineHeight: 1.1,
               }}
             >
-              ALGOVIEW RADAR
+              ARCTIS RADAR
             </span>
             <span
               className="font-mono uppercase"

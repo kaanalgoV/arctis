@@ -112,9 +112,10 @@ export function DrawingToolbar({
                   : 'rgba(255, 255, 255, 0.03)',
                 color: isActive ? 'var(--color-accent)' : CHART_TOKENS.axis.label,
                 cursor: 'pointer',
-                transition: 'border-color 0.12s, background 0.12s, color 0.12s',
+                transition: 'border-color 0.12s, background 0.12s, color 0.12s, box-shadow 0.12s',
                 padding: 0,
                 flexShrink: 0,
+                outline: 'none',
               }}
               onMouseEnter={(e) => {
                 if (!isActive) {
@@ -129,6 +130,12 @@ export function DrawingToolbar({
                   btn.style.background = 'rgba(255, 255, 255, 0.03)'
                   btn.style.color = CHART_TOKENS.axis.label
                 }
+              }}
+              onFocus={(e) => {
+                e.currentTarget.style.boxShadow = '0 0 0 2px rgba(92, 184, 240, 0.5)'
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.boxShadow = 'none'
               }}
             >
               <Icon size={13} strokeWidth={1.8} />
@@ -171,10 +178,11 @@ export function DrawingToolbar({
             background: 'rgba(239, 65, 54, 0.06)',
             color: 'rgba(239, 65, 54, 0.55)',
             cursor: 'pointer',
-            transition: 'border-color 0.12s, background 0.12s, color 0.12s',
+            transition: 'border-color 0.12s, background 0.12s, color 0.12s, box-shadow 0.12s',
             padding: 0,
             flexShrink: 0,
             pointerEvents: 'all',
+            outline: 'none',
           }}
           onMouseEnter={(e) => {
             const btn = e.currentTarget as HTMLButtonElement
@@ -187,6 +195,12 @@ export function DrawingToolbar({
             btn.style.background = 'rgba(239, 65, 54, 0.06)'
             btn.style.color = 'rgba(239, 65, 54, 0.55)'
             btn.style.borderColor = 'transparent'
+          }}
+          onFocus={(e) => {
+            e.currentTarget.style.boxShadow = '0 0 0 2px rgba(92, 184, 240, 0.5)'
+          }}
+          onBlur={(e) => {
+            e.currentTarget.style.boxShadow = 'none'
           }}
         >
           <Trash2 size={12} strokeWidth={1.8} />

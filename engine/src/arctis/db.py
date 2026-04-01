@@ -23,7 +23,7 @@ def get_engine():
     """Return a lazily-created SQLAlchemy engine with connection pooling."""
     global _engine
     if _engine is None:
-        _engine = create_engine(DB_URL, pool_size=5, max_overflow=10)
+        _engine = create_engine(DB_URL, pool_size=15, max_overflow=20)
     return _engine
 
 

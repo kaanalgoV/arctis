@@ -101,7 +101,7 @@ async def scan_markets(timeframe: str = Query(default="15min")):
             # Signals
             try:
                 from arctis.analysis.signals import detect_signals
-                sigs = detect_signals(bars)
+                sigs = detect_signals(bars, market_root=root.value[:2])
                 active_signals = len(sigs)
                 best_signal = sigs[-1] if sigs else None
             except Exception:

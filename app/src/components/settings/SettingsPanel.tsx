@@ -57,7 +57,7 @@ interface FieldProps {
 
 function Field({ label, children }: FieldProps) {
   return (
-    <div className="flex flex-col gap-1">
+    <label className="flex flex-col gap-1">
       <span
         style={{ fontSize: 11, color: 'var(--color-text-muted)', fontFamily: 'var(--font-mono)' }}
         className="uppercase tracking-wider leading-none"
@@ -65,7 +65,7 @@ function Field({ label, children }: FieldProps) {
         {label}
       </span>
       {children}
-    </div>
+    </label>
   )
 }
 
@@ -104,7 +104,7 @@ function NumericInput({ value, onChange, step = 1, min = 0, prefix, suffix }: Nu
           'bg-[var(--color-surface-raised)] border border-[var(--color-border-subtle)]',
           'text-[var(--color-text-primary)]',
           'outline-none transition-colors',
-          'focus:border-[var(--color-accent)] focus:ring-1 focus:ring-[var(--color-accent)]/30',
+          'focus-visible:border-[var(--color-accent)] focus-visible:ring-2 focus-visible:ring-[#5CB8F0]/50',
           'hover:border-[var(--color-border)]',
           prefix ? 'pl-5' : 'pl-2.5',
           suffix ? 'pr-5' : 'pr-2.5',
@@ -139,7 +139,7 @@ function ToggleSwitch({ checked, onChange }: ToggleSwitchProps) {
       aria-checked={checked}
       onClick={() => onChange(!checked)}
       className={cn(
-        'relative inline-flex items-center w-9 h-5 rounded-full shrink-0',
+        'relative inline-flex items-center w-9 h-5 rounded-full shrink-0 cursor-pointer',
         'transition-colors duration-150 outline-none',
         'focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]/50',
         checked
@@ -264,6 +264,7 @@ function RiskTab({ onClose, externalConfig, onConfigSaved }: RiskTabProps) {
 
       {error && (
         <p
+          role="alert"
           style={{
             fontSize: 11,
             color: 'var(--color-loss)',
@@ -366,6 +367,42 @@ function ConnectionTab({ status }: { status: ConnectionStatus }) {
 
   return (
     <div className="flex flex-col gap-2 px-4 pb-4">
+      {/* ── Live Data Connection (Rithmic / Databento) — most important, shown first ── */}
+      <span
+        style={{
+          display: 'block',
+          fontSize: 11,
+          color: 'var(--color-text-muted)',
+          fontFamily: 'var(--font-mono)',
+          textTransform: 'uppercase',
+          letterSpacing: '0.06em',
+          marginBottom: 4,
+        }}
+      >
+        Live Data
+      </span>
+      <ConnectionPanel />
+
+      {/* ── Engine / DB status below ── */}
+      <div
+        className="pt-3 mt-1"
+        style={{ borderTop: '1px solid var(--color-border-subtle)' }}
+      >
+        <span
+          style={{
+            display: 'block',
+            fontSize: 11,
+            color: 'var(--color-text-muted)',
+            fontFamily: 'var(--font-mono)',
+            textTransform: 'uppercase',
+            letterSpacing: '0.06em',
+            marginBottom: 8,
+          }}
+        >
+          Engine
+        </span>
+      </div>
+
       {/* Live connection status */}
       <div
         className={cn(
@@ -440,7 +477,7 @@ function ConnectionTab({ status }: { status: ConnectionStatus }) {
             'bg-[var(--color-surface-raised)] border border-[var(--color-border-subtle)]',
             'text-[var(--color-text-primary)]',
             'outline-none transition-colors',
-            'focus:border-[var(--color-accent)] focus:ring-1 focus:ring-[var(--color-accent)]/30',
+            'focus-visible:border-[var(--color-accent)] focus-visible:ring-2 focus-visible:ring-[#5CB8F0]/50',
             'hover:border-[var(--color-border)]',
           )}
           style={{ fontSize: 12, fontFamily: 'var(--font-mono)' }}
@@ -485,27 +522,6 @@ function ConnectionTab({ status }: { status: ConnectionStatus }) {
         >
           {engineUrl.replace(/^https?:\/\/[^:]+/, '')}
         </span>
-      </div>
-
-      {/* ── Data Connection ── */}
-      <div
-        className="pt-2"
-        style={{ borderTop: '1px solid var(--color-border-subtle)', marginTop: 4 }}
-      >
-        <span
-          style={{
-            display: 'block',
-            fontSize: 11,
-            color: 'var(--color-text-muted)',
-            fontFamily: 'var(--font-mono)',
-            textTransform: 'uppercase',
-            letterSpacing: '0.06em',
-            marginBottom: 10,
-          }}
-        >
-          Data Connection
-        </span>
-        <ConnectionPanel />
       </div>
     </div>
   )
@@ -682,11 +698,11 @@ export function SettingsPanel({
               <button
                 onClick={onClose}
                 className={cn(
-                  'flex items-center justify-center w-8 h-8 rounded-[var(--radius-sm)]',
+                  'flex items-center justify-center w-8 h-8 rounded-[var(--radius-sm)] cursor-pointer',
                   'text-[var(--color-text-muted)]',
                   'hover:bg-white/[0.06] hover:text-[var(--color-text-secondary)]',
                   'transition-colors duration-150',
-                  'outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent)]',
+                  'outline-none focus-visible:ring-2 focus-visible:ring-[#5CB8F0]/50',
                 )}
                 aria-label="Close settings"
               >
@@ -707,8 +723,9 @@ export function SettingsPanel({
                   key={tab.key}
                   onClick={() => setActiveTab(tab.key)}
                   className={cn(
-                    'relative px-3 pb-2 transition-colors duration-150',
-                    'outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent)]',
+                    'relative px-3 pb-2 transition-colors duration-150 cursor-pointer',
+                    'outline-none focus-visible:ring-2 focus-visible:ring-[#5CB8F0]/50',
+                    'hover:text-[var(--color-text-secondary)]',
                   )}
                   style={{
                     fontSize: 12,

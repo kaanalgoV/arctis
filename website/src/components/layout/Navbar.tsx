@@ -18,8 +18,9 @@ interface NavLink {
 
 const NAV_LINKS: NavLink[] = [
   { label: 'Features', href: '#features' },
+  { label: 'Engine', href: '#engine' },
   { label: 'Pricing', href: '#pricing' },
-  { label: 'Blog', href: '/blog' },
+  { label: 'Changelog', href: '/changelog' },
 ]
 
 // ─── Ice Crystal SVG Logo ─────────────────────────────────
@@ -55,8 +56,16 @@ function IceCrystalIcon({ className }: { className?: string }) {
       <line x1="2" y1="14" x2="5.5" y2="17" stroke="#5CB8F0" strokeWidth="1" strokeLinecap="round" />
       <line x1="26" y1="14" x2="22.5" y2="11" stroke="#5CB8F0" strokeWidth="1" strokeLinecap="round" />
       <line x1="26" y1="14" x2="22.5" y2="17" stroke="#5CB8F0" strokeWidth="1" strokeLinecap="round" />
-      {/* Center glow dot */}
-      <circle cx="14" cy="14" r="1.5" fill="#5CB8F0" opacity="0.9" />
+      {/* Outer glow ring */}
+      <circle cx="14" cy="14" r="12" stroke="#5CB8F0" strokeWidth="0.4" fill="none" opacity="0.15" />
+      {/* Center glow dot — gentle pulse */}
+      <circle cx="14" cy="14" r="1.5" fill="#5CB8F0" opacity="0.9">
+        <animate attributeName="opacity" values="0.7;1;0.7" dur="3s" repeatCount="indefinite" />
+      </circle>
+      {/* Sparkle dots at endpoints */}
+      <circle cx="14" cy="2" r="0.5" fill="#5CB8F0" opacity="0.45" />
+      <circle cx="26" cy="14" r="0.5" fill="#5CB8F0" opacity="0.45" />
+      <circle cx="5.8" cy="22.2" r="0.5" fill="#5CB8F0" opacity="0.35" />
     </svg>
   )
 }
@@ -139,17 +148,18 @@ function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
             ))}
 
             <motion.div variants={mobileItemVariants} className="pt-4">
-              <button
+              <a
+                href="http://localhost:5174/login"
                 onClick={onClose}
                 className={cn(
-                  'w-full bg-ice text-arctic-base font-display font-semibold text-sm',
+                  'w-full block text-center bg-ice text-arctic-base font-display font-semibold text-sm',
                   'px-5 py-3 rounded-lg',
                   'transition-colors duration-200 ease-out',
                   'hover:bg-ice-light',
                 )}
               >
-                Download
-              </button>
+                Anmelden
+              </a>
             </motion.div>
           </nav>
         </motion.div>
@@ -248,7 +258,8 @@ export function Navbar() {
 
           {/* ── Desktop CTA ── */}
           <div className="hidden md:flex items-center">
-            <button
+            <a
+              href="http://localhost:5174/login"
               className={cn(
                 'bg-ice text-arctic-base font-display font-semibold text-sm',
                 'px-5 py-2.5 rounded-lg',
@@ -256,8 +267,8 @@ export function Navbar() {
                 'hover:bg-ice-light',
               )}
             >
-              Download
-            </button>
+              Anmelden
+            </a>
           </div>
 
           {/* ── Mobile Hamburger ── */}

@@ -4,7 +4,7 @@
 /* ═══════════════════════════════════════════
    ARCTIS Design Tokens
    Swiss Precision + Dark Cinematic Aesthetic
-   Sub-brand of AlgoView — Ice Blue Accent
+   Arctic Frost Theme — Ice Blue Accent
    ═══════════════════════════════════════════ */
 
 @theme {
@@ -31,6 +31,7 @@
   --color-surface-secondary: #10151D;
   --color-surface-raised: #161C26;
   --color-surface-elevated: #1D242F;
+  --color-surface-overlay: #121820;
 
   /* ── Text Hierarchy (4 Stufen) ── */
   --color-text-primary: #F0F6FC;
@@ -226,4 +227,14 @@ span[class*="watermark"] {
   margin-right: auto;
   padding-left: 1.5rem;
   padding-right: 1.5rem;
+}
+
+/* ── Accessibility: respect reduced-motion preference ── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

@@ -186,6 +186,9 @@ body {
   border-radius: inherit;
 }
 
+/* Grain texture removed — was causing white overlay on some browsers.
+   The per-section .noise-overlay::before provides sufficient texture. */
+
 /* ═══════════════════════════════════════════════════════════════
    Keyframe Animations
    ═══════════════════════════════════════════════════════════════ */

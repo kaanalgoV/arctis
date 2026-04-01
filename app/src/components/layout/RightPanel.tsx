@@ -85,7 +85,7 @@ export function RightPanelSection({
       <button
         type="button"
         onClick={toggle}
-        className="w-full flex items-center justify-between px-3 cursor-pointer select-none group"
+        className="w-full flex items-center justify-between px-3 cursor-pointer select-none group outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent)]"
         style={{
           height: 36,
           background: 'transparent',
@@ -99,6 +99,7 @@ export function RightPanelSection({
           ;(e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent'
         }}
         aria-expanded={!collapsed}
+        aria-label={`${collapsed ? 'Expand' : 'Collapse'} ${title}`}
       >
         <div className="flex items-center gap-2">
           <motion.div
@@ -118,7 +119,7 @@ export function RightPanelSection({
             />
           </motion.div>
           <span
-            className="font-sans text-[12px] font-semibold tracking-[0.04em] uppercase"
+            className="font-mono text-[11px] font-semibold tracking-[0.06em] uppercase"
             style={{
               color: collapsed
                 ? 'var(--color-text-muted)'
@@ -154,7 +155,7 @@ export function RightPanelSection({
             transition={{ type: 'spring', stiffness: 400, damping: 30, mass: 0.8 }}
             style={{ overflow: 'hidden' }}
           >
-            <div className="px-3 py-2">
+            <div className="px-3 py-3">
               {children}
             </div>
           </motion.div>
@@ -225,7 +226,8 @@ export function RightPanel({ children, className, onClose }: RightPanelProps) {
             type="button"
             onClick={handleToggleAll}
             title={allCollapsed ? 'Alle Sektionen aufklappen' : 'Alle Sektionen einklappen'}
-            className="flex items-center justify-center w-7 h-7 rounded-[var(--radius-sm)] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-raised)] hover:text-[var(--color-text-secondary)] transition-colors duration-100"
+            aria-label={allCollapsed ? 'Expand all sections' : 'Collapse all sections'}
+            className="flex items-center justify-center w-8 h-8 rounded-[var(--radius-sm)] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-raised)] hover:text-[var(--color-text-secondary)] transition-colors duration-100 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent)]"
           >
             <ChevronsUpDown size={13} strokeWidth={1.75} />
           </button>
@@ -234,7 +236,8 @@ export function RightPanel({ children, className, onClose }: RightPanelProps) {
               type="button"
               onClick={onClose}
               title="Panel schliessen"
-              className="flex items-center justify-center w-7 h-7 rounded-[var(--radius-sm)] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-raised)] hover:text-[var(--color-text-secondary)] transition-colors duration-100"
+              aria-label="Close panel"
+              className="flex items-center justify-center w-8 h-8 rounded-[var(--radius-sm)] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-raised)] hover:text-[var(--color-text-secondary)] transition-colors duration-100 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent)]"
             >
               <PanelRightClose size={13} strokeWidth={1.75} />
             </button>

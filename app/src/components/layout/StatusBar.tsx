@@ -30,6 +30,8 @@ interface StatusBarProps {
   replay?: ReplayInfo | null
   liveFeed?: boolean
   liveProvider?: 'rithmic' | 'databento' | null
+  /** Error message to show subtly — auto-recoverable, not blocking */
+  errorMessage?: string | null
 }
 
 export function StatusBar({
@@ -41,6 +43,7 @@ export function StatusBar({
   replay,
   liveFeed = false,
   liveProvider = null,
+  errorMessage = null,
 }: StatusBarProps) {
   const { wsStatus, symbol, lastBarTs, dataSource } = useMarketStore()
 
@@ -196,11 +199,11 @@ export function StatusBar({
               <span className="flex items-center gap-1">
                 <span
                   className="w-1.5 h-1.5 rounded-full shrink-0"
-                  style={{ backgroundColor: '#F0A500' }}
+                  style={{ backgroundColor: 'var(--color-warning)' }}
                 />
                 <span
                   className="font-mono text-[var(--text-2xs,10px)] font-semibold leading-none tracking-wide"
-                  style={{ color: '#F0A500' }}
+                  style={{ color: 'var(--color-warning)' }}
                 >
                   DB
                 </span>
@@ -210,13 +213,26 @@ export function StatusBar({
         )}
       </div>
 
-      {/* Center: Bar count + last bar timestamp */}
+      {/* Center: Bar count + last bar timestamp + error */}
       <div className="flex-1 flex items-center justify-center min-w-0 gap-2">
         <span className="leading-none truncate">
           {barsLoaded} bars loaded
           <span className="text-[var(--color-border)] mx-1.5">|</span>
           Last bar: {lastBarDisplay}
         </span>
+        {errorMessage && (
+          <>
+            <span className="text-[var(--color-border)] mx-0.5 leading-none">|</span>
+            <span
+              role="alert"
+              className="leading-none truncate max-w-[200px]"
+              style={{ color: 'var(--color-loss)', fontSize: 10 }}
+              title={errorMessage}
+            >
+              {errorMessage}
+            </span>
+          </>
+        )}
       </div>
 
       {/* Right: Version */}

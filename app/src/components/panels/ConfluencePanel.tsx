@@ -30,7 +30,7 @@ interface ConfluencePanelProps {
 function gaugeColor(score: number, max: number): string {
   const ratio = max > 0 ? score / max : 0
   if (ratio >= 0.7) return 'var(--color-profit)'
-  if (ratio >= 0.4) return '#F0A500'
+  if (ratio >= 0.4) return 'var(--color-warning)'
   return 'var(--color-loss)'
 }
 
@@ -304,7 +304,7 @@ export function ConfluencePanel({ data, loading, error }: ConfluencePanelProps) 
   // Error state
   if (error && data == null) {
     return (
-      <div className="flex items-center justify-center py-3">
+      <div role="alert" className="flex items-center justify-center py-3">
         <span
           style={{
             fontSize: 10,

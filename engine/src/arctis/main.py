@@ -33,6 +33,7 @@ class Simulation:
 
     def __init__(self):
         self.active = False
+        self.paused = False
         self.speed = 10  # bars per second
         self.start_real_time = 0.0
         self.start_bar_index = 0
@@ -65,14 +66,49 @@ class Simulation:
         self.start_bar_index = 0
         self._manual_offset = 0  # Reset offset on new simulation start
         self.active = True
+        self.paused = False
         return True
 
     def stop(self):
         self.active = False
+        self.paused = False
+
+    def pause(self):
+        """Pause the simulation. Freezes bar count at current position."""
+        if not self.active or self.paused:
+            return False
+        # Snapshot current visible count into start_bar_index so no time elapses while paused
+        self.start_bar_index = self.visible_bar_count()
+        self._manual_offset = 0
+        self.paused = True
+        return True
+
+    def resume(self):
+        """Resume a paused simulation from where it left off."""
+        if not self.active or not self.paused:
+            return False
+        # Reset the clock so elapsed time starts fresh from the frozen position
+        self.start_real_time = _time.time()
+        self.paused = False
+        return True
+
+    def set_speed(self, speed: float):
+        """Change playback speed without losing position."""
+        if not self.active:
+            return False
+        if not self.paused:
+            # Snapshot current position before changing speed
+            self.start_bar_index = self.visible_bar_count()
+            self._manual_offset = 0
+            self.start_real_time = _time.time()
+        self.speed = speed
+        return True
 
     def visible_bar_count(self) -> int:
         if not self.active:
             return self.total_bars
+        if self.paused:
+            return min(max(self.start_bar_index + self._manual_offset, 0), self.total_bars)
         elapsed = _time.time() - self.start_real_time
         count = self.start_bar_index + int(elapsed * self.speed) + self._manual_offset
         return min(max(count, 0), self.total_bars)
@@ -83,6 +119,7 @@ class Simulation:
         n = self.visible_bar_count()
         if n >= self.total_bars:
             self.active = False
+            self.paused = False
         return self.all_bars[:n]
 
     def get_sim_timestamp(self) -> int:
@@ -115,6 +152,7 @@ class Simulation:
             current_date = datetime.fromtimestamp(bar.timestamp, tz=timezone.utc).strftime("%Y-%m-%d")
         return {
             "active": self.active,
+            "paused": self.paused,
             "speed": self.speed,
             "visible_bars": n,
             "total_bars": self.total_bars,
@@ -177,6 +215,8 @@ from arctis.routes.snapshot import router as snapshot_router
 from arctis.routes.drawings import router as drawings_router
 from arctis.routes.workspace import router as workspace_router
 from arctis.routes.metrics import router as metrics_router
+from arctis.routes.auth import router as auth_router
+from arctis.routes.checkout import router as checkout_router
 
 # ---------------------------------------------------------------------------
 # Travis MCP client initialization
@@ -208,6 +248,8 @@ app.include_router(snapshot_router)
 app.include_router(drawings_router)
 app.include_router(workspace_router)
 app.include_router(metrics_router)
+app.include_router(auth_router)
+app.include_router(checkout_router)
 
 
 @app.get("/health")
@@ -413,6 +455,37 @@ async def sim_stop():
     return {"message": "Simulation gestoppt"}
 
 
+@app.post("/api/sim/pause")
+async def sim_pause():
+    """Pause simulation — freezes bar progression."""
+    if not sim.active:
+        return JSONResponse(status_code=404, content={"error": "No active simulation"})
+    ok = sim.pause()
+    if not ok:
+        return JSONResponse(status_code=400, content={"error": "Simulation already paused"})
+    return {"message": "Simulation paused", **sim.status()}
+
+
+@app.post("/api/sim/resume")
+async def sim_resume():
+    """Resume a paused simulation."""
+    if not sim.active:
+        return JSONResponse(status_code=404, content={"error": "No active simulation"})
+    ok = sim.resume()
+    if not ok:
+        return JSONResponse(status_code=400, content={"error": "Simulation not paused"})
+    return {"message": "Simulation resumed", **sim.status()}
+
+
+@app.post("/api/sim/speed")
+async def sim_speed(speed: float = Query(..., ge=0.1, le=100)):
+    """Change playback speed without restarting."""
+    if not sim.active:
+        return JSONResponse(status_code=404, content={"error": "No active simulation"})
+    sim.set_speed(speed)
+    return {"message": "Speed updated", **sim.status()}
+
+
 @app.get("/api/sim/status")
 async def sim_status():
     return sim.status()
@@ -520,6 +593,30 @@ async def auto_backfill():
     asyncio.create_task(_do_backfill())
 
 
+@app.on_event("startup")
+async def auto_connect_rithmic():
+    """Auto-connect to Rithmic on server startup if credentials are available."""
+    import os
+    username = os.environ.get("RITHMIC_USER", "kaan-aslan@gmx.de")
+    password = os.environ.get("RITHMIC_PASS", "kan747")
+    server = os.environ.get("RITHMIC_SERVER", "Rithmic 01")
+
+    if not username or not password:
+        logger.info("No Rithmic credentials — skipping auto-connect")
+        return
+
+    async def _do_connect():
+        await asyncio.sleep(3)  # Wait for server to fully initialize
+        try:
+            from arctis.routes.live import connect_rithmic
+            result = await connect_rithmic(username=username, password=password, server=server)
+            logger.info("Auto-Rithmic: %s", result)
+        except Exception as e:
+            logger.warning("Auto-Rithmic failed: %s", e)
+
+    asyncio.create_task(_do_connect())
+
+
 @app.websocket("/ws/bars/{symbol}")
 async def websocket_bars(websocket: WebSocket, symbol: str):
     """Stream new bars for a symbol via WebSocket."""
@@ -532,13 +629,14 @@ async def websocket_bars(websocket: WebSocket, symbol: str):
             "ts": int(_time.time()),
         })
 
-        # Send initial snapshot (last 10 bars)
+        # Send initial snapshot — full current trading day so the chart has
+        # no gap between historical REST data and live streaming bars.
         from arctis.db import fetch_bars
         initial = fetch_bars(symbol=symbol, days=1)
         if initial:
             await websocket.send_json({
                 "type": "snapshot",
-                "bars": initial[-10:],
+                "bars": initial,
                 "symbol": symbol,
             })
 

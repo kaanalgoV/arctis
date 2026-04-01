@@ -20,7 +20,7 @@ function Pill({ label, isActive, onClick }: PillProps) {
       onClick={onClick}
       whileTap={{ scale: 0.94 }}
       className={cn(
-        'relative px-2 py-1 min-h-[28px] rounded-[var(--radius-sm)]',
+        'relative px-2 py-1 min-h-[28px] rounded-[var(--radius-sm)] cursor-pointer',
         'font-mono text-[11px] leading-none',
         'transition-colors duration-150',
         'outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent)]',
@@ -355,9 +355,9 @@ export function Topbar({
             onClick={onToggleHud}
             title={hudVisible ? 'HUD ausblenden' : 'HUD einblenden'}
             className={cn(
-              'flex items-center justify-center w-8 h-8 rounded-[var(--radius-sm)]',
+              'flex items-center justify-center w-8 h-8 rounded-[var(--radius-sm)] cursor-pointer',
               'transition-colors duration-150',
-              'outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent)]',
+              'outline-none focus-visible:ring-2 focus-visible:ring-[#5CB8F0]/50',
               hudVisible
                 ? 'text-[var(--color-accent)] bg-[var(--color-accent-muted)]'
                 : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-raised)] hover:text-[var(--color-text-secondary)]',
@@ -374,9 +374,9 @@ export function Topbar({
             onClick={onToggleRightPanel}
             title={rightPanelOpen ? 'Panel schliessen' : 'Panel oeffnen'}
             className={cn(
-              'flex items-center justify-center w-8 h-8 rounded-[var(--radius-sm)]',
+              'flex items-center justify-center w-8 h-8 rounded-[var(--radius-sm)] cursor-pointer',
               'transition-colors duration-150',
-              'outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent)]',
+              'outline-none focus-visible:ring-2 focus-visible:ring-[#5CB8F0]/50',
               rightPanelOpen
                 ? 'text-[var(--color-accent)] bg-[var(--color-accent-muted)]'
                 : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-raised)] hover:text-[var(--color-text-secondary)]',
@@ -396,11 +396,11 @@ export function Topbar({
           onClick={onSettingsClick}
           title="Settings"
           className={cn(
-            'flex items-center justify-center w-8 h-8 rounded-[var(--radius-sm)]',
+            'flex items-center justify-center w-8 h-8 rounded-[var(--radius-sm)] cursor-pointer',
             'text-[var(--color-text-muted)]',
             'hover:bg-[var(--color-surface-raised)] hover:text-[var(--color-text-secondary)]',
             'transition-colors duration-150',
-            'outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent)]',
+            'outline-none focus-visible:ring-2 focus-visible:ring-[#5CB8F0]/50',
           )}
           aria-label="Settings"
         >

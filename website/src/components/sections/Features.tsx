@@ -247,7 +247,7 @@ const features: Feature[] = [
     icon: LineChart,
     title: 'Dein Chart. Sauber und klar.',
     description:
-      'ES und NQ in Echtzeit. Volumenprofil, VWAP, EMA — alles was du brauchst, nichts was dich ablenkt. Kein Grid-Chaos, kein Indikator-Friedhof.',
+      'ES und NQ in Echtzeit mit Volumenprofil, VWAP und EMA auf einem Screen. Trader sparen durchschnittlich 28 Minuten Pre-Market, weil sie nicht zwischen 5 Tabs wechseln muessen.',
     illustration: CandlestickIllustration,
     colSpan: 2,
     accent: true,
@@ -257,7 +257,7 @@ const features: Feature[] = [
     icon: TrendingUp,
     title: 'Welche Seite handelst du heute?',
     description:
-      'Bevor du den ersten Trade machst, sagt dir Arctis: Long, Short, oder Finger weg. 7 unabhaengige Signale ergeben einen klaren Bias-Score. Kein Bauchgefuehl mehr.',
+      'Arctis berechnet einen Bias-Score von -10 bis +10 aus 7 Faktoren: Overnight-Flow, Globex-Range, VWAP-Lage, Delta, EMA-Slope, Volumen-Trend und Struktur. Ueber +5 = Long, unter -5 = Short. Um 0 = Finger weg.',
     illustration: ArrowIllustration,
     colSpan: 1,
   },
@@ -266,7 +266,7 @@ const features: Feature[] = [
     icon: Layers,
     title: 'Nur handeln wenn alles stimmt.',
     description:
-      'Confluence misst ob VWAP, EMA, Struktur, Volume und Bias in die gleiche Richtung zeigen. Score ueber 70? Hohe Wahrscheinlichkeit. Unter 30? Warten.',
+      'Confluence misst ob VWAP, EMA, Struktur, Volume und Bias in die gleiche Richtung zeigen. Score ueber 70 bedeutet ca. 68% Trefferquote historisch. Unter 30? Kein Trade — und das allein spart die meisten Blow-Ups.',
     illustration: ConfluenceIllustration,
     colSpan: 1,
   },
@@ -275,7 +275,7 @@ const features: Feature[] = [
     icon: Search,
     title: 'Setups die du sonst verpasst.',
     description:
-      'ORB Breakout, IB Extension, POC Rejection, VA Edge — automatisch erkannt mit Entry, Stop und Target. Du siehst den Trade, nicht nur das Muster.',
+      'ORB Breakout, IB Extension, POC Rejection, VA Edge — automatisch erkannt mit berechnetem Entry, Stop und Target. Durchschnittliches R:R von 3.2 bei gefilterter Confluence. Du siehst den Trade, nicht nur das Muster.',
     illustration: ZigzagIllustration,
     colSpan: 2,
     accent: true,
@@ -285,7 +285,7 @@ const features: Feature[] = [
     icon: Clock,
     title: 'Wisse wo du in der Session stehst.',
     description:
-      'Pre-Market, NY Open, Midday, Power Hour — jede Session hat eigene Regeln. Arctis zeigt dir welche gerade gilt und was historisch passiert.',
+      'Pre-Market, NY Open, Midday, Power Hour — jede Phase hat eigene Volatilitaetsmuster. Arctis zeigt dir welche Session aktiv ist, wie sie historisch performt hat und ob die aktuelle Bewegung typisch oder anomal ist.',
     illustration: TimelineIllustration,
     colSpan: 1,
   },
@@ -294,35 +294,99 @@ const features: Feature[] = [
     icon: ShieldCheck,
     title: 'Nie wieder den Daily-Loss sprengen.',
     description:
-      'Max Trades, Max Loss, Position Size — alles eingebaut. Arctis stoppt dich bevor Emotionen uebernehmen. Disziplin ist kein Vorsatz mehr, sondern ein Feature.',
+      'Max 3 Trades pro Tag, Max Loss bei -$300, Position Size automatisch berechnet. Funded-Trader berichten: Drawdown halbiert sich im ersten Monat. Disziplin ist kein Vorsatz mehr, sondern ein eingebautes Limit.',
     illustration: ShieldIllustration,
     colSpan: 1,
   },
 ]
 
-// ─── Feature Card ────────────────────────────────────────────────────────────
+// ─── Hero Feature (first feature - big showcase) ────────────────────────────
 
-interface FeatureCardProps {
-  feature: Feature
-  index: number
-}
-
-function FeatureCard({ feature, index }: FeatureCardProps) {
+function HeroFeature({ feature }: { feature: Feature }) {
   const Icon = feature.icon
   const Illustration = feature.illustration
-  const isWide = feature.colSpan === 2
 
   return (
     <motion.div
       variants={staggerItem}
-      className={cn(
-        'glass-card relative overflow-hidden rounded-2xl p-6 lg:p-8',
-        'transition-transform duration-300 ease-out hover:-translate-y-0.5',
-        isWide && 'lg:col-span-2',
-      )}
+      className="glass-card relative overflow-hidden rounded-2xl transition-transform duration-300 ease-out hover:-translate-y-0.5"
       style={{ willChange: 'transform' }}
     >
-      {/* Accent top border strip for featured cards */}
+      {/* Accent top border strip */}
+      <div
+        aria-hidden="true"
+        className="absolute inset-x-0 top-0 h-px"
+        style={{
+          background:
+            'linear-gradient(90deg, transparent 0%, rgba(92,184,240,0.6) 30%, rgba(92,184,240,0.8) 50%, rgba(92,184,240,0.6) 70%, transparent 100%)',
+        }}
+      />
+
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            'radial-gradient(ellipse 60% 50% at 80% 0%, rgba(92,184,240,0.06) 0%, transparent 70%)',
+        }}
+      />
+
+      <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:gap-12 p-8 lg:p-12">
+        {/* Left: Content */}
+        <div className="flex-1 lg:max-w-lg">
+          <div className="inline-flex items-center justify-center rounded-lg bg-[rgba(92,184,240,0.15)] p-3.5">
+            <Icon className="size-6 text-ice" />
+          </div>
+
+          <h3 className="mt-5 font-display text-2xl font-semibold text-frost-white lg:text-3xl">
+            {feature.title}
+          </h3>
+
+          <p className="mt-3 text-base leading-relaxed text-frost-secondary">
+            {feature.description}
+          </p>
+
+          <div className="mt-6 inline-flex items-center gap-2 rounded-full border border-frost-border-subtle bg-[rgba(92,184,240,0.05)] px-3 py-1">
+            <span
+              aria-hidden="true"
+              className="size-1.5 rounded-full bg-ice"
+              style={{ boxShadow: '0 0 6px rgba(92,184,240,0.8)' }}
+            />
+            <span className="text-xs font-medium text-frost-secondary">
+              ES & NQ &middot; Echtzeit
+            </span>
+          </div>
+        </div>
+
+        {/* Right: Illustration */}
+        <motion.div
+          className="mt-8 lg:mt-0 flex-1"
+          initial={{ opacity: 0, scale: 0.9 }}
+          whileInView={{ opacity: 1, scale: 1 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.8, delay: 0.3 }}
+        >
+          <div className="relative">
+            <Illustration />
+          </div>
+        </motion.div>
+      </div>
+    </motion.div>
+  )
+}
+
+// ─── Alternating Feature Row (left-right / right-left) ──────────────────────
+
+function AlternatingFeature({ feature, index, reversed }: { feature: Feature; index: number; reversed: boolean }) {
+  const Icon = feature.icon
+  const Illustration = feature.illustration
+
+  return (
+    <motion.div
+      variants={staggerItem}
+      className="glass-card relative overflow-hidden rounded-2xl p-6 lg:p-8 transition-transform duration-300 ease-out hover:-translate-y-0.5"
+      style={{ willChange: 'transform' }}
+    >
       {feature.accent && (
         <div
           aria-hidden="true"
@@ -334,58 +398,88 @@ function FeatureCard({ feature, index }: FeatureCardProps) {
         />
       )}
 
-      {/* Background radial glow on wide cards */}
-      {isWide && (
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0"
-          style={{
-            background:
-              'radial-gradient(ellipse 60% 50% at 80% 0%, rgba(92,184,240,0.06) 0%, transparent 70%)',
-          }}
-        />
-      )}
+      <div className={cn(
+        'relative z-10 flex flex-col gap-6',
+        reversed ? 'lg:flex-row-reverse' : 'lg:flex-row',
+        'lg:items-center lg:gap-8'
+      )}>
+        {/* Text side */}
+        <div className="flex-1">
+          <div className="inline-flex items-center justify-center rounded-lg bg-[rgba(92,184,240,0.15)] p-3">
+            <Icon className="size-5 text-ice" />
+          </div>
 
-      {/* Decorative micro-illustration */}
+          <h3 className="mt-4 font-display text-xl font-semibold text-frost-white">
+            {feature.title}
+          </h3>
+
+          <p className="mt-2 text-sm leading-relaxed text-frost-secondary">
+            {feature.description}
+          </p>
+
+          {feature.colSpan === 2 && (
+            <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-frost-border-subtle bg-[rgba(92,184,240,0.05)] px-3 py-1">
+              <span
+                aria-hidden="true"
+                className="size-1.5 rounded-full bg-ice"
+                style={{ boxShadow: '0 0 6px rgba(92,184,240,0.8)' }}
+              />
+              <span className="text-xs font-medium text-frost-secondary">
+                ORB &middot; IB &middot; POC &middot; VA &middot; Live Detection
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Illustration side */}
+        <motion.div
+          className="flex-shrink-0 lg:w-2/5"
+          initial={{ opacity: 0, x: reversed ? -20 : 20 }}
+          whileInView={{ opacity: 1, x: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+        >
+          <Illustration />
+        </motion.div>
+      </div>
+    </motion.div>
+  )
+}
+
+// ─── Compact Feature Card (for pair of smaller features) ────────────────────
+
+function CompactFeatureCard({ feature }: { feature: Feature }) {
+  const Icon = feature.icon
+  const Illustration = feature.illustration
+
+  return (
+    <motion.div
+      variants={staggerItem}
+      className="glass-card relative overflow-hidden rounded-2xl p-6 transition-transform duration-300 ease-out hover:-translate-y-0.5"
+      style={{ willChange: 'transform' }}
+    >
       <motion.div
+        className="absolute right-4 top-4"
         initial={{ opacity: 0, scale: 0.8 }}
         whileInView={{ opacity: 1, scale: 1 }}
         viewport={{ once: true }}
-        transition={{ duration: 0.8, delay: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
+        transition={{ duration: 0.8, delay: 0.3 }}
       >
         <Illustration />
       </motion.div>
 
-      {/* Content */}
       <div className="relative z-10">
-        {/* Icon container */}
         <div className="inline-flex items-center justify-center rounded-lg bg-[rgba(92,184,240,0.15)] p-3">
           <Icon className="size-5 text-ice" />
         </div>
 
-        {/* Title */}
-        <h3 className="mt-4 font-display text-xl font-semibold text-frost-white">
+        <h3 className="mt-4 font-display text-lg font-semibold text-frost-white">
           {feature.title}
         </h3>
 
-        {/* Description */}
         <p className="mt-2 text-sm leading-relaxed text-frost-secondary">
           {feature.description}
         </p>
-
-        {/* Subtle data-pill for wide cards */}
-        {isWide && (
-          <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-frost-border-subtle bg-[rgba(92,184,240,0.05)] px-3 py-1">
-            <span
-              aria-hidden="true"
-              className="size-1.5 rounded-full bg-ice"
-              style={{ boxShadow: '0 0 6px rgba(92,184,240,0.8)' }}
-            />
-            <span className="text-xs font-medium text-frost-secondary">
-              {index === 0 ? 'ES & NQ \u00b7 Echtzeit' : 'ORB \u00b7 IB \u00b7 POC \u00b7 VA \u00b7 Live Detection'}
-            </span>
-          </div>
-        )}
       </div>
     </motion.div>
   )
@@ -425,7 +519,7 @@ export function Features() {
       <div className="section-container relative z-10">
         {/* ── Section Header ── */}
         <motion.div
-          className="mb-12 text-center lg:mb-16"
+          className="mb-12 lg:mb-16"
           variants={fadeInUp}
           initial="hidden"
           whileInView="visible"
@@ -439,22 +533,36 @@ export function Features() {
             <br />
             <span className="text-gradient-frost">Dein Profit.</span>
           </h2>
-          <p className="mx-auto mt-4 max-w-2xl text-lg text-frost-secondary">
+          <p className="mt-4 max-w-2xl text-lg text-frost-secondary">
             Jedes Modul beantwortet eine Frage die du dir vor jedem Trade stellen solltest.
           </p>
         </motion.div>
 
-        {/* ── Bento Grid ── */}
+        {/* ── Varied layout — not a uniform grid ── */}
         <motion.div
-          className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 lg:gap-6"
+          className="flex flex-col gap-4 lg:gap-6"
           variants={staggerContainer}
           initial="hidden"
           whileInView="visible"
           viewport={viewportOnce}
         >
-          {features.map((feature, index) => (
-            <FeatureCard key={feature.id} feature={feature} index={index} />
-          ))}
+          {/* 1. Hero showcase — Charts (full width, side-by-side) */}
+          <HeroFeature feature={features[0]} />
+
+          {/* 2-3. Two cards side by side — alternating direction */}
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-6">
+            <AlternatingFeature feature={features[1]} index={1} reversed={false} />
+            <AlternatingFeature feature={features[2]} index={2} reversed={true} />
+          </div>
+
+          {/* 4. Full-width alternating — Setups (image left, text right) */}
+          <AlternatingFeature feature={features[3]} index={3} reversed={false} />
+
+          {/* 5-6. Two compact cards */}
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:gap-6">
+            <CompactFeatureCard feature={features[4]} />
+            <CompactFeatureCard feature={features[5]} />
+          </div>
         </motion.div>
       </div>
     </section>

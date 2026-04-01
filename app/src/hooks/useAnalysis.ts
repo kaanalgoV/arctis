@@ -16,7 +16,7 @@ interface AnalysisData {
 }
 
 export function useAnalysis(pollIntervalMs = 5000) {
-  const { market, timeframe, lastBarTs } = useMarketStore()
+  const { market, timeframe, days, lastBarTs } = useMarketStore()
   const [data, setData] = useState<AnalysisData>({
     sessions: null, confluence: null, patterns: null,
     indicators: null, volume: null, structure: null,
@@ -25,10 +25,21 @@ export function useAnalysis(pollIntervalMs = 5000) {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const intervalRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined)
+  const abortRef = useRef<AbortController | null>(null)
+  const retryRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   const fetchAll = useCallback(async () => {
+    // Abort any in-flight request before starting a new one
+    abortRef.current?.abort()
+    const controller = new AbortController()
+    abortRef.current = controller
+
     try {
-      const snapshot = await api.fetchSnapshot(market, timeframe)
+      const snapshot = await api.fetchSnapshot(market, timeframe, days)
+
+      // If this request was aborted while awaiting, discard the result
+      if (controller.signal.aborted) return
+
       setData({
         sessions:    snapshot.sessions    ?? null,
         confluence:  snapshot.confluence  ?? null,
@@ -43,18 +54,30 @@ export function useAnalysis(pollIntervalMs = 5000) {
       })
       setError(null)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Analysis fetch failed')
+      // Ignore abort errors — they are expected on market/timeframe change
+      if (controller.signal.aborted) return
+      const msg = e instanceof Error ? e.message : 'Analysis fetch failed'
+      setError(msg)
+      // Auto-retry after 5s on failure
+      clearTimeout(retryRef.current)
+      retryRef.current = setTimeout(() => { void fetchAll() }, 5000)
     } finally {
-      setIsLoading(false)
+      if (!controller.signal.aborted) {
+        setIsLoading(false)
+      }
     }
-  }, [market, timeframe])
+  }, [market, timeframe, days])
 
-  // Initial fetch + polling
+  // Initial fetch + polling — abort on cleanup or dependency change
   useEffect(() => {
     setIsLoading(true)
     fetchAll()
     intervalRef.current = setInterval(fetchAll, pollIntervalMs)
-    return () => clearInterval(intervalRef.current)
+    return () => {
+      clearInterval(intervalRef.current)
+      clearTimeout(retryRef.current)
+      abortRef.current?.abort()
+    }
   }, [fetchAll, pollIntervalMs])
 
   // Refetch on new bar

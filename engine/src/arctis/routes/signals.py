@@ -89,8 +89,6 @@ async def get_signals(
 
     session_ctx = get_current_session()
 
-    signals = detect_signals(bars, tick_size=tick_size)
-
     # --- Bias data (so SignalsPanel can show correct bias micro-strip) ---
     try:
         from arctis.analysis.bias_state import calculate_bias_state
@@ -100,6 +98,85 @@ async def get_signals(
     except Exception:
         bias_state = "RANGE"
         bias_score = 0
+
+    # --- Extract zone levels for signal generation (same as zones route) ---
+    from arctis.analysis.zones import calculate_zones, _calculate_value_area, _group_by_day
+
+    zones = calculate_zones(bars, market=market)
+    poc: float | None = None
+    vah: float | None = None
+    val: float | None = None
+    prev_high: float | None = None
+    prev_low: float | None = None
+    or_high: float | None = None
+    or_low: float | None = None
+    ib_high: float | None = None
+    ib_low: float | None = None
+
+    for z in zones:
+        if z.label == "POC":
+            poc = z.high
+        elif z.label == "VA":
+            vah = z.high
+            val = z.low
+        elif z.label == "PDH":
+            prev_high = z.high
+        elif z.label == "PDL":
+            prev_low = z.low
+        elif z.label == "OR":
+            or_high = z.high
+            or_low = z.low
+        elif z.label == "IB":
+            ib_high = z.high
+            ib_low = z.low
+
+    # --- Naked POCs ---
+    naked_poc_prices: list[float] = []
+    try:
+        from arctis.analysis.naked_poc import find_naked_pocs
+        npocs = find_naked_pocs(bars)
+        naked_poc_prices = [p.poc_price for p in npocs if p.is_naked]
+    except Exception:
+        pass
+
+    # --- Key levels ---
+    kl_dicts: list[dict] = []
+    try:
+        from arctis.analysis.key_levels import find_key_levels
+        kls = find_key_levels(bars)
+        kl_dicts = [{"level": kl.level, "type": kl.type} for kl in kls]
+    except Exception:
+        pass
+
+    # --- VWAP (latest value from session-anchored VWAP) ---
+    vwap_val: float | None = None
+    try:
+        from arctis.analysis.vwap import calculate_vwap
+        vwap_data_list = calculate_vwap(bars)
+        if vwap_data_list:
+            vwap_val = vwap_data_list[-1].vwap
+    except Exception:
+        pass
+
+    signals = detect_signals(
+        bars,
+        bias_state=bias_state,
+        bias_score=bias_score,
+        poc=poc,
+        vah=vah,
+        val=val,
+        prev_high=prev_high,
+        prev_low=prev_low,
+        or_high=or_high,
+        or_low=or_low,
+        ib_high=ib_high,
+        ib_low=ib_low,
+        naked_pocs=naked_poc_prices,
+        key_levels=kl_dicts,
+        vwap=vwap_val,
+        tick_size=tick_size,
+        market_root=market.upper()[:2],
+    )
 
     return {
         "signals": [

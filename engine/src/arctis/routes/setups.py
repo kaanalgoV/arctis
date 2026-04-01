@@ -573,10 +573,11 @@ def _ema_trend_setup(
 # ---------------------------------------------------------------------------
 
 def _apply_live_price_to_setups(setups: list[Setup], live_price: float | None) -> None:
-    """Update setup statuses in-place using the live tick price.
+    """Update setup statuses in-place using the best available price.
 
-    This runs a second lifecycle pass with the live price (which may be fresher
-    than the last bar close) so the frontend always sees the current state.
+    This runs a lifecycle pass to resolve stale setups (expire if price moved
+    far past entry) and advance active setups through their state machine.
+    Accepts live tick price or last bar close as fallback.
     """
     if live_price is None or live_price <= 0:
         return
@@ -708,6 +709,7 @@ async def get_setups(
             key_levels=key_levels,
             vwap=vwap_val,
             session_bar_idx=session_bar_idx,
+            market_root=market[:2].upper() if market else "NQ",
         )
         logger.debug(
             "detect_signals returned %d signals for %s [session=%s bar_idx=%d vwap=%s]",
@@ -772,13 +774,23 @@ async def get_setups(
         if ema_s:
             fallback.append(ema_s)
 
+        # Pre-filter: discard fallback setups whose entry is already far from
+        # effective_price (>50 pts).  This prevents stale setups from being
+        # created in the first place (belt-and-suspenders with lifecycle guard).
+        _MAX_ENTRY_DIST = 50.0
+        fallback = [
+            s for s in fallback
+            if abs(effective_price - s.entry_trigger_price) <= _MAX_ENTRY_DIST
+        ]
+
         setups = fallback
 
     # ---------------------------------------------------------------------------
     # Apply live price status update
     # ---------------------------------------------------------------------------
-    if live_price:
-        _apply_live_price_to_setups(setups, live_price)
+    # Always run lifecycle update — use effective_price (falls back to last bar
+    # close when live tick data is unavailable) so stale setups get resolved.
+    _apply_live_price_to_setups(setups, effective_price)
 
     # Rebuild tp2 for setups that are missing it (signals module only sets tp1)
     for s in setups:
@@ -790,6 +802,14 @@ async def get_setups(
                 s.tp2_price = round(s.tp1_price - risk * 0.5, 2)
             # Rebuild chart artifacts to include tp2
             s.chart_artifacts = _build_chart_artifacts(s)
+
+    # Remove expired/terminal setups from the response — they add noise and
+    # confuse the frontend signal overlay which only expects active setups.
+    _terminal_statuses = {
+        SetupStatus.STOPPED, SetupStatus.COMPLETED, SetupStatus.INVALIDATED,
+        SetupStatus.EXITED, SetupStatus.EXPIRED,
+    }
+    setups = [s for s in setups if s.status not in _terminal_statuses]
 
     now_ts = time.time()
     price_is_live = live_price is not None
@@ -809,9 +829,17 @@ async def get_setups(
         except Exception:
             pass
 
+    # Filter stale setups: remove any setup with entry >50pt from current price
+    MAX_SETUP_DIST = 50.0
+    filtered_setups = [
+        s for s in setups
+        if s.status in (SetupStatus.CLOSED, SetupStatus.EXPIRED)
+        or abs(effective_price - (s.entry_trigger_price or 0)) <= MAX_SETUP_DIST
+    ]
+
     return {
-        "setups": [_serialize_setup(s) for s in setups],
-        "count": len(setups),
+        "setups": [_serialize_setup(s) for s in filtered_setups],
+        "count": len(filtered_setups),
         "market": market,
         "timeframe": timeframe,
         # --- Shared meta block (consistent with /api/analysis/bias and /api/signals) ---

@@ -36,56 +36,56 @@ export function buildPriceLevels(sessionLevels: SessionLevels | null): PriceLeve
 
   const levels: PriceLevel[] = []
 
-  // Previous Day High
+  // Previous Day High — dashed amber, 1.5px
   if (sessionLevels.prev_high > 0) {
     levels.push({
       price: sessionLevels.prev_high,
       color: AMBER,
-      label: 'PDH',
+      label: `PDH ${sessionLevels.prev_high.toFixed(2)}`,
       dash: [6, 4],
-      thickness: 1,
+      thickness: 1.5,
     })
   }
 
-  // Previous Day Low
+  // Previous Day Low — dashed amber, 1.5px
   if (sessionLevels.prev_low > 0) {
     levels.push({
       price: sessionLevels.prev_low,
       color: AMBER,
-      label: 'PDL',
+      label: `PDL ${sessionLevels.prev_low.toFixed(2)}`,
       dash: [6, 4],
-      thickness: 1,
+      thickness: 1.5,
     })
   }
 
-  // Previous Day Close
+  // Previous Day Close — dotted gray
   if (sessionLevels.prev_close > 0) {
     levels.push({
       price: sessionLevels.prev_close,
       color: GRAY,
-      label: 'PDC',
+      label: `PDC ${sessionLevels.prev_close.toFixed(2)}`,
       dash: [2, 4],
       thickness: 1,
     })
   }
 
-  // Opening Range High (optional)
+  // Opening Range High — solid ice-blue
   if (sessionLevels.opening_range_high !== undefined && sessionLevels.opening_range_high > 0) {
     levels.push({
       price: sessionLevels.opening_range_high,
       color: ICE_BLUE,
-      label: 'ORH',
-      thickness: 1,
+      label: `ORH ${sessionLevels.opening_range_high.toFixed(2)}`,
+      thickness: 1.5,
     })
   }
 
-  // Opening Range Low (optional)
+  // Opening Range Low — solid ice-blue
   if (sessionLevels.opening_range_low !== undefined && sessionLevels.opening_range_low > 0) {
     levels.push({
       price: sessionLevels.opening_range_low,
       color: ICE_BLUE,
-      label: 'ORL',
-      thickness: 1,
+      label: `ORL ${sessionLevels.opening_range_low.toFixed(2)}`,
+      thickness: 1.5,
     })
   }
 

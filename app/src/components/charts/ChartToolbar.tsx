@@ -15,11 +15,11 @@ interface OverlayConfig {
 
 const OVERLAYS: OverlayConfig[] = [
   { key: 'vwap',   label: 'VWAP',   color: CHART_TOKENS.overlay.vwap,                  icon: Activity },
-  { key: 'ema',    label: 'EMA',    color: '#58A6FF',                                   icon: TrendingUp },
+  { key: 'ema',    label: 'EMA',    color: '#5CB8F0',                                   icon: TrendingUp },
   { key: 'volume', label: 'Vol',    color: CHART_TOKENS.overlay.volume.bull,            icon: BarChart2 },
   { key: 'vp',     label: 'VP',     color: CHART_TOKENS.overlay.volumeProfile.poc,      icon: LayoutGrid },
   { key: 'levels', label: 'Levels', color: '#5CB8F0',                                   icon: Ruler },
-  { key: 'zones',  label: 'Zones',  color: '#34D399',                                   icon: Layers },
+  { key: 'zones',  label: 'Zones',  color: '#00B775',                                   icon: Layers },
 ]
 
 // ─── Props ──────────────────────────────────────────────────────────────────
@@ -134,7 +134,8 @@ export function ChartToolbar({
             cursor: onFullscreen ? 'pointer' : 'default',
             color: CHART_TOKENS.axis.label,
             padding: 0,
-            transition: 'color 0.15s',
+            transition: 'color 0.15s, box-shadow 0.15s',
+            outline: 'none',
           }}
           onMouseEnter={(e) => {
             if (onFullscreen) {
@@ -143,6 +144,12 @@ export function ChartToolbar({
           }}
           onMouseLeave={(e) => {
             ;(e.currentTarget as HTMLButtonElement).style.color = CHART_TOKENS.axis.label
+          }}
+          onFocus={(e) => {
+            e.currentTarget.style.boxShadow = '0 0 0 2px rgba(92, 184, 240, 0.5)'
+          }}
+          onBlur={(e) => {
+            e.currentTarget.style.boxShadow = 'none'
           }}
         >
           <Maximize2 size={13} strokeWidth={1.8} />
@@ -168,6 +175,7 @@ function OverlayPill({ label, color, isActive, onToggle, icon: Icon }: OverlayPi
       type="button"
       onClick={onToggle}
       aria-pressed={isActive}
+      aria-label={`Toggle ${label}`}
       title={label}
       style={{
         display: 'flex',
@@ -176,14 +184,22 @@ function OverlayPill({ label, color, isActive, onToggle, icon: Icon }: OverlayPi
         width: 28,
         height: 28,
         borderRadius: 6,
-        border: isActive ? `1px solid ${color}55` : '1px solid transparent',
+        border: isActive ? `1px solid ${color}55` : '1px solid var(--color-border-subtle)',
         background: isActive ? `${color}20` : 'transparent',
         cursor: 'pointer',
-        transition: 'border-color 0.15s ease, background 0.15s ease, color 0.15s ease',
+        transition: 'border-color 150ms ease, background 150ms ease, color 150ms ease, box-shadow 150ms ease, opacity 150ms ease',
         color: isActive ? color : 'var(--color-text-muted)',
         padding: 0,
         // Active buttons also get a subtle box-shadow to reinforce state
         boxShadow: isActive ? `0 0 0 1px ${color}18` : 'none',
+        opacity: isActive ? 1 : 0.7,
+        outline: 'none',
+      }}
+      onFocus={(e) => {
+        e.currentTarget.style.boxShadow = '0 0 0 2px rgba(92, 184, 240, 0.5)'
+      }}
+      onBlur={(e) => {
+        e.currentTarget.style.boxShadow = isActive ? `0 0 0 1px ${color}18` : 'none'
       }}
       onMouseEnter={(e) => {
         if (!isActive) {

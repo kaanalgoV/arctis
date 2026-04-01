@@ -228,10 +228,19 @@ def _update_lifecycle_long(setup: Setup, price: float, ts: int) -> None:
     stop  = setup.stop_price
     tp1   = setup.tp1_price
 
+    _pre_entry = {SetupStatus.CANDIDATE, SetupStatus.QUALIFIED, SetupStatus.ARMED}
+
+    # Stale setup guard: if the setup was never triggered and price has moved
+    # far past entry (>50 pts for NQ-class instruments) in either direction,
+    # expire it — the opportunity window has passed.
+    if setup.status in _pre_entry and entry > 0:
+        distance = abs(price - entry)
+        if distance > 50.0:
+            setup.expire(reason=f"Price {price:.2f} moved {distance:.0f}pts from entry {entry:.2f}")
+            return
+
     # Stop hit — pre-trigger invalidation
-    if stop > 0 and price <= stop and setup.status not in (
-        SetupStatus.TRIGGERED, SetupStatus.IN_POSITION, SetupStatus.PARTIAL_TAKEN
-    ):
+    if stop > 0 and price <= stop and setup.status in _pre_entry:
         setup.status = SetupStatus.INVALIDATED
         setup.invalidation_reason = f"Stop violated before entry at {price:.2f}"
         setup.exit_ts = ts
@@ -244,7 +253,7 @@ def _update_lifecycle_long(setup: Setup, price: float, ts: int) -> None:
         setup.exit_reason = "Stop hit"
         return
 
-    # TP1 hit
+    # TP1 hit — only valid if the trade was actually entered
     if tp1 > 0 and price >= tp1:
         if setup.status == SetupStatus.PARTIAL_TP1:
             setup.status = SetupStatus.COMPLETED
@@ -258,6 +267,9 @@ def _update_lifecycle_long(setup: Setup, price: float, ts: int) -> None:
             if setup.entry_price:
                 raw = price - setup.entry_price
                 setup.pnl_ticks = round(raw / 0.25, 2)
+        elif setup.status in _pre_entry:
+            # Price ran past TP1 without the trade being entered — expire, not PARTIAL_TP1
+            setup.expire(reason=f"Price ran past TP1 ({tp1:.2f}) without entry")
         else:
             setup.status = SetupStatus.PARTIAL_TP1
             setup.exit_ts = ts
@@ -296,10 +308,19 @@ def _update_lifecycle_short(setup: Setup, price: float, ts: int) -> None:
     stop  = setup.stop_price
     tp1   = setup.tp1_price
 
+    _pre_entry = {SetupStatus.CANDIDATE, SetupStatus.QUALIFIED, SetupStatus.ARMED}
+
+    # Stale setup guard: if the setup was never triggered and price has moved
+    # far past entry (>50 pts for NQ-class instruments) in either direction,
+    # expire it — the opportunity window has passed.
+    if setup.status in _pre_entry and entry > 0:
+        distance = abs(price - entry)
+        if distance > 50.0:
+            setup.expire(reason=f"Price {price:.2f} moved {distance:.0f}pts from entry {entry:.2f}")
+            return
+
     # Stop hit — pre-trigger invalidation
-    if stop > 0 and price >= stop and setup.status not in (
-        SetupStatus.TRIGGERED, SetupStatus.IN_POSITION, SetupStatus.PARTIAL_TAKEN
-    ):
+    if stop > 0 and price >= stop and setup.status in _pre_entry:
         setup.status = SetupStatus.INVALIDATED
         setup.invalidation_reason = f"Stop violated before entry at {price:.2f}"
         setup.exit_ts = ts
@@ -312,7 +333,7 @@ def _update_lifecycle_short(setup: Setup, price: float, ts: int) -> None:
         setup.exit_reason = "Stop hit"
         return
 
-    # TP1 hit
+    # TP1 hit — only valid if the trade was actually entered
     if tp1 > 0 and price <= tp1:
         if setup.status == SetupStatus.PARTIAL_TP1:
             setup.status = SetupStatus.COMPLETED
@@ -326,6 +347,9 @@ def _update_lifecycle_short(setup: Setup, price: float, ts: int) -> None:
             if setup.entry_price:
                 raw = setup.entry_price - price
                 setup.pnl_ticks = round(raw / 0.25, 2)
+        elif setup.status in _pre_entry:
+            # Price ran past TP1 without the trade being entered — expire, not PARTIAL_TP1
+            setup.expire(reason=f"Price ran past TP1 ({tp1:.2f}) without entry")
         else:
             setup.status = SetupStatus.PARTIAL_TP1
             setup.exit_ts = ts

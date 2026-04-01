@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { persist, subscribeWithSelector } from 'zustand/middleware'
 import { config } from '../lib/config'
 
 interface SettingsState {
@@ -24,7 +24,7 @@ interface SettingsState {
 }
 
 export const useSettingsStore = create<SettingsState>()(
-  persist(
+  subscribeWithSelector(persist(
     (set, get) => ({
       engineUrl: config.apiBase,
       autoReconnect: true,
@@ -94,5 +94,24 @@ export const useSettingsStore = create<SettingsState>()(
       },
     }),
     { name: 'arctis-settings' }
-  )
+  ))
+)
+
+// Debounced auto-save to server when key settings change
+let _saveDebounce: ReturnType<typeof setTimeout> | undefined
+useSettingsStore.subscribe(
+  (s) => ({
+    soundAlerts: s.soundAlerts,
+    pollInterval: s.pollInterval,
+    autoReconnect: s.autoReconnect,
+    riskAmount: s.riskAmount,
+    maxTrades: s.maxTrades,
+  }),
+  () => {
+    clearTimeout(_saveDebounce)
+    _saveDebounce = setTimeout(() => {
+      void useSettingsStore.getState().saveToServer()
+    }, 1500)
+  },
+  { equalityFn: (a, b) => JSON.stringify(a) === JSON.stringify(b) }
 )

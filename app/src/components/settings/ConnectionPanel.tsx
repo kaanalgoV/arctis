@@ -52,7 +52,7 @@ const INPUT_CLASS = cn(
   'bg-[var(--color-surface-raised)] border border-[var(--color-border-subtle)]',
   'text-[var(--color-text-primary)]',
   'outline-none transition-colors',
-  'focus:border-[var(--color-accent)] focus:ring-1 focus:ring-[var(--color-accent)]/30',
+  'focus-visible:border-[var(--color-accent)] focus-visible:ring-2 focus-visible:ring-[#5CB8F0]/50',
   'hover:border-[var(--color-border)]',
   'placeholder:text-[var(--color-text-muted)]',
 )
@@ -97,6 +97,14 @@ function RithmicTab() {
         if (d.connected && d.credentials) {
           setConnectedUsername(d.credentials.username)
           setConnectedServer(d.credentials.server)
+          // Sync input fields with actual backend credentials
+          setUsername(d.credentials.username)
+          setServer(d.credentials.server)
+          // Keep password from localStorage if username matches
+          const savedCreds = loadRithmicCreds()
+          if (savedCreds && savedCreds.username === d.credentials.username) {
+            setPassword(savedCreds.password)
+          }
         }
       })
       .catch(() => {})
@@ -228,7 +236,7 @@ function RithmicTab() {
               'bg-[var(--color-surface-raised)] border border-[var(--color-border-subtle)]',
               'text-[var(--color-text-primary)]',
               'outline-none transition-colors',
-              'focus:border-[var(--color-accent)] focus:ring-1 focus:ring-[var(--color-accent)]/30',
+              'focus-visible:border-[var(--color-accent)] focus-visible:ring-2 focus-visible:ring-[#5CB8F0]/50',
               !connected && 'hover:border-[var(--color-border)] cursor-pointer',
               connected && 'opacity-60 cursor-default',
             )}
@@ -276,7 +284,7 @@ function RithmicTab() {
       </div>
 
       {/* Username */}
-      <div className="flex flex-col gap-1">
+      <label className="flex flex-col gap-1">
         <span style={LABEL_STYLE}>Benutzername</span>
         <input
           type="text"
@@ -289,10 +297,10 @@ function RithmicTab() {
           autoComplete="off"
           spellCheck={false}
         />
-      </div>
+      </label>
 
       {/* Password */}
-      <div className="flex flex-col gap-1">
+      <label className="flex flex-col gap-1">
         <span style={LABEL_STYLE}>Passwort</span>
         <div className="relative flex items-center">
           <input
@@ -312,9 +320,9 @@ function RithmicTab() {
             type="button"
             onClick={() => setShowPw((v) => !v)}
             className={cn(
-              'absolute right-2 flex items-center justify-center',
+              'absolute right-2 flex items-center justify-center w-7 h-7 rounded cursor-pointer',
               'text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]',
-              'transition-colors duration-150 outline-none',
+              'transition-colors duration-150 outline-none focus-visible:ring-2 focus-visible:ring-[#5CB8F0]/50',
             )}
             tabIndex={-1}
             aria-label={showPw ? 'Passwort verbergen' : 'Passwort anzeigen'}
@@ -325,11 +333,11 @@ function RithmicTab() {
         <span style={{ fontSize: 10, color: 'var(--color-text-muted)' }}>
           Im Browser gespeichert (unverschluesselt) — nie an externe Server uebertragen
         </span>
-      </div>
+      </label>
 
       {/* Error */}
       {error && (
-        <p style={{ fontSize: 11, color: 'var(--color-loss)', fontFamily: 'var(--font-mono)' }}>
+        <p role="alert" style={{ fontSize: 11, color: 'var(--color-loss)', fontFamily: 'var(--font-mono)' }}>
           {error}
         </p>
       )}
@@ -519,7 +527,7 @@ function DatabentoTab() {
       )}
 
       {/* API Key */}
-      <div className="flex flex-col gap-1">
+      <label className="flex flex-col gap-1">
         <span style={LABEL_STYLE}>Databento API Key</span>
         <div className="relative flex items-center">
           <input
@@ -539,9 +547,9 @@ function DatabentoTab() {
             type="button"
             onClick={() => setShowKey((v) => !v)}
             className={cn(
-              'absolute right-2 flex items-center justify-center',
+              'absolute right-2 flex items-center justify-center w-7 h-7 rounded cursor-pointer',
               'text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]',
-              'transition-colors duration-150 outline-none',
+              'transition-colors duration-150 outline-none focus-visible:ring-2 focus-visible:ring-[#5CB8F0]/50',
             )}
             tabIndex={-1}
             aria-label={showKey ? 'API Key verbergen' : 'API Key anzeigen'}
@@ -552,11 +560,11 @@ function DatabentoTab() {
         <span style={{ fontSize: 10, color: 'var(--color-text-muted)' }}>
           Im Browser gespeichert (unverschluesselt) — nie an externe Server uebertragen
         </span>
-      </div>
+      </label>
 
       {/* Error */}
       {error && (
-        <p style={{ fontSize: 11, color: 'var(--color-loss)', fontFamily: 'var(--font-mono)' }}>
+        <p role="alert" style={{ fontSize: 11, color: 'var(--color-loss)', fontFamily: 'var(--font-mono)' }}>
           {error}
         </p>
       )}
@@ -633,7 +641,8 @@ export function ConnectionPanel() {
             type="button"
             onClick={() => setActiveTab(tab)}
             className={cn(
-              'relative px-3 py-2 font-mono font-semibold transition-colors duration-150 outline-none',
+              'relative px-3 py-2 font-mono font-semibold transition-colors duration-150 cursor-pointer',
+              'outline-none focus-visible:ring-2 focus-visible:ring-[#5CB8F0]/50',
               'text-[11px] uppercase tracking-wider',
               activeTab === tab
                 ? 'text-[var(--color-accent)]'

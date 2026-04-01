@@ -47,7 +47,7 @@ export const useMarketStore = create<MarketState>((set, get) => ({
   market: 'NQ',
   symbol: 'NQM6',
   timeframe: '5min',
-  days: 5,
+  days: 31,
   wsStatus: 'disconnected',
   lastBarTs: null,
   markets: [],

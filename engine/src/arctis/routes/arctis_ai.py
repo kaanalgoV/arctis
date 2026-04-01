@@ -80,7 +80,7 @@ def _build_full_context(market: str, timeframe: str, days: int = 5) -> dict:
 
         # Signals
         try:
-            sigs = detect_signals(bars)
+            sigs = detect_signals(bars, market_root=market[:2].upper() if market else "NQ")
             active_signals = [
                 {"type": s.signal_type, "direction": s.direction,
                  "entry": s.entry_price, "stop": s.stop_price,
