@@ -357,7 +357,7 @@ export function ArctisChartWrapper({
     // Target 1 line
     levels.push({
       price: signalLines.target1Price,
-      color: '#00B775',
+      color: '#34D399',
       label: `TP1 ${signalLines.target1Price.toFixed(2)}`,
       dash: [6, 4],
       thickness: 1,
@@ -367,7 +367,7 @@ export function ArctisChartWrapper({
     if (signalLines.target2Price != null) {
       levels.push({
         price: signalLines.target2Price,
-        color: '#00B775',
+        color: '#34D399',
         label: `TP2 ${signalLines.target2Price.toFixed(2)}`,
         dash: [8, 4],
         thickness: 1,
@@ -394,8 +394,8 @@ export function ArctisChartWrapper({
     zones.push({
       priceTop: Math.max(signalLines.entryPrice, signalLines.stopPrice),
       priceBottom: Math.min(signalLines.entryPrice, signalLines.stopPrice),
-      fill: 'rgba(239,65,54,0.08)',
-      stroke: 'rgba(239,65,54,0.15)',
+      fill: 'rgba(248,113,113,0.08)',
+      stroke: 'rgba(248,113,113,0.15)',
       label: 'Risk',
     })
 

@@ -121,8 +121,8 @@ function deriveSessionLevels(
  * Handles { price_top, price_bottom }, { top, bottom }, and { high, low } shapes.
  *
  * Zone colors follow Arctic Frost conventions:
- *  - Support zones (PDL, VAL, ORL, low-related): #00B775 green
- *  - Resistance zones (PDH, VAH, ORH, high-related): #FF3B3B red
+ *  - Support zones (PDL, VAL, ORL, low-related): #34D399 green
+ *  - Resistance zones (PDH, VAH, ORH, high-related): #F87171 red
  *  - Neutral areas (VA, OR, IB, ONR, SZ): use zone's own color
  *  - Lines (POC, NPOC): #FBBF24 amber
  */
@@ -130,8 +130,8 @@ function convertZonesToPriceZones(zones: unknown[] | undefined, currentPrice?: n
   if (!zones || zones.length === 0) return undefined
 
   // Arctic Frost zone palette
-  const SUPPORT_GREEN = '#00B775'
-  const RESISTANCE_RED = '#FF3B3B'
+  const SUPPORT_GREEN = '#34D399'
+  const RESISTANCE_RED = '#F87171'
   const POC_AMBER = '#FBBF24'
   const ICE_BLUE = '#5CB8F0'
   const PURPLE = '#A855F7'
@@ -290,7 +290,7 @@ function convertStructureBreaksToMarkers(
       time: sb.timestamp,
       price: sb.price,
       position: isBullish ? 'belowBar' : 'aboveBar',
-      color: isBullish ? '#00B775' : '#FF3B3B',
+      color: isBullish ? '#34D399' : '#F87171',
       shape: isBullish ? 'triangleUp' : 'triangleDown',
       tradeId: 10_000 + result.length, // offset to avoid ID collision with pattern markers
       type: 'entry',
@@ -515,12 +515,23 @@ export function ChartPage({
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; drawingId: string } | null>(null)
 
   const handleChartContextMenu = useCallback((e: React.MouseEvent) => {
-    // If a drawing is selected, show delete menu
+    // If a drawing is selected (via click), show delete menu
     if (selectedDrawingId) {
       e.preventDefault()
       setCtxMenu({ x: e.clientX, y: e.clientY, drawingId: selectedDrawingId })
+      return
     }
-  }, [selectedDrawingId])
+    // If no drawing selected but drawings exist, show menu for all drawings
+    // so user can still delete via right-click anywhere on chart
+    const drawings = useDrawingStore.getState().drawings[chartKey] ?? []
+    if (drawings.length > 0) {
+      e.preventDefault()
+      // Find the nearest drawing to click position by checking y-price proximity
+      // For now, use the last drawing as a reasonable default
+      const lastDrawing = drawings[drawings.length - 1]
+      setCtxMenu({ x: e.clientX, y: e.clientY, drawingId: lastDrawing.id })
+    }
+  }, [selectedDrawingId, chartKey])
 
   const handleCtxDelete = useCallback(() => {
     if (ctxMenu) {

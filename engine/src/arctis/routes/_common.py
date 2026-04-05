@@ -1,9 +1,21 @@
 """Shared route helpers — single source of truth for bar loading and sim access."""
 
 import logging
+import math
 import time
 
 from fastapi import HTTPException
+
+
+def sanitize_floats(obj):
+    """Replace inf/-inf/NaN with None recursively so JSON serialization never fails."""
+    if isinstance(obj, float) and (math.isinf(obj) or math.isnan(obj)):
+        return None
+    if isinstance(obj, dict):
+        return {k: sanitize_floats(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [sanitize_floats(v) for v in obj]
+    return obj
 
 from arctis.db import fetch_bars_as_models
 from arctis.models import Market, Timeframe
@@ -27,7 +39,7 @@ def load_bars(market: Market, timeframe: Timeframe, days: int = 30):
     Raises HTTPException(404) when no bars are available.
     """
     sim = get_sim()
-    if sim.active and sim.market == market and sim.timeframe == timeframe:
+    if sim.active and sim.market == market.value and sim.timeframe == timeframe.value:
         bars = sim.get_bars()
         logger.debug(
             "load_bars: source=simulation market=%s timeframe=%s bars=%d",

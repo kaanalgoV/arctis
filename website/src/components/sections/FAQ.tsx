@@ -36,37 +36,37 @@ const FAQ_ITEMS: FAQItem[] = [
     id: 'bias-score',
     question: 'Was bedeutet der BIAS-Score konkret?',
     answer:
-      'Der Score von -10 bis +10 zeigt die Tagesrichtung. Positiv = Long-Bias, negativ = Short-Bias. Ueber +5 oder unter -5 ist ein starker Trend. Um 0 herum: Range-Tag, handle die Kanten.',
+      'Der Score von -10 bis +10 zeigt die Tagesrichtung. Positiv = Long-Bias, negativ = Short-Bias. Über +5 oder unter -5 ist ein starker Trend. Um 0 herum: Range-Tag, handle die Kanten.',
   },
   {
     id: 'signal-accuracy',
     question: 'Wie genau sind die Setup-Signale?',
     answer:
-      'Die Setup-Erkennung (ORB, IB, POC, VA) liefert Entry, Stop und Target mit berechnetem R:R. Die historische Trefferquote liegt bei ca. 60-70% — aber nur wenn der Confluence-Score ueber 50 ist.',
+      'Die Setup-Erkennung (ORB, IB, POC, VA) liefert Entry, Stop und Target mit berechnetem R:R. Die historische Trefferquote liegt bei ca. 60-70% — aber nur wenn der Confluence-Score über 50 ist.',
   },
   {
     id: 'markets',
-    question: 'Welche Maerkte werden unterstuetzt?',
+    question: 'Welche Märkte werden unterstützt?',
     answer:
-      'ES (S&P 500 E-mini) und NQ (Nasdaq 100 E-mini) — die liquidesten Index-Futures. Optimale Bedingungen fuer unsere Analyse.',
+      'ES (S&P 500 E-mini) und NQ (Nasdaq 100 E-mini) — die liquidesten Index-Futures. Optimale Bedingungen für unsere Analyse.',
   },
   {
     id: 'data-feed',
     question: 'Brauche ich einen separaten Datenfeed?',
     answer:
-      'Ja, Arctis verbindet sich ueber Rithmic mit der Boerse. Du brauchst einen Rithmic-kompatiblen Broker (z.B. AMP, Optimus, Tradovate).',
+      'Ja, Arctis verbindet sich über Rithmic mit der Börse. Du brauchst einen Rithmic-kompatiblen Broker (z.B. AMP, Optimus, Tradovate).',
   },
   {
     id: 'platforms',
-    question: 'Laeuft Arctis auf Mac und Windows?',
+    question: 'Läuft Arctis auf Mac und Windows?',
     answer:
-      'Aktuell macOS. Windows-Version kommt in Kuerze. Die App ist unter 15 MB gross und laeuft komplett lokal — keine Cloud, keine Verzoegerung.',
+      'Ja — Arctis läuft auf macOS und Windows. Die App ist unter 15 MB groß und läuft komplett lokal — keine Cloud, keine Verzögerung.',
   },
   {
     id: 'pricing',
     question: 'Was kostet es?',
     answer:
-      'Pro: 49€/Monat (oder 39€ jaehrlich). Kein Free-Tier, keine abgespeckte Version. Du bekommst alles vom ersten Tag.',
+      'Pro: 49€/Monat (oder 39€ jährlich). Kein Free-Tier, keine abgespeckte Version. Du bekommst alles vom ersten Tag.',
   },
 ]
 
@@ -155,7 +155,7 @@ function LeftPanel() {
       </h2>
 
       <p className="mt-4 max-w-sm text-base leading-relaxed text-frost-secondary">
-        Alles was du wissen musst, bevor du anfaengst. Nicht gefunden was du suchst?
+        Alles was du wissen musst, bevor du anfängst. Nicht gefunden was du suchst?
       </p>
 
       <div className="mt-6">
@@ -231,7 +231,7 @@ export function FAQ() {
               <span className="text-gradient-frost">beantwortet.</span>
             </h2>
             <p className="mt-4 text-base leading-relaxed text-frost-secondary">
-              Alles was du wissen musst, bevor du anfaengst.{' '}
+              Alles was du wissen musst, bevor du anfängst.{' '}
               <a
                 href="mailto:support@arctis.app"
                 className="text-ice underline underline-offset-4 transition-colors duration-200 hover:text-ice-light"

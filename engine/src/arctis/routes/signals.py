@@ -6,6 +6,7 @@ from fastapi import APIRouter, HTTPException, Query
 
 from arctis.analysis.signals import detect_signals, _NQ_TICK_SIZE
 from arctis.db import fetch_bars_as_models
+from arctis.routes._common import load_bars as _load_bars, current_timestamp as _current_timestamp
 
 router = APIRouter(prefix="/api/signals", tags=["signals"])
 
@@ -56,8 +57,9 @@ async def get_signals(
     If max_bars is set, only the first N bars are analyzed (useful for replay).
     """
     try:
-        bars = fetch_bars_as_models(market=market, days=days, timeframe=timeframe)
-    except (KeyError, RuntimeError) as e:
+        from arctis.models import Market, Timeframe
+        bars = _load_bars(Market(market), Timeframe(timeframe), days=days)
+    except (KeyError, RuntimeError, ValueError) as e:
         raise HTTPException(404, str(e))
     if max_bars is not None and max_bars < len(bars):
         bars = bars[:max_bars]
@@ -76,9 +78,18 @@ async def get_signals(
     except ValueError:
         resolved_symbol = market
 
+    # Use sim timestamp when replay is active
+    from arctis.routes._common import get_sim
+    _sim = get_sim()
+    _sim_active = _sim.active and _sim.market == market
+
     live_entry = _last_prices.get(resolved_symbol)
-    now = time.time()
-    if live_entry:
+    now = _current_timestamp() if _sim_active else time.time()
+    if _sim_active:
+        current_price = bars[-1].close if bars else None
+        price_is_live = False
+        price_age_s = None
+    elif live_entry:
         current_price = live_entry["price"]
         price_is_live = (now - live_entry["ts"]) < 5.0
         price_age_s = round(now - live_entry["ts"], 1)
@@ -87,7 +98,7 @@ async def get_signals(
         price_is_live = False
         price_age_s = None
 
-    session_ctx = get_current_session()
+    session_ctx = get_current_session(override_ts=now if _sim_active else None)
 
     # --- Bias data (so SignalsPanel can show correct bias micro-strip) ---
     try:

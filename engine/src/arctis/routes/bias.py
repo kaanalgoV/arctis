@@ -7,6 +7,7 @@ from arctis.models import Market, Timeframe, resolve_symbol
 from arctis.routes._common import load_bars as _load_bars
 from arctis.analysis.sessions import classify_session, get_current_session
 from arctis.analysis.market_context import build_market_context
+from arctis.routes._common import sanitize_floats as _sanitize_floats
 
 router = APIRouter(prefix="/api/analysis")
 
@@ -252,9 +253,12 @@ async def get_daily_bias(
     price_source = "live_tick" if live_price is not None else "last_bar_close"
 
     # ------------------------------------------------------------------
-    # 2. Session — derived from real wall clock (not bar timestamp)
+    # 2. Session — derived from sim time during replay, wall clock otherwise
     # ------------------------------------------------------------------
-    current_session = get_current_session()
+    from arctis.routes._common import get_sim, current_timestamp as _current_timestamp
+    _sim = get_sim()
+    _sim_active = _sim.active and _sim.market == market.value
+    current_session = get_current_session(override_ts=_current_timestamp() if _sim_active else None)
     current_session_str = current_session.value
 
     # ------------------------------------------------------------------
@@ -464,7 +468,7 @@ async def get_daily_bias(
     # ------------------------------------------------------------------
     # 11. Assemble response — ADD new fields, keep all existing fields
     # ------------------------------------------------------------------
-    return {
+    return _sanitize_floats({
         "market": market.value,
         "timeframe": timeframe.value,
         "bar_count": len(bars),
@@ -474,7 +478,7 @@ async def get_daily_bias(
         "is_rth": _ctx.is_rth,
         "timestamp": _ctx.timestamp,
         "price_is_live": _ctx.price_is_live,
-        "price_age_s": round(_ctx.price_age_s, 1),
+        "price_age_s": round(_ctx.price_age_s, 1) if _ctx.price_age_s != float("inf") else None,
         # ----- Actionable summary -----
         "direction": direction,
         "confidence": confidence,
@@ -532,7 +536,7 @@ async def get_daily_bias(
         } if correction else None,
         "key_levels": [
             {"level": kl.level, "tests": kl.test_count, "type": kl.type}
-            for kl in key_levels[:10]
+            for kl in sorted(key_levels, key=lambda kl: abs(kl.level - current_price))[:10]
         ],
         # ----- Indicator context (new, informational) -----
         "indicators": {
@@ -545,4 +549,4 @@ async def get_daily_bias(
             "ema_alignment": ema_alignment,
             "vwap_position": vwap_position,
         },
-    }
+    })

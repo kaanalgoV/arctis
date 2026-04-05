@@ -3,3 +3,7 @@
 {"ts": 1774813361.3143544, "action": "drawing_created", "user_id": "default", "details": {"id": "5d849d03-844c-41a7-ab70-75eee1435368", "type": "hline", "symbol": "ESM6", "timeframe": "5min"}}
 {"ts": 1774814008.1045735, "action": "drawing_deleted", "user_id": "default", "details": {"id": "05016829-b2e0-4024-b247-cf69f3ff69f6", "symbol": "ESM6", "timeframe": "5min"}}
 {"ts": 1774814010.0365357, "action": "drawing_deleted", "user_id": "default", "details": {"id": "5d849d03-844c-41a7-ab70-75eee1435368", "symbol": "ESM6", "timeframe": "5min"}}
+{"ts": 1775387709.7945592, "action": "drawing_created", "user_id": "default", "details": {"id": "de40d5d6-3518-44da-8079-ef585b4fee4f", "type": "rectangle", "symbol": "NQM6", "timeframe": "5min"}}
+{"ts": 1775387711.4431174, "action": "drawing_deleted", "user_id": "default", "details": {"id": "de40d5d6-3518-44da-8079-ef585b4fee4f", "symbol": "NQM6", "timeframe": "5min"}}
+{"ts": 1775387716.6352088, "action": "drawing_created", "user_id": "default", "details": {"id": "60dbb680-d731-4932-8b80-2ad22ff21c8f", "type": "trendline", "symbol": "NQM6", "timeframe": "5min"}}
+{"ts": 1775387727.1598325, "action": "drawing_created", "user_id": "default", "details": {"id": "e9633792-3151-4972-9e81-8087c0ca6f6f", "type": "trendline", "symbol": "NQM6", "timeframe": "5min"}}

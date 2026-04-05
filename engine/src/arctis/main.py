@@ -13,6 +13,8 @@ from fastapi import FastAPI, File, Form, HTTPException, Query, UploadFile, WebSo
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+
+
 from arctis.csv_parser import parse_csv
 from arctis.models import (
     Market,

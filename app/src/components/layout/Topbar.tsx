@@ -298,11 +298,7 @@ export function Topbar({
           >
             {formattedChange}
           </span>
-        ) : (
-          <span className="font-mono text-[11px] font-medium text-[var(--color-text-muted)] leading-none">
-            —
-          </span>
-        )}
+        ) : null}
       </div>
 
       {/* Divider */}

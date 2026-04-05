@@ -16,10 +16,10 @@ interface OverlayConfig {
 const OVERLAYS: OverlayConfig[] = [
   { key: 'vwap',   label: 'VWAP',   color: CHART_TOKENS.overlay.vwap,                  icon: Activity },
   { key: 'ema',    label: 'EMA',    color: '#5CB8F0',                                   icon: TrendingUp },
-  { key: 'volume', label: 'Vol',    color: CHART_TOKENS.overlay.volume.bull,            icon: BarChart2 },
+  { key: 'volume', label: 'Vol',    color: '#5CB8F0',                                   icon: BarChart2 },
   { key: 'vp',     label: 'VP',     color: CHART_TOKENS.overlay.volumeProfile.poc,      icon: LayoutGrid },
   { key: 'levels', label: 'Levels', color: '#5CB8F0',                                   icon: Ruler },
-  { key: 'zones',  label: 'Zones',  color: '#00B775',                                   icon: Layers },
+  { key: 'zones',  label: 'Zones',  color: '#34D399',                                   icon: Layers },
 ]
 
 // ─── Props ──────────────────────────────────────────────────────────────────

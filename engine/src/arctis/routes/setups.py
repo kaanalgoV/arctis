@@ -27,6 +27,7 @@ from fastapi import APIRouter, HTTPException, Query
 from arctis.db import fetch_bars_as_models
 from arctis.analysis.setup_engine import Setup, SetupStatus, detect_setups, _build_chart_artifacts
 from arctis.analysis.sessions import classify_session, get_session_context
+from arctis.routes._common import load_bars as _load_bars, current_timestamp as _current_timestamp
 
 logger = logging.getLogger(__name__)
 
@@ -631,8 +632,9 @@ async def get_setups(
     - live_price: Resolved live tick price (or null if offline)
     """
     try:
-        bars = fetch_bars_as_models(market=market, days=days, timeframe=timeframe)
-    except (KeyError, RuntimeError) as exc:
+        from arctis.models import Market, Timeframe
+        bars = _load_bars(Market(market), Timeframe(timeframe), days=days)
+    except (KeyError, RuntimeError, ValueError) as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
     if not bars:
@@ -642,13 +644,19 @@ async def get_setups(
     ts = last_bar.timestamp
     price = last_bar.close
 
-    # Live price (may be fresher than the last bar)
-    live_price = _get_live_price(market)
+    # Use sim timestamp when replay is active
+    from arctis.routes._common import get_sim
+    _sim = get_sim()
+    _sim_active = _sim.active and _sim.market == market
+
+    # Live price (may be fresher than the last bar) — skip during replay
+    live_price = None if _sim_active else _get_live_price(market)
     effective_price = live_price if live_price else price
 
-    # Session context
+    # Session context — use sim time during replay
+    sim_ts = _current_timestamp() if _sim_active else None
     session_ctx = get_session_context()
-    current_session_str = classify_session(ts).value
+    current_session_str = classify_session(int(sim_ts) if sim_ts else ts).value
 
     # ---------------------------------------------------------------------------
     # Analysis modules — each fails independently without blocking the endpoint

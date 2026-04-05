@@ -14,6 +14,21 @@ import {
   blurReveal,
 } from '@/lib/animations'
 import { FrostParticles } from '@/components/effects/FrostParticles'
+import { HeroAppMockup } from '@/components/sections/HeroAppMockup'
+
+// ─── Precomputed tick marks for crystal SVG (avoids hydration mismatch) ──
+const TICK_MARKS = Array.from({ length: 24 }).map((_, i) => {
+  const angle = (i * 15 * Math.PI) / 180
+  const r1 = 58, r2 = 54
+  return {
+    x1: +(70 + r1 * Math.cos(angle)).toFixed(4),
+    y1: +(70 + r1 * Math.sin(angle)).toFixed(4),
+    x2: +(70 + r2 * Math.cos(angle)).toFixed(4),
+    y2: +(70 + r2 * Math.sin(angle)).toFixed(4),
+    sw: i % 6 === 0 ? '0.8' : '0.3',
+    op: i % 6 === 0 ? '0.3' : '0.12',
+  }
+})
 
 // ─── Candlestick data — 40 candles, realistic NQ-like uptrend with pullbacks ──
 
@@ -154,15 +169,16 @@ function CandlestickChart() {
       </defs>
 
       {/* ── Grid lines at 20%, 40%, 60%, 80% ── */}
-      {[0.2, 0.4, 0.6, 0.8].map((frac) => (
+      {[0.2, 0.4, 0.6, 0.8].map((frac, i) => (
         <line
           key={frac}
           x1="0"
           y1={CHART_H * frac}
           x2={totalW}
           y2={CHART_H * frac}
-          stroke="rgba(92,184,240,0.04)"
+          stroke="rgba(92,184,240,0.05)"
           strokeWidth="1"
+          style={{ animation: `gridPulse 5s ease-in-out ${i * 0.5}s infinite` }}
         />
       ))}
 
@@ -201,6 +217,7 @@ function CandlestickChart() {
         width={totalW}
         height={scaleY(supplyZoneBot) - scaleY(supplyZoneTop)}
         fill="url(#supplyZoneGrad)"
+        style={{ animation: 'zoneFlicker 4s ease-in-out infinite' }}
       />
       <line
         x1="0"
@@ -228,6 +245,7 @@ function CandlestickChart() {
         width={totalW}
         height={scaleY(demandZoneBot) - scaleY(demandZoneTop)}
         fill="url(#demandZoneGrad)"
+        style={{ animation: 'zoneFlicker 4s ease-in-out 2s infinite' }}
       />
       <line
         x1="0"
@@ -248,31 +266,33 @@ function CandlestickChart() {
         strokeDasharray="4 4"
       />
 
-      {/* ── VWAP line — purple-tinted with draw animation ── */}
+      {/* ── VWAP line — purple-tinted with draw animation + glow ── */}
       <path
         d={vwapPath}
         fill="none"
-        stroke="rgba(168,130,240,0.30)"
-        strokeWidth="1.2"
+        stroke="rgba(168,130,240,0.45)"
+        strokeWidth="1.4"
         strokeLinecap="round"
         strokeLinejoin="round"
         strokeDasharray="300"
         style={{
           animation: 'drawLine 2s ease-out 0.8s both',
+          filter: 'drop-shadow(0 0 3px rgba(168,130,240,0.3))',
         }}
       />
 
-      {/* ── EMA line — ice color with draw animation ── */}
+      {/* ── EMA line — ice color with draw animation + glow ── */}
       <path
         d={emaPath}
         fill="none"
-        stroke="rgba(92,184,240,0.30)"
-        strokeWidth="1.5"
+        stroke="rgba(92,184,240,0.45)"
+        strokeWidth="1.6"
         strokeLinecap="round"
         strokeLinejoin="round"
         strokeDasharray="300"
         style={{
           animation: 'drawLine 2.2s ease-out 0.6s both',
+          filter: 'drop-shadow(0 0 4px rgba(92,184,240,0.3))',
         }}
       />
 
@@ -317,7 +337,8 @@ function CandlestickChart() {
                 height={bodyH}
                 rx="1.5"
                 fill={color}
-                opacity={c.bull ? 0.82 : 0.72}
+                opacity={c.bull ? 0.88 : 0.75}
+                style={isLivePulse && c.bull ? { filter: 'drop-shadow(0 0 3px rgba(52,211,153,0.4))' } : undefined}
               />
             </g>
           )
@@ -373,23 +394,36 @@ function CandlestickChart() {
       <circle
         cx={29 * STEP + CANDLE_W / 2}
         cy={scaleY(166)}
-        r="2.5"
+        r="3"
         fill="#34D399"
-        opacity="0.8"
+        opacity="0.9"
         style={{
           animation: 'liveDot 1.5s ease-in-out infinite',
+          filter: 'drop-shadow(0 0 6px rgba(52,211,153,0.8))',
         }}
       />
       <circle
         cx={29 * STEP + CANDLE_W / 2}
         cy={scaleY(166)}
-        r="5"
+        r="6"
         fill="none"
         stroke="#34D399"
         strokeWidth="0.8"
-        opacity="0.3"
+        opacity="0.4"
         style={{
           animation: 'liveDot 1.5s ease-in-out 0.3s infinite',
+        }}
+      />
+      <circle
+        cx={29 * STEP + CANDLE_W / 2}
+        cy={scaleY(166)}
+        r="10"
+        fill="none"
+        stroke="#34D399"
+        strokeWidth="0.4"
+        opacity="0.15"
+        style={{
+          animation: 'liveDot 1.5s ease-in-out 0.6s infinite',
         }}
       />
       {/* ── Blinking live dot next to last candle ── */}
@@ -596,20 +630,21 @@ export function Hero() {
       {/* ── Candle fade-in keyframes + Crystal glow ── */}
       <style>{`
         @keyframes candleFadeIn {
-          from { opacity: 0; transform: translateY(4px); }
+          from { opacity: 0; transform: translateY(6px); }
           to { opacity: 1; transform: translateY(0); }
         }
         @keyframes candleBuild {
-          from { transform: scaleY(0); opacity: 0; }
-          to { transform: scaleY(1); opacity: 1; }
+          0% { transform: scaleY(0); opacity: 0; }
+          60% { transform: scaleY(1.05); opacity: 1; }
+          100% { transform: scaleY(1); opacity: 1; }
         }
         @keyframes candlePulse {
-          0%, 100% { opacity: 0.7; }
-          50% { opacity: 1; }
+          0%, 100% { opacity: 0.75; filter: drop-shadow(0 0 0 transparent); }
+          50% { opacity: 1; filter: drop-shadow(0 0 4px rgba(52,211,153,0.3)); }
         }
         @keyframes liveDot {
-          0%, 100% { opacity: 0.3; }
-          50% { opacity: 1; }
+          0%, 100% { opacity: 0.3; transform: scale(1); }
+          50% { opacity: 1; transform: scale(1.3); }
         }
         @keyframes drawLine {
           from { stroke-dashoffset: 300; }
@@ -621,40 +656,64 @@ export function Hero() {
         }
         @keyframes signalPop {
           0% { transform: scale(0); opacity: 0; }
-          50% { transform: scale(1.2); opacity: 1; }
+          50% { transform: scale(1.3); opacity: 1; }
           100% { transform: scale(1); opacity: 1; }
         }
         @keyframes profitCount {
-          from { opacity: 0; transform: translateY(4px); }
-          to { opacity: 1; transform: translateY(0); }
+          from { opacity: 0; transform: translateY(6px) scale(0.9); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
         }
         @keyframes profitGlow {
-          0%, 100% { filter: drop-shadow(0 0 4px rgba(52,211,153,0.4)); }
-          50% { filter: drop-shadow(0 0 8px rgba(52,211,153,0.7)); }
+          0%, 100% { filter: drop-shadow(0 0 6px rgba(52,211,153,0.5)); }
+          50% { filter: drop-shadow(0 0 14px rgba(52,211,153,0.9)); }
+        }
+        @keyframes zoneFlicker {
+          0%, 100% { opacity: 0.06; }
+          50% { opacity: 0.12; }
+        }
+        @keyframes gridPulse {
+          0%, 100% { opacity: 0.04; }
+          50% { opacity: 0.08; }
         }
         @keyframes crystalRotate {
           0% { transform: rotate(0deg); }
           100% { transform: rotate(360deg); }
         }
         @keyframes crystalGlow {
-          0%, 100% { filter: drop-shadow(0 0 12px rgba(92,184,240,0.3)) drop-shadow(0 0 40px rgba(92,184,240,0.1)); }
-          50% { filter: drop-shadow(0 0 20px rgba(92,184,240,0.5)) drop-shadow(0 0 60px rgba(92,184,240,0.15)); }
+          0%, 100% { filter: drop-shadow(0 0 20px rgba(92,184,240,0.4)) drop-shadow(0 0 60px rgba(92,184,240,0.15)); }
+          50% { filter: drop-shadow(0 0 35px rgba(92,184,240,0.7)) drop-shadow(0 0 100px rgba(92,184,240,0.25)); }
         }
         @keyframes crystalFloat {
           0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(-6px); }
+          50% { transform: translateY(-10px); }
         }
         @keyframes crystalCenterPulse {
           0%, 100% { opacity: 0.7; r: 1.8; }
-          50% { opacity: 1; r: 2.2; }
+          50% { opacity: 1; r: 2.5; }
         }
         @keyframes crystalOuterRotate {
           0% { transform: rotate(0deg); }
           100% { transform: rotate(360deg); }
         }
         @keyframes crystalSparkle {
-          0%, 100% { opacity: 0; }
-          50% { opacity: 0.8; }
+          0%, 100% { opacity: 0; transform: scale(0.5); }
+          50% { opacity: 1; transform: scale(1.2); }
+        }
+        @keyframes crystalShockwave {
+          0% { transform: scale(0.3); opacity: 0.8; }
+          60% { opacity: 0.3; }
+          100% { transform: scale(3); opacity: 0; }
+        }
+        @keyframes crystalEntranceSpin {
+          0% { transform: rotate(-180deg) scale(0); opacity: 0; }
+          40% { transform: rotate(20deg) scale(1.15); opacity: 1; }
+          60% { transform: rotate(-8deg) scale(0.95); }
+          80% { transform: rotate(3deg) scale(1.02); }
+          100% { transform: rotate(0deg) scale(1); opacity: 1; }
+        }
+        @keyframes crystalRayPulse {
+          0%, 100% { opacity: 0.15; transform: scaleY(1); }
+          50% { opacity: 0.4; transform: scaleY(1.15); }
         }
         @media (prefers-reduced-motion: reduce) {
           * {
@@ -746,102 +805,164 @@ export function Hero() {
             }}
           />
           <span className="font-sans text-sm font-medium tracking-wide text-frost-secondary">
-            Von Prop-Tradern fuer Prop-Trader
+            Von Prop-Tradern für Prop-Trader
           </span>
         </motion.div>
 
-        {/* ── Large Arctis Crystal — decorative floating accent with multi-layer animation ── */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 1.2, ease: [0.25, 0.46, 0.45, 0.94], delay: 0.15 }}
-          className="mb-6 flex justify-center"
-          style={{ animation: 'crystalFloat 4s ease-in-out infinite' }}
+        {/* ── Large Arctis Crystal — dramatic entrance with shockwave ── */}
+        <div
+          className="relative mb-8 flex justify-center"
+          style={{ width: 140, height: 140, margin: '0 auto 2rem' }}
         >
-          <div className="relative" style={{ width: 80, height: 80 }}>
-            {/* Layer 1: Outer ring — slow rotation 40s */}
-            <svg
-              width="80"
-              height="80"
-              viewBox="0 0 80 80"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-              aria-hidden="true"
-              className="absolute inset-0"
-              style={{ animation: 'crystalOuterRotate 40s linear infinite' }}
-            >
-              <circle cx="40" cy="40" r="38" stroke="#5CB8F0" strokeWidth="0.4" fill="none" opacity="0.12" />
-              <circle cx="40" cy="40" r="35" stroke="#5CB8F0" strokeWidth="0.3" fill="none" opacity="0.08" strokeDasharray="4 6" />
-            </svg>
+          {/* Shockwave ring — expands outward on load */}
+          <div
+            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full"
+            style={{
+              width: 80,
+              height: 80,
+              border: '2px solid rgba(92,184,240,0.6)',
+              animation: 'crystalShockwave 1.2s cubic-bezier(0.25,0.46,0.45,0.94) 0.3s forwards',
+              opacity: 0,
+            }}
+          />
+          {/* Second shockwave — delayed */}
+          <div
+            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full"
+            style={{
+              width: 80,
+              height: 80,
+              border: '1px solid rgba(92,184,240,0.35)',
+              animation: 'crystalShockwave 1.4s cubic-bezier(0.25,0.46,0.45,0.94) 0.5s forwards',
+              opacity: 0,
+            }}
+          />
 
-            {/* Layer 2: Inner crystal — glow + breathe */}
-            <div
-              className="absolute inset-0 flex items-center justify-center"
-              style={{ animation: 'crystalGlow 3s ease-in-out infinite' }}
-            >
-              <svg
-                width="64"
-                height="64"
-                viewBox="0 0 28 28"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-                aria-hidden="true"
-                style={{ animation: 'crystalRotate 40s linear infinite' }}
-              >
-                {/* Vertical axis */}
-                <line x1="14" y1="2" x2="14" y2="26" stroke="#5CB8F0" strokeWidth="1.2" strokeLinecap="round" opacity="0.85" />
-                {/* Horizontal axis */}
-                <line x1="2" y1="14" x2="26" y2="14" stroke="#5CB8F0" strokeWidth="1.2" strokeLinecap="round" opacity="0.85" />
-                {/* Diagonal axes */}
-                <line x1="5.8" y1="5.8" x2="22.2" y2="22.2" stroke="#5CB8F0" strokeWidth="1.2" strokeLinecap="round" opacity="0.75" />
-                <line x1="22.2" y1="5.8" x2="5.8" y2="22.2" stroke="#5CB8F0" strokeWidth="1.2" strokeLinecap="round" opacity="0.75" />
-                {/* Inner ring — pulsing */}
-                <circle cx="14" cy="14" r="3.5" stroke="#5CB8F0" strokeWidth="0.9" fill="none" opacity="0.7" />
-                {/* Outer subtle ring */}
-                <circle cx="14" cy="14" r="7" stroke="#5CB8F0" strokeWidth="0.4" fill="none" opacity="0.25" strokeDasharray="2 2" />
-                {/* Branch tips — vertical */}
-                <line x1="14" y1="2" x2="11" y2="5.5" stroke="#5CB8F0" strokeWidth="0.8" strokeLinecap="round" opacity="0.65" />
-                <line x1="14" y1="2" x2="17" y2="5.5" stroke="#5CB8F0" strokeWidth="0.8" strokeLinecap="round" opacity="0.65" />
-                <line x1="14" y1="26" x2="11" y2="22.5" stroke="#5CB8F0" strokeWidth="0.8" strokeLinecap="round" opacity="0.65" />
-                <line x1="14" y1="26" x2="17" y2="22.5" stroke="#5CB8F0" strokeWidth="0.8" strokeLinecap="round" opacity="0.65" />
-                {/* Branch tips — horizontal */}
-                <line x1="2" y1="14" x2="5.5" y2="11" stroke="#5CB8F0" strokeWidth="0.8" strokeLinecap="round" opacity="0.65" />
-                <line x1="2" y1="14" x2="5.5" y2="17" stroke="#5CB8F0" strokeWidth="0.8" strokeLinecap="round" opacity="0.65" />
-                <line x1="26" y1="14" x2="22.5" y2="11" stroke="#5CB8F0" strokeWidth="0.8" strokeLinecap="round" opacity="0.65" />
-                <line x1="26" y1="14" x2="22.5" y2="17" stroke="#5CB8F0" strokeWidth="0.8" strokeLinecap="round" opacity="0.65" />
-                {/* Outer glow ring */}
-                <circle cx="14" cy="14" r="12" stroke="#5CB8F0" strokeWidth="0.5" fill="none" opacity="0.15" />
-                {/* Center glow dot — pulsing */}
-                <circle cx="14" cy="14" r="1.8" fill="#5CB8F0" opacity="0.9" style={{ animation: 'crystalCenterPulse 3s ease-in-out infinite' }} />
-                <circle cx="14" cy="14" r="0.8" fill="#fff" opacity="0.7" />
-              </svg>
-            </div>
+          {/* Ambient glow behind crystal */}
+          <div
+            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
+            style={{
+              width: 200,
+              height: 200,
+              background: 'radial-gradient(circle, rgba(92,184,240,0.12) 0%, rgba(92,184,240,0.04) 40%, transparent 70%)',
+              animation: 'crystalGlow 3s ease-in-out infinite',
+            }}
+          />
 
-            {/* Layer 3: Sparkle dots — fade in/out randomly */}
-            {[
-              { x: 6, y: 8, delay: 0 },
-              { x: 72, y: 14, delay: 1.5 },
-              { x: 12, y: 68, delay: 3.0 },
-              { x: 68, y: 64, delay: 4.5 },
-              { x: 40, y: 4, delay: 2.0 },
-              { x: 40, y: 76, delay: 5.0 },
-            ].map((spark, i) => (
-              <div
+          {/* Layer 1: Outer rings — counter-rotating */}
+          <svg
+            width="140"
+            height="140"
+            viewBox="0 0 140 140"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            aria-hidden="true"
+            className="absolute inset-0"
+            style={{ animation: 'crystalOuterRotate 30s linear infinite' }}
+          >
+            <circle cx="70" cy="70" r="68" stroke="#5CB8F0" strokeWidth="0.3" fill="none" opacity="0.08" />
+            <circle cx="70" cy="70" r="62" stroke="#5CB8F0" strokeWidth="0.4" fill="none" opacity="0.12" strokeDasharray="3 8" />
+            {/* Tick marks around the ring — precomputed to avoid hydration mismatch */}
+            {TICK_MARKS.map((t, i) => (
+              <line
                 key={i}
-                className="absolute rounded-full"
-                style={{
-                  left: spark.x,
-                  top: spark.y,
-                  width: 2,
-                  height: 2,
-                  background: '#5CB8F0',
-                  boxShadow: '0 0 4px rgba(92,184,240,0.8)',
-                  animation: `crystalSparkle 3s ease-in-out ${spark.delay}s infinite`,
-                }}
+                x1={t.x1}
+                y1={t.y1}
+                x2={t.x2}
+                y2={t.y2}
+                stroke="#5CB8F0"
+                strokeWidth={t.sw}
+                opacity={t.op}
+                strokeLinecap="round"
               />
             ))}
+          </svg>
+
+          {/* Layer 2: Inner crystal — entrance spin + glow */}
+          <div
+            className="absolute inset-0 flex items-center justify-center"
+            style={{ animation: 'crystalEntranceSpin 1s cubic-bezier(0.34,1.56,0.64,1) 0.2s both' }}
+          >
+            <div style={{ animation: 'crystalFloat 4s ease-in-out infinite' }}>
+              <div style={{ animation: 'crystalGlow 3s ease-in-out infinite' }}>
+                <svg
+                  width="90"
+                  height="90"
+                  viewBox="0 0 28 28"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  aria-hidden="true"
+                  style={{ animation: 'crystalRotate 50s linear infinite' }}
+                >
+                  <defs>
+                    <radialGradient id="crystalCenter" cx="50%" cy="50%" r="50%">
+                      <stop offset="0%" stopColor="#5CB8F0" stopOpacity="0.3" />
+                      <stop offset="100%" stopColor="#5CB8F0" stopOpacity="0" />
+                    </radialGradient>
+                  </defs>
+                  {/* Center glow fill */}
+                  <circle cx="14" cy="14" r="6" fill="url(#crystalCenter)" />
+                  {/* Vertical axis */}
+                  <line x1="14" y1="1" x2="14" y2="27" stroke="#5CB8F0" strokeWidth="1.4" strokeLinecap="round" opacity="0.9" />
+                  {/* Horizontal axis */}
+                  <line x1="1" y1="14" x2="27" y2="14" stroke="#5CB8F0" strokeWidth="1.4" strokeLinecap="round" opacity="0.9" />
+                  {/* Diagonal axes */}
+                  <line x1="5" y1="5" x2="23" y2="23" stroke="#5CB8F0" strokeWidth="1.3" strokeLinecap="round" opacity="0.8" />
+                  <line x1="23" y1="5" x2="5" y2="23" stroke="#5CB8F0" strokeWidth="1.3" strokeLinecap="round" opacity="0.8" />
+                  {/* Inner hexagonal ring */}
+                  <circle cx="14" cy="14" r="4" stroke="#5CB8F0" strokeWidth="1" fill="none" opacity="0.8" />
+                  {/* Secondary ring */}
+                  <circle cx="14" cy="14" r="7.5" stroke="#5CB8F0" strokeWidth="0.5" fill="none" opacity="0.3" strokeDasharray="2 3" />
+                  {/* Branch tips — vertical */}
+                  <line x1="14" y1="1" x2="10.5" y2="5" stroke="#5CB8F0" strokeWidth="1" strokeLinecap="round" opacity="0.7" />
+                  <line x1="14" y1="1" x2="17.5" y2="5" stroke="#5CB8F0" strokeWidth="1" strokeLinecap="round" opacity="0.7" />
+                  <line x1="14" y1="27" x2="10.5" y2="23" stroke="#5CB8F0" strokeWidth="1" strokeLinecap="round" opacity="0.7" />
+                  <line x1="14" y1="27" x2="17.5" y2="23" stroke="#5CB8F0" strokeWidth="1" strokeLinecap="round" opacity="0.7" />
+                  {/* Branch tips — horizontal */}
+                  <line x1="1" y1="14" x2="5" y2="10.5" stroke="#5CB8F0" strokeWidth="1" strokeLinecap="round" opacity="0.7" />
+                  <line x1="1" y1="14" x2="5" y2="17.5" stroke="#5CB8F0" strokeWidth="1" strokeLinecap="round" opacity="0.7" />
+                  <line x1="27" y1="14" x2="23" y2="10.5" stroke="#5CB8F0" strokeWidth="1" strokeLinecap="round" opacity="0.7" />
+                  <line x1="27" y1="14" x2="23" y2="17.5" stroke="#5CB8F0" strokeWidth="1" strokeLinecap="round" opacity="0.7" />
+                  {/* Outer ring */}
+                  <circle cx="14" cy="14" r="12.5" stroke="#5CB8F0" strokeWidth="0.6" fill="none" opacity="0.2" />
+                  {/* Center bright dot */}
+                  <circle cx="14" cy="14" r="2" fill="#5CB8F0" opacity="0.95" style={{ animation: 'crystalCenterPulse 2.5s ease-in-out infinite' }} />
+                  <circle cx="14" cy="14" r="1" fill="#ffffff" opacity="0.85" />
+                  {/* Tiny accent dots on axis tips */}
+                  <circle cx="14" cy="1" r="0.8" fill="#5CB8F0" opacity="0.5" />
+                  <circle cx="27" cy="14" r="0.8" fill="#5CB8F0" opacity="0.5" />
+                  <circle cx="14" cy="27" r="0.8" fill="#5CB8F0" opacity="0.4" />
+                  <circle cx="1" cy="14" r="0.8" fill="#5CB8F0" opacity="0.4" />
+                </svg>
+              </div>
+            </div>
           </div>
-        </motion.div>
+
+          {/* Layer 3: Sparkle particles — bigger, more visible */}
+          {[
+            { x: 4, y: 10, size: 3, delay: 0 },
+            { x: 130, y: 20, size: 2, delay: 1.2 },
+            { x: 10, y: 120, size: 2.5, delay: 2.5 },
+            { x: 125, y: 115, size: 2, delay: 3.8 },
+            { x: 70, y: 0, size: 2.5, delay: 1.8 },
+            { x: 70, y: 135, size: 2, delay: 4.2 },
+            { x: 0, y: 70, size: 2, delay: 0.8 },
+            { x: 138, y: 70, size: 2.5, delay: 3.0 },
+          ].map((spark, i) => (
+            <div
+              key={i}
+              className="absolute rounded-full"
+              style={{
+                left: spark.x,
+                top: spark.y,
+                width: spark.size,
+                height: spark.size,
+                background: '#5CB8F0',
+                boxShadow: '0 0 6px rgba(92,184,240,0.9), 0 0 12px rgba(92,184,240,0.4)',
+                animation: `crystalSparkle 2.5s ease-in-out ${spark.delay}s infinite`,
+              }}
+            />
+          ))}
+        </div>
 
         {/* Headline — editorial typography with varied weights */}
         <h1 className="font-display mb-6 leading-[1.05] tracking-tight">
@@ -855,7 +976,7 @@ export function Hero() {
           />
           <span className="block h-2 sm:h-3" />
           <AnimatedWords
-            text="Bevor die Glocke laeutet."
+            text="Bevor die Glocke läutet."
             className="text-gradient-frost text-3xl sm:text-4xl lg:text-6xl xl:text-7xl font-medium italic"
           />
         </h1>
@@ -868,7 +989,7 @@ export function Hero() {
           transition={{ delay: 0.25 }}
           className="font-sans mx-auto mb-10 max-w-2xl text-lg leading-relaxed text-frost-secondary sm:text-xl"
         >
-          Arctis analysiert NQ und ES in Echtzeit — BIAS, Confluence, Setups — und sagt dir genau: Entry, Stop, Target. In 14 Minuten bist du bereit fuer den Trade.
+          Arctis analysiert NQ und ES in Echtzeit — BIAS, Confluence, Setups — und sagt dir genau: Entry, Stop, Target. In 14 Minuten bist du bereit für den Trade.
         </motion.p>
 
         {/* CTA Buttons */}
@@ -937,391 +1058,29 @@ export function Hero() {
         </motion.div>
       </div>
 
-      {/* ── Dashboard mockup ── */}
+      {/* ── Dashboard — animated app mockup ── */}
       <motion.div
         variants={heroImageReveal}
         initial="hidden"
         animate="visible"
-        className="relative z-10 mt-16 w-full max-w-4xl px-6"
+        className="relative z-10 mt-16 w-full max-w-5xl px-6"
         style={{ zIndex: 2 }}
       >
         <motion.div style={{ y: dashboardY }}>
-          {/* Glow halo behind the card */}
+          {/* Glow halo behind the mockup */}
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute -inset-px rounded-2xl opacity-0 transition-opacity duration-500 group-hover:opacity-100"
+            className="pointer-events-none absolute -inset-6 rounded-3xl"
             style={{
-              background: 'radial-gradient(ellipse 70% 60% at 50% 40%, rgba(92,184,240,0.08) 0%, transparent 70%)',
-              filter: 'blur(20px)',
+              background: 'radial-gradient(ellipse 80% 60% at 50% 40%, rgba(92,184,240,0.08) 0%, transparent 70%)',
+              filter: 'blur(40px)',
               zIndex: -1,
             }}
           />
 
-          <div
-            className={cn(
-              'glass-card group relative overflow-hidden rounded-2xl',
-              'shadow-[0_20px_80px_rgba(0,0,0,0.6),0_8px_32px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.04)]',
-              'transition-shadow duration-500 hover:shadow-[0_24px_100px_rgba(0,0,0,0.65),0_0_60px_rgba(92,184,240,0.06),inset_0_1px_0_rgba(255,255,255,0.05)]',
-            )}
-          >
-            {/* ── Browser chrome top bar ── */}
-            <div
-              className="flex items-center gap-3 border-b border-[#1E2530] px-4 py-2"
-              style={{ background: 'rgba(10,13,18,0.85)' }}
-            >
-              {/* Traffic lights */}
-              <div className="flex items-center gap-[5px] shrink-0">
-                <span className="h-[9px] w-[9px] rounded-full" style={{ background: '#BF4B47', opacity: 0.85 }} />
-                <span className="h-[9px] w-[9px] rounded-full" style={{ background: '#A68528', opacity: 0.85 }} />
-                <span className="h-[9px] w-[9px] rounded-full" style={{ background: '#1E8C35', opacity: 0.85 }} />
-              </div>
-              {/* URL bar */}
-              <div
-                className="flex flex-1 items-center rounded-md px-3 py-[3px]"
-                style={{
-                  background: 'rgba(255,255,255,0.03)',
-                  border: '1px solid rgba(255,255,255,0.06)',
-                  maxWidth: 240,
-                }}
-              >
-                <span className="font-mono text-[10px] tracking-tight" style={{ color: 'rgba(140,160,180,0.6)' }}>
-                  arctis://analysis/<span style={{ color: 'rgba(140,160,180,0.9)' }}>NQ</span>
-                </span>
-              </div>
-              {/* Right side: price + live badge */}
-              <div className="ml-auto flex items-center gap-3">
-                <div className="flex items-center gap-1.5">
-                  <span className="font-mono text-[11px] font-medium text-frost-muted">NQH5</span>
-                  <span className="font-mono text-[11px] font-bold" style={{ color: '#34D399' }}>
-                    21,847.25
-                  </span>
-                  <TrendingUp size={11} style={{ color: '#34D399' }} strokeWidth={2.5} />
-                  <span className="font-mono text-[10px]" style={{ color: '#34D399' }}>
-                    +1.34%
-                  </span>
-                </div>
-                <div className="flex items-center gap-1 rounded border border-[rgba(52,211,153,0.18)] bg-[rgba(52,211,153,0.06)] px-2 py-0.5">
-                  <span
-                    className="h-[5px] w-[5px] rounded-full"
-                    style={{
-                      background: '#34D399',
-                      boxShadow: '0 0 4px rgba(52,211,153,0.9)',
-                      animation: 'pulse-glow 1.5s ease-in-out infinite',
-                    }}
-                  />
-                  <span className="font-mono text-[9px] font-semibold uppercase tracking-[0.12em] text-[#34D399]">
-                    Live
-                  </span>
-                </div>
-              </div>
-            </div>
+          <HeroAppMockup />
 
-            {/* ── Timeframe + indicator toolbar ── */}
-            <div
-              className="flex items-center border-b border-[#1E2530] px-4 py-[5px]"
-              style={{ background: 'rgba(8,11,16,0.6)' }}
-            >
-              <div className="flex items-center gap-px">
-                {['1m', '5m', '15m', '1H', '4H', 'D'].map((tf, i) => (
-                  <button
-                    key={tf}
-                    className={cn(
-                      'font-mono rounded px-2 py-[3px] text-[10px] transition-colors duration-100',
-                      i === 2
-                        ? 'bg-[rgba(92,184,240,0.14)] text-ice'
-                        : 'text-frost-muted hover:text-frost-secondary',
-                    )}
-                  >
-                    {tf}
-                  </button>
-                ))}
-              </div>
-              <div
-                className="mx-4 h-3 w-px self-center"
-                style={{ background: 'rgba(255,255,255,0.07)' }}
-              />
-              <div className="flex items-center gap-3">
-                {['EMA', 'VWAP', 'BIAS', 'CVD'].map((ind, i) => (
-                  <span
-                    key={ind}
-                    className="font-mono text-[9px] uppercase tracking-[0.1em]"
-                    style={{
-                      color: ind === 'VWAP'
-                        ? 'rgba(168,130,240,0.6)'
-                        : ind === 'BIAS'
-                          ? 'rgba(92,184,240,0.7)'
-                          : 'rgba(140,160,180,0.35)',
-                    }}
-                  >
-                    {ind}
-                  </span>
-                ))}
-              </div>
-              <div className="ml-auto font-mono text-[9px]" style={{ color: 'rgba(140,160,180,0.3)' }}>
-                09:30 — 12:00 ET
-              </div>
-            </div>
-
-            {/* ── Main chart area + right sidebar ── */}
-            <div className="flex" style={{ background: 'rgba(6,9,14,0.7)' }}>
-              {/* Y-axis price scale */}
-              <div
-                className="flex shrink-0 flex-col justify-between border-r border-[#1E2530] py-3 pr-2 pl-3"
-                style={{ width: 52 }}
-              >
-                {['21,870', '21,848', '21,826', '21,804', '21,782'].map((p, i) => (
-                  <span
-                    key={p}
-                    className="font-mono leading-none"
-                    style={{
-                      fontSize: '9px',
-                      color: i === 1 ? 'rgba(52,211,153,0.8)' : 'rgba(140,160,180,0.4)',
-                    }}
-                  >
-                    {p}
-                  </span>
-                ))}
-              </div>
-
-              {/* Chart + zone labels */}
-              <div className="relative flex-1 px-2 py-3">
-                <CandlestickChart />
-
-                {/* Current price label */}
-                <div
-                  className="absolute right-3 flex items-center gap-1"
-                  style={{ top: '14%' }}
-                >
-                  <div
-                    className="h-px w-8"
-                    style={{ background: 'linear-gradient(90deg, transparent, rgba(52,211,153,0.5))' }}
-                  />
-                  <span
-                    className="font-mono rounded px-1.5 py-[2px] text-[9px] font-bold"
-                    style={{
-                      background: 'rgba(52,211,153,0.12)',
-                      color: '#34D399',
-                      border: '1px solid rgba(52,211,153,0.2)',
-                    }}
-                  >
-                    21,847
-                  </span>
-                </div>
-
-                {/* Supply zone label */}
-                <div
-                  className="pointer-events-none absolute right-3"
-                  style={{ top: '18%' }}
-                >
-                  <span
-                    className="font-mono text-[8px] uppercase tracking-[0.12em]"
-                    style={{ color: 'rgba(248,113,113,0.35)' }}
-                  >
-                    SUPPLY
-                  </span>
-                </div>
-
-                {/* Demand zone label */}
-                <div
-                  className="pointer-events-none absolute right-3"
-                  style={{ top: '52%' }}
-                >
-                  <span
-                    className="font-mono text-[8px] uppercase tracking-[0.12em]"
-                    style={{ color: 'rgba(92,184,240,0.4)' }}
-                  >
-                    DEMAND
-                  </span>
-                </div>
-
-                {/* X-axis time labels */}
-                <div className="mt-1 flex justify-between px-1">
-                  {['09:30', '10:00', '10:30', '11:00', '11:30'].map((t) => (
-                    <span
-                      key={t}
-                      className="font-mono"
-                      style={{ fontSize: '8px', color: 'rgba(140,160,180,0.35)' }}
-                    >
-                      {t}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              {/* ── Right sidebar ── */}
-              <div
-                className="flex shrink-0 flex-col justify-between border-l border-[#1E2530] px-2 py-3"
-                style={{ width: 44 }}
-              >
-                {/* DELTA */}
-                <div className="flex flex-col gap-1">
-                  <span
-                    className="font-mono text-center uppercase tracking-[0.08em]"
-                    style={{ fontSize: '8px', color: 'rgba(140,160,180,0.4)' }}
-                  >
-                    DELTA
-                  </span>
-                  <div
-                    className="overflow-hidden rounded-sm"
-                    style={{ height: 4, background: 'rgba(255,255,255,0.06)' }}
-                  >
-                    <div
-                      className="h-full rounded-sm"
-                      style={{ width: '68%', background: 'rgba(52,211,153,0.7)' }}
-                    />
-                  </div>
-                  <span
-                    className="font-mono text-center"
-                    style={{ fontSize: '9px', color: 'rgba(52,211,153,0.75)' }}
-                  >
-                    +2.4k
-                  </span>
-                </div>
-
-                {/* VOL */}
-                <div className="flex flex-col gap-1">
-                  <span
-                    className="font-mono text-center uppercase tracking-[0.08em]"
-                    style={{ fontSize: '8px', color: 'rgba(140,160,180,0.4)' }}
-                  >
-                    VOL
-                  </span>
-                  <div
-                    className="overflow-hidden rounded-sm"
-                    style={{ height: 4, background: 'rgba(255,255,255,0.06)' }}
-                  >
-                    <div
-                      className="h-full rounded-sm"
-                      style={{ width: '84%', background: 'rgba(92,184,240,0.65)' }}
-                    />
-                  </div>
-                  <span
-                    className="font-mono text-center"
-                    style={{ fontSize: '9px', color: 'rgba(92,184,240,0.7)' }}
-                  >
-                    18.4k
-                  </span>
-                </div>
-
-                {/* CVD */}
-                <div className="flex flex-col gap-1">
-                  <span
-                    className="font-mono text-center uppercase tracking-[0.08em]"
-                    style={{ fontSize: '8px', color: 'rgba(140,160,180,0.4)' }}
-                  >
-                    CVD
-                  </span>
-                  <svg viewBox="0 0 36 14" className="w-full" style={{ height: 14 }} aria-hidden="true">
-                    <polyline
-                      points="0,12 6,10 12,8 18,9 24,5 30,3 36,2"
-                      fill="none"
-                      stroke="rgba(92,184,240,0.55)"
-                      strokeWidth="1.2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                  <span
-                    className="font-mono text-center"
-                    style={{ fontSize: '9px', color: 'rgba(92,184,240,0.7)' }}
-                  >
-                    +847
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* ── Analysis indicator strip ── */}
-            <div
-              className="flex items-center gap-3 border-t border-[#1E2530] px-4 py-2"
-              style={{ background: 'rgba(8,11,16,0.9)' }}
-            >
-              {/* BIAS: LONG */}
-              <div className="flex items-center gap-1.5">
-                <span
-                  className="h-[5px] w-[5px] rounded-full"
-                  style={{ background: '#34D399', boxShadow: '0 0 5px rgba(52,211,153,0.7)' }}
-                />
-                <span
-                  className="font-mono text-[10px] font-semibold tracking-[0.06em]"
-                  style={{ color: '#34D399' }}
-                >
-                  BIAS: LONG +7
-                </span>
-              </div>
-
-              <div className="h-3 w-px" style={{ background: 'rgba(255,255,255,0.08)' }} />
-
-              {/* CONFLUENCE: 87% */}
-              <div className="flex items-center gap-1.5">
-                <span
-                  className="font-mono text-[10px] tracking-[0.06em]"
-                  style={{ color: 'rgba(140,160,180,0.5)' }}
-                >
-                  CONFLUENCE:
-                </span>
-                <div
-                  className="overflow-hidden rounded-full"
-                  style={{ width: 40, height: 3, background: 'rgba(92,184,240,0.12)' }}
-                >
-                  <div
-                    className="h-full rounded-full"
-                    style={{ width: '87%', background: 'rgba(92,184,240,0.7)', boxShadow: '0 0 4px rgba(92,184,240,0.4)' }}
-                  />
-                </div>
-                <span
-                  className="font-mono text-[10px] font-bold tracking-[0.04em]"
-                  style={{ color: 'rgba(92,184,240,0.85)' }}
-                >
-                  87%
-                </span>
-              </div>
-
-              <div className="h-3 w-px" style={{ background: 'rgba(255,255,255,0.08)' }} />
-
-              {/* 3 SETUPS AKTIV */}
-              <div className="flex items-center gap-1">
-                <span
-                  className="font-mono rounded px-1 text-[9px] font-bold"
-                  style={{
-                    background: 'rgba(251,191,36,0.1)',
-                    color: 'rgba(251,191,36,0.8)',
-                    border: '1px solid rgba(251,191,36,0.15)',
-                    lineHeight: '14px',
-                  }}
-                >
-                  3 SETUPS AKTIV
-                </span>
-              </div>
-
-              <div className="h-3 w-px" style={{ background: 'rgba(255,255,255,0.08)' }} />
-
-              {/* R:R 3.2 */}
-              <div className="flex items-center gap-1">
-                <span
-                  className="font-mono text-[10px] tracking-[0.06em]"
-                  style={{ color: 'rgba(140,160,180,0.5)' }}
-                >
-                  R:R
-                </span>
-                <span
-                  className="font-mono text-[10px] font-semibold"
-                  style={{ color: 'rgba(140,160,180,0.75)' }}
-                >
-                  3.2
-                </span>
-              </div>
-
-              <div
-                className="ml-auto font-mono text-[9px]"
-                style={{ color: 'rgba(140,160,180,0.28)' }}
-              >
-                0.3s ago
-              </div>
-            </div>
-          </div>
-
-          {/* Mirror reflection beneath the card */}
+          {/* Bottom reflection glow */}
           <div
             aria-hidden="true"
             className="pointer-events-none mx-auto"
@@ -1329,8 +1088,7 @@ export function Hero() {
               width: '88%',
               height: 40,
               marginTop: 1,
-              background:
-                'linear-gradient(180deg, rgba(92,184,240,0.05) 0%, transparent 100%)',
+              background: 'linear-gradient(180deg, rgba(92,184,240,0.05) 0%, transparent 100%)',
               borderRadius: '0 0 16px 16px',
               opacity: 0.55,
               filter: 'blur(4px)',

@@ -248,8 +248,8 @@ body {
    ═══════════════════════════════════════════════════════════════ */
 
 .section-padding {
-  padding-top: clamp(4rem, 8vw, 8rem);
-  padding-bottom: clamp(4rem, 8vw, 8rem);
+  padding-top: clamp(3rem, 6vw, 5.5rem);
+  padding-bottom: clamp(3rem, 6vw, 5.5rem);
 }
 
 .section-container {

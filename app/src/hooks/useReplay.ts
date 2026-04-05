@@ -55,9 +55,12 @@ export function useReplay(market: string, timeframe: string) {
       if (r.ok) {
         setIsPlaying(true)
         setIsPaused(false)
+      } else {
+        const body = await r.json().catch(() => ({}))
+        console.warn('[Replay] Start failed:', r.status, body)
       }
-    } catch {
-      // Silently fail
+    } catch (e) {
+      console.warn('[Replay] Start error:', e)
     }
   }
 
@@ -128,13 +131,14 @@ export function useReplay(market: string, timeframe: string) {
 
   const setSpeed = useCallback(async (newSpeed: number) => {
     setSpeedLocal(newSpeed)
-    // If sim is active, update backend speed without restarting
+    // Only update backend if sim is currently active
+    if (!isPlaying) return
     try {
       await fetch(`${engineUrl}/api/sim/speed?speed=${newSpeed}`, { method: 'POST' })
     } catch {
       // Silently fail — speed is already set locally for next start
     }
-  }, [engineUrl])
+  }, [engineUrl, isPlaying])
 
   const changeDate = (direction: 'prev' | 'next') => {
     if (availableDates.length === 0 || !replayDate) return

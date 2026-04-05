@@ -37,7 +37,7 @@ const tiers: PricingTier[] = [
     features: [
       'ES & NQ — Live-Daten via Rithmic',
       'Arctis AI Marktanalyse mit Entry/Stop/Target',
-      'BIAS-Modul (5 Zustaende, Switch Level, Fakes)',
+      'BIAS-Modul (5 Zustände, Switch Level, Fakes)',
       'Confluence Scoring (7 Signaldimensionen)',
       'Automatische Setup-Erkennung (ORB, IB, POC, VA)',
       'Volumenprofil tagesbasiert (POC, VAH, VAL)',
@@ -53,14 +53,14 @@ const tiers: PricingTier[] = [
     icon: Building2,
     name: 'Enterprise',
     price: 'Custom',
-    priceNote: 'Fuer Prop-Firms und Teams',
+    priceNote: 'Für Prop-Firms und Teams',
     features: [
       'Alles aus Pro',
       'Unbegrenzte Team-Seats',
       'Custom Integrationen (API, Webhooks)',
       'Dedizierter Support-Ingenieur',
       'SLA Garantien (99.9% Uptime)',
-      'On-Premise Deployment moeglich',
+      'On-Premise Deployment möglich',
     ],
     cta: 'Kontakt aufnehmen',
   },
@@ -101,7 +101,7 @@ function BillingToggle({ isAnnual, onToggle }: BillingToggleProps) {
           aria-hidden="true"
         />
         <span className="sr-only">
-          {isAnnual ? 'Zu monatlicher Abrechnung wechseln' : 'Zu jaehrlicher Abrechnung wechseln'}
+          {isAnnual ? 'Zu monatlicher Abrechnung wechseln' : 'Zu jährlicher Abrechnung wechseln'}
         </span>
       </button>
 
@@ -112,7 +112,7 @@ function BillingToggle({ isAnnual, onToggle }: BillingToggleProps) {
             isAnnual ? 'text-frost-white' : 'text-frost-muted'
           )}
         >
-          Jaehrlich
+          Jährlich
         </span>
         <span className="rounded-full bg-profit/20 px-2 py-0.5 text-xs font-medium text-profit">
           20% sparen
@@ -265,7 +265,7 @@ function ProTierCard({ tier, isAnnual }: ProTierCardProps) {
       {/* Most Popular badge */}
       <div className="absolute -top-4 left-1/2 -translate-x-1/2">
         <span className="rounded-full bg-ice px-4 py-1.5 font-display text-xs font-semibold text-arctic-base">
-          Fuer aktive Trader
+          Für aktive Trader
         </span>
       </div>
 
@@ -408,10 +408,10 @@ export function Pricing() {
           </p>
           <h2 className="font-display text-3xl font-bold text-frost-white sm:text-4xl">
             Transparente Preise.{' '}
-            <span className="text-gradient-frost">Keine Ueberraschungen.</span>
+            <span className="text-gradient-frost">Keine Überraschungen.</span>
           </h2>
           <p className="mx-auto mt-4 max-w-xl text-lg text-frost-secondary">
-            Waehle den Plan der zu deinem Trading passt. Jederzeit upgraden oder kuendigen.
+            Wähle den Plan der zu deinem Trading passt. Jederzeit upgraden oder kündigen.
           </p>
         </motion.div>
 
@@ -468,7 +468,7 @@ export function Pricing() {
           whileInView="visible"
           viewport={viewportOnce}
         >
-          Alle Plaene inkl. automatischer Updates. Keine Trading-Daten auf externen Servern.
+          Alle Pläne inkl. automatischer Updates. Keine Trading-Daten auf externen Servern.
         </motion.p>
       </div>
     </section>

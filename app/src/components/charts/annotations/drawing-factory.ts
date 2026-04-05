@@ -122,9 +122,12 @@ function baseOptions(drawing: ChartDrawing) {
   return {
     id: drawing.id,
     isEditable: !drawing.locked,
+    isSelectable: true,
     opacity: drawing.opacity,
     xCoordinateMode: ECoordinateMode.DataValue,
     yCoordinateMode: ECoordinateMode.DataValue,
+    // Increase click hit area for thin lines (default is 5px which is too narrow)
+    clickRadius: 10,
   } as const;
 }
 

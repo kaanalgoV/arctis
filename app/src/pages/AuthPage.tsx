@@ -500,9 +500,9 @@ export function AuthPage() {
                 <div
                   className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs"
                   style={{
-                    color: '#FF3B3B',
-                    background: 'rgba(255, 59, 59, 0.06)',
-                    border: '1px solid rgba(255, 59, 59, 0.12)',
+                    color: '#F87171',
+                    background: 'rgba(248, 113, 113, 0.06)',
+                    border: '1px solid rgba(248, 113, 113, 0.12)',
                   }}
                 >
                   <AlertCircle size={14} className="shrink-0" />

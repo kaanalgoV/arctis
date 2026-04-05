@@ -733,7 +733,7 @@ function ProductShowcase() {
             <span className="text-gradient-frost">um 9:29 aus</span>
           </h2>
           <p className="text-frost-secondary text-lg max-w-2xl mx-auto mt-4 leading-relaxed">
-            Drei Ansichten. Eine Wahrheit. Du weisst genau was zu tun ist.
+            Drei Ansichten. Eine Wahrheit. Du weißt genau was zu tun ist.
           </p>
         </motion.div>
 
@@ -894,8 +894,8 @@ function ProductShowcase() {
             },
             {
               icon: <Layers size={16} className="text-ice-light" />,
-              title: 'BIAS ueber alle Timeframes',
-              desc: 'Wenn 5m, 15m und 1H uebereinstimmen — dann handelst du.',
+              title: 'BIAS über alle Timeframes',
+              desc: 'Wenn 5m, 15m und 1H übereinstimmen — dann handelst du.',
             },
           ].map(({ icon, title, desc }) => (
             <div

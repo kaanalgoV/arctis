@@ -1166,6 +1166,15 @@ export const CandlestickChart = forwardRef<CandlestickChartHandle, CandlestickCh
     }
   }, [chartSettings, isInitializing]);
 
+  // Toggle volume series visibility when showVolume changes
+  useEffect(() => {
+    if (!surfaceRef.current || isInitializing || surfaceRef.current.isDeleted) return;
+    const volSeries = volumeSeriesRef.current;
+    if (volSeries) {
+      volSeries.isVisible = showVolume;
+    }
+  }, [showVolume, isInitializing]);
+
   // Switch renderable series when chartType changes
   useEffect(() => {
     if (!surfaceRef.current || isInitializing || !dataSeriesRef.current || surfaceRef.current.isDeleted) return;
@@ -1399,6 +1408,12 @@ export const CandlestickChart = forwardRef<CandlestickChartHandle, CandlestickCh
     if (!surfaceRef.current || isInitializing || currentCandles.length === 0 || surfaceRef.current.isDeleted) return;
 
     const surface = surfaceRef.current;
+
+    // Defer annotation rebuild to next animation frame to prevent DOM conflicts
+    // (insertBefore/removeChild errors) when React and SciChart modify DOM concurrently,
+    // especially during replay mode transitions and rapid bar updates.
+    const rafId = requestAnimationFrame(() => {
+      if (!surfaceRef.current || surfaceRef.current.isDeleted || surfaceRef.current !== surface) return;
 
     // Suspend updates during batch annotation operations
     isRebuildingRef.current = true;
@@ -1640,6 +1655,9 @@ export const CandlestickChart = forwardRef<CandlestickChartHandle, CandlestickCh
       surface.resumeUpdates();
       isRebuildingRef.current = false;
     }
+    }); // end requestAnimationFrame
+
+    return () => cancelAnimationFrame(rafId);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [markers, zones, candles.length, isInitializing, findCandleIndexWithFallback, chartSettings, sessionIndices, indicators, tickSize, pricePrecision, userDrawings, priceLevels, priceZones]);
 
@@ -1649,6 +1667,9 @@ export const CandlestickChart = forwardRef<CandlestickChartHandle, CandlestickCh
     if (!surfaceRef.current || isInitializing || surfaceRef.current.isDeleted) return;
 
     const surface = surfaceRef.current;
+
+    const rafId = requestAnimationFrame(() => {
+      if (!surfaceRef.current || surfaceRef.current.isDeleted || surfaceRef.current !== surface) return;
 
     surface.suspendUpdates();
     try {
@@ -1748,6 +1769,9 @@ export const CandlestickChart = forwardRef<CandlestickChartHandle, CandlestickCh
     } finally {
       surface.resumeUpdates();
     }
+    }); // end requestAnimationFrame
+
+    return () => cancelAnimationFrame(rafId);
   }, [volumeProfiles, isInitializing, tickSize]);
 
   // Dedicated session band annotation effect — decoupled from main rebuild.
@@ -1757,6 +1781,9 @@ export const CandlestickChart = forwardRef<CandlestickChartHandle, CandlestickCh
     if (!surfaceRef.current || isInitializing || surfaceRef.current.isDeleted) return;
 
     const surface = surfaceRef.current;
+
+    const rafId = requestAnimationFrame(() => {
+      if (!surfaceRef.current || surfaceRef.current.isDeleted || surfaceRef.current !== surface) return;
 
     surface.suspendUpdates();
     try {
@@ -1791,6 +1818,9 @@ export const CandlestickChart = forwardRef<CandlestickChartHandle, CandlestickCh
     } finally {
       surface.resumeUpdates();
     }
+    }); // end requestAnimationFrame
+
+    return () => cancelAnimationFrame(rafId);
   }, [sessionBands, isInitializing]);
 
   // WIP drawing ghost preview — separate effect to avoid full annotation rebuild on every mouse move.

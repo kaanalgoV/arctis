@@ -117,6 +117,7 @@ async def get_strategies():
         return {"strategies": strategies}
     except HTTPException:
         raise
-    except Exception:
-        logger.exception("Failed to query strategies")
-        raise HTTPException(status_code=503, detail="Database unavailable")
+    except Exception as exc:
+        # Tables may not exist yet — return empty list instead of 503
+        logger.warning("Strategies query failed (tables may not exist): %s", exc)
+        return {"strategies": []}

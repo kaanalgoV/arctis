@@ -238,7 +238,8 @@ export function useMarketData(options?: { pauseWs?: boolean }) {
 
     const refreshId = setInterval(async () => {
       try {
-        const url = `${engineUrl}/api/db/bars?symbol=${symbol}&days=1&timeframe=${timeframe}`
+        const refreshDays = timeframe === '1min' ? 1 : 5
+        const url = `${engineUrl}/api/db/bars?symbol=${symbol}&days=${refreshDays}&timeframe=${timeframe}`
         const res = await fetch(url)
         if (!res.ok || res.status === 204) return
         const text = await res.text()

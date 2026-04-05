@@ -74,7 +74,7 @@ export function FinalCTA() {
         >
           <BarChart2 size={13} className="text-ice" strokeWidth={2.2} />
           <span className="font-sans text-xs font-medium tracking-wide text-frost-secondary uppercase">
-            Fuer Trader die Ergebnisse wollen
+            Für Trader die Ergebnisse wollen
           </span>
         </motion.div>
 
@@ -86,7 +86,7 @@ export function FinalCTA() {
           viewport={viewportOnce}
           className="font-display mx-auto max-w-3xl text-4xl font-bold leading-tight sm:text-5xl lg:text-6xl"
         >
-          <span className="text-frost-white block">Hoer auf zu raten.</span>
+          <span className="text-frost-white block">Hör auf zu raten.</span>
           <span className="text-gradient-frost block">Fang an zu wissen.</span>
         </motion.h2>
 
@@ -99,7 +99,7 @@ export function FinalCTA() {
           transition={{ delay: 0.1 }}
           className="font-sans mx-auto mt-6 max-w-xl text-lg leading-relaxed text-frost-secondary sm:text-xl"
         >
-          In 14 Minuten weisst du: Welche Seite. Welcher Entry. Welches Target.
+          In 14 Minuten weißt du: Welche Seite. Welcher Entry. Welches Target.
           Jeden Morgen.
         </motion.p>
 

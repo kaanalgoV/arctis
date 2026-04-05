@@ -148,31 +148,31 @@ function FooterColumnGroup() {
       {/* Column 1 — Brand */}
       <div className="col-span-2 md:col-span-1">
         <FooterLogo />
-        <p className="mt-3 text-sm leading-relaxed text-frost-muted">
-          Analyse-Infrastruktur fuer Futures-Maerkte.
+        <p className="mt-2 text-xs leading-relaxed text-frost-muted">
+          Analyse-Infrastruktur für Futures-Märkte.
         </p>
         {/* Social row */}
-        <div className="mt-4 flex items-center gap-4">
+        <div className="mt-3 flex items-center gap-3">
           <button
             type="button"
             aria-label="Arctis on GitHub"
             className="cursor-pointer text-frost-muted transition-colors duration-200 hover:text-ice"
           >
-            <GithubIcon size={18} />
+            <GithubIcon size={15} />
           </button>
           <button
             type="button"
             aria-label="Arctis on X / Twitter"
             className="cursor-pointer text-frost-muted transition-colors duration-200 hover:text-ice"
           >
-            <TwitterIcon size={18} />
+            <TwitterIcon size={15} />
           </button>
           <button
             type="button"
             aria-label="Arctis Discord community"
             className="cursor-pointer text-frost-muted transition-colors duration-200 hover:text-ice"
           >
-            <DiscordIcon size={18} />
+            <DiscordIcon size={15} />
           </button>
         </div>
       </div>
@@ -180,15 +180,15 @@ function FooterColumnGroup() {
       {/* Columns 2-4 — Link groups */}
       {FOOTER_COLUMNS.map((col) => (
         <div key={col.heading}>
-          <h3 className="font-display mb-4 text-sm font-semibold uppercase tracking-wider text-frost-white">
+          <h3 className="font-sans mb-3 text-xs font-medium uppercase tracking-[0.12em] text-frost-muted">
             {col.heading}
           </h3>
-          <ul className="space-y-3">
+          <ul className="space-y-2">
             {col.links.map((link) => (
               <li key={link.label}>
                 <a
                   href={link.href}
-                  className="text-sm text-frost-muted transition-colors duration-200 hover:text-frost-secondary"
+                  className="text-[13px] font-light text-frost-secondary/70 transition-colors duration-200 hover:text-ice"
                 >
                   {link.label}
                 </a>
@@ -205,13 +205,13 @@ function Newsletter() {
   return (
     <div>
       <Divider />
-      <div className="my-8 flex flex-wrap items-center justify-between gap-4">
+      <div className="my-6 flex flex-wrap items-center justify-between gap-4">
         {/* Left copy */}
         <div>
-          <p className="font-display font-medium text-frost-white">
+          <p className="font-sans text-sm font-medium text-frost-white">
             Platform Updates
           </p>
-          <p className="mt-0.5 text-sm text-frost-muted">
+          <p className="mt-0.5 text-xs text-frost-muted">
             Release Notes und Plattform-Neuigkeiten. Kein Marketing-Spam.
           </p>
         </div>
@@ -231,16 +231,16 @@ function Newsletter() {
             autoComplete="email"
             placeholder="trader@example.com"
             className={cn(
-              'w-64 rounded-lg border border-frost-border-subtle bg-arctic-secondary',
-              'px-4 py-2.5 text-sm text-frost-white placeholder:text-frost-muted',
+              'w-56 rounded-md border border-frost-border-subtle bg-arctic-secondary',
+              'px-3 py-2 text-xs text-frost-white placeholder:text-frost-muted',
               'outline-none transition-colors duration-200 focus:border-[rgba(92,184,240,0.5)]',
             )}
           />
           <button
             type="submit"
             className={cn(
-              'font-display ml-2 cursor-pointer rounded-lg bg-ice',
-              'px-5 py-2.5 text-sm font-medium text-arctic-base',
+              'font-sans ml-2 cursor-pointer rounded-md bg-ice',
+              'px-4 py-2 text-xs font-medium text-arctic-base',
               'transition-colors duration-200 hover:bg-ice-light',
             )}
           >
@@ -291,7 +291,7 @@ export function Footer() {
       className="border-t bg-arctic-base"
       style={{ borderColor: 'rgba(39,47,58,0.5)' }}
     >
-      <div className="section-container py-16 lg:py-20">
+      <div className="section-container py-10 lg:py-14">
         <FooterColumnGroup />
         <Newsletter />
         <BottomBar />

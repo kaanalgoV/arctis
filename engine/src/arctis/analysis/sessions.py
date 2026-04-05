@@ -106,9 +106,15 @@ def classify_session(unix_ts: int) -> Session:
         return Session.OVERNIGHT
 
 
-def get_current_session() -> Session:
-    """Get the current trading session based on real wall clock time (not bar timestamp)."""
-    return classify_session(int(_time.time()))
+def get_current_session(override_ts: float | None = None) -> Session:
+    """Get the current trading session based on wall clock or override timestamp.
+
+    Args:
+        override_ts: If given, use this Unix timestamp instead of wall clock.
+                     Useful for replay/simulation mode.
+    """
+    ts = int(override_ts) if override_ts is not None else int(_time.time())
+    return classify_session(ts)
 
 
 def _session_key(session: Session) -> str:

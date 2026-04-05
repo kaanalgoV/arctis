@@ -172,7 +172,7 @@ export function SignalShowcase() {
             <span className="text-gradient-frost">Sinn machen.</span>
           </h2>
           <p className="mx-auto mt-4 max-w-2xl text-lg text-frost-secondary">
-            Kein Rauschen. Kein Repainting. Nur Setups mit Entry, Stop, Target — wenn Confluence, Bias und Struktur uebereinstimmen.
+            Kein Rauschen. Kein Repainting. Nur Setups mit Entry, Stop, Target — wenn Confluence, Bias und Struktur übereinstimmen.
           </p>
         </motion.div>
 

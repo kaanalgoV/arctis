@@ -816,9 +816,9 @@ export function CheckoutPage() {
                     <div
                       className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs"
                       style={{
-                        color: '#FF3B3B',
-                        background: 'rgba(255, 59, 59, 0.06)',
-                        border: '1px solid rgba(255, 59, 59, 0.12)',
+                        color: '#F87171',
+                        background: 'rgba(248, 113, 113, 0.06)',
+                        border: '1px solid rgba(248, 113, 113, 0.12)',
                       }}
                     >
                       <AlertCircle size={14} className="shrink-0" />
@@ -986,7 +986,7 @@ export function CheckoutPage() {
                         </span>
                       </label>
                       {errors.sepaConsent && (
-                        <p role="alert" style={{ fontSize: '11px', color: '#FF3B3B', marginTop: '6px' }}>
+                        <p role="alert" style={{ fontSize: '11px', color: '#F87171', marginTop: '6px' }}>
                           {errors.sepaConsent}
                         </p>
                       )}
@@ -1316,7 +1316,7 @@ function FieldGroup({ id, label, value, onChange, error, placeholder, type = 'te
         className="w-full h-11 px-3.5 rounded-lg text-[13px] transition-all duration-200"
         style={{
           background: 'rgba(22, 28, 38, 0.8)',
-          border: `1px solid ${error ? 'rgba(255, 59, 59, 0.3)' : 'rgba(92,184,240,0.08)'}`,
+          border: `1px solid ${error ? 'rgba(248, 113, 113, 0.3)' : 'rgba(92,184,240,0.08)'}`,
           color: '#F0F6FC',
           fontFamily: mono ? 'var(--font-mono)' : undefined,
         }}
@@ -1327,7 +1327,7 @@ function FieldGroup({ id, label, value, onChange, error, placeholder, type = 'te
         maxLength={maxLength}
       />
       {error && (
-        <p role="alert" style={{ fontSize: '11px', color: '#FF3B3B', marginTop: '4px' }}>
+        <p role="alert" style={{ fontSize: '11px', color: '#F87171', marginTop: '4px' }}>
           {error}
         </p>
       )}

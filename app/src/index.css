@@ -36,7 +36,7 @@
   /* ── Text Hierarchy (4 Stufen) ── */
   --color-text-primary: #F0F6FC;
   --color-text-secondary: #B0BAC5;
-  --color-text-muted: #6E7681;
+  --color-text-muted: #828D98;
   --color-text-inactive: #3D444D;
 
   /* ── Accent (Ice Blue) ── */
@@ -46,10 +46,10 @@
   --color-accent-subtle: rgba(92, 184, 240, 0.06);
 
   /* ── Semantic ── */
-  --color-profit: #00B775;
-  --color-profit-muted: rgba(0, 183, 117, 0.12);
-  --color-loss: #FF3B3B;
-  --color-loss-muted: rgba(255, 59, 59, 0.12);
+  --color-profit: #34D399;
+  --color-profit-muted: rgba(52, 211, 153, 0.12);
+  --color-loss: #F87171;
+  --color-loss-muted: rgba(248, 113, 113, 0.12);
   --color-warning: #F7941D;
   --color-warning-muted: rgba(247, 148, 29, 0.12);
 
@@ -117,8 +117,15 @@ body {
 
 /* Suppress SciChart community license watermark */
 div[class*="watermark"],
-span[class*="watermark"] {
+span[class*="watermark"],
+div[class*="Watermark"],
+div[class*="trial"],
+div[class*="license"],
+[data-scichart-watermark] {
   display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
 }
 
 ::-webkit-scrollbar { width: 5px; height: 5px; }

@@ -28,6 +28,7 @@ interface ConfluencePanelProps {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function gaugeColor(score: number, max: number): string {
+  if (score === 0) return 'var(--color-text-muted)'
   const ratio = max > 0 ? score / max : 0
   if (ratio >= 0.7) return 'var(--color-profit)'
   if (ratio >= 0.4) return 'var(--color-warning)'

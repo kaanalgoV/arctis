@@ -229,7 +229,7 @@ function ReplayMockUI() {
 // ─── Bullet Points ──────────────────────────────────────────────────────────
 
 const bullets = [
-  'Vergangene Sessions Bar fuer Bar durchspielen',
+  'Vergangene Sessions Bar für Bar durchspielen',
   'Engine-Signale und Zonen in Echtzeit beobachten',
   'Eigene Entscheidungen gegen die Engine validieren',
 ]
@@ -270,10 +270,10 @@ export function ReplayShowcase() {
             <h2 className="font-display text-3xl font-bold text-frost-white sm:text-4xl">
               Replay — Lerne aus
               <br />
-              <span className="text-gradient-frost">echten Maerkten.</span>
+              <span className="text-gradient-frost">echten Märkten.</span>
             </h2>
             <p className="mt-4 max-w-lg text-lg text-frost-secondary">
-              Waehle ein Datum, starte die Simulation, beobachte wie Arctis den Markt in Echtzeit analysiert. Ohne Risiko. Mit vollem Kontext.
+              Wähle ein Datum, starte die Simulation, beobachte wie Arctis den Markt in Echtzeit analysiert. Ohne Risiko. Mit vollem Kontext.
             </p>
 
             {/* Bullet points */}

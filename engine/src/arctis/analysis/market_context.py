@@ -90,7 +90,7 @@ class MarketContext:
             "is_rth": self.is_rth,
             "timestamp": self.timestamp,
             "price_is_live": self.price_is_live,
-            "price_age_s": round(self.price_age_s, 1),
+            "price_age_s": round(self.price_age_s, 1) if self.price_age_s != float("inf") else None,
         }
 
 

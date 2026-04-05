@@ -305,7 +305,7 @@ export function SessionPanel({ data, loading, error }: SessionPanelProps) {
     return (
       <div className="flex flex-col gap-1">
         <div className="flex items-center justify-center py-1">
-          <span className="text-[10px] text-[var(--color-loss,#FF3B3B)]">{error}</span>
+          <span className="text-[10px] text-[var(--color-loss,#F87171)]">{error}</span>
         </div>
         <ClockOnlyView clock={clock} />
       </div>
@@ -341,7 +341,7 @@ export function SessionPanel({ data, loading, error }: SessionPanelProps) {
           )}
           style={
             clock.isRTH
-              ? { background: 'rgba(0,183,117,0.12)', color: 'var(--color-profit, #00B775)' }
+              ? { background: 'rgba(52,211,153,0.12)', color: 'var(--color-profit, #34D399)' }
               : { background: 'rgba(92,184,240,0.10)', color: 'var(--color-text-muted)' }
           }
         >
@@ -447,7 +447,7 @@ function ClockOnlyView({ clock }: ClockOnlyViewProps) {
           className="px-1 py-0.5 rounded font-mono text-[8px] leading-none font-semibold tracking-wide"
           style={
             clock.isRTH
-              ? { background: 'rgba(0,183,117,0.12)', color: 'var(--color-profit, #00B775)' }
+              ? { background: 'rgba(52,211,153,0.12)', color: 'var(--color-profit, #34D399)' }
               : { background: 'rgba(92,184,240,0.10)', color: 'var(--color-text-muted)' }
           }
         >

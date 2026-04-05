@@ -234,10 +234,10 @@ export default function ChangelogPage() {
               Changelog
             </p>
             <h1 className="font-display text-4xl font-bold text-frost-white sm:text-5xl">
-              Was sich <span className="text-gradient-frost">geaendert hat.</span>
+              Was sich <span className="text-gradient-frost">geändert hat.</span>
             </h1>
             <p className="mt-4 max-w-xl text-lg text-frost-secondary">
-              Alle Releases, Verbesserungen und Bugfixes. Chronologisch, transparent, vollstaendig.
+              Alle Releases, Verbesserungen und Bugfixes. Chronologisch, transparent, vollständig.
             </p>
           </div>
 

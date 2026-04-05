@@ -144,7 +144,7 @@ function Marquee() {
     <div className="flex flex-col items-center gap-5 w-full overflow-hidden">
       {/* Label */}
       <p className="text-frost-muted text-xs uppercase tracking-[0.2em]">
-        Gebaut fuer Trader die Ergebnisse wollen, nicht Features.
+        Gebaut für Trader die Ergebnisse wollen, nicht Features.
       </p>
 
       {/* Scrolling strip */}

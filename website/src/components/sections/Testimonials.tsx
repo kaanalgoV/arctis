@@ -34,28 +34,28 @@ const TESTIMONIALS: Testimonial[] = [
   },
   {
     quote:
-      'Die Setup-Erkennung findet ORB Breaks die ich frueher verpasst habe. 3 von 5 Trades treffen jetzt das Target — vorher war es 1 von 4.',
+      'Die Setup-Erkennung findet ORB Breaks die ich früher verpasst habe. 3 von 5 Trades treffen jetzt das Target — vorher war es 1 von 4.',
     name: 'James Thornton',
     role: 'NQ Scalper, Topstep-funded',
     initials: 'JT',
   },
   {
     quote:
-      '14 Minuten Pre-Market statt einer Stunde. Entry, Stop, Target — alles berechnet. Ich spare 46 Minuten jeden Morgen und trade trotzdem praeziser.',
+      '14 Minuten Pre-Market statt einer Stunde. Entry, Stop, Target — alles berechnet. Ich spare 46 Minuten jeden Morgen und trade trotzdem präziser.',
     name: 'Elena Vasquez',
     role: 'ES Daytraderin, 4 Jahre Erfahrung',
     initials: 'EV',
   },
   {
     quote:
-      'Das Risk-Framework hat mich vor mir selbst geschuetzt. Seit 3 Monaten kein Blow-Up mehr — vorher hatte ich jeden zweiten Monat einen.',
+      'Das Risk-Framework hat mich vor mir selbst geschützt. Seit 3 Monaten kein Blow-Up mehr — vorher hatte ich jeden zweiten Monat einen.',
     name: 'David Liu',
     role: 'Funded Trader, FTMO — NQ Focus',
     initials: 'DL',
   },
   {
     quote:
-      'Der Proberun-Modus hat mir gezeigt: Ich habe taeglich 2-3 profitable Setups verpasst. Seit Arctis nehme ich sie mit — meine Win-Rate stieg um 18%.',
+      'Der Proberun-Modus hat mir gezeigt: Ich habe täglich 2-3 profitable Setups verpasst. Seit Arctis nehme ich sie mit — meine Win-Rate stieg um 18%.',
     name: 'Alexander Meyer',
     role: 'Swing Trader, ES — seit 6 Jahren',
     initials: 'AM',
@@ -270,7 +270,7 @@ function Testimonials() {
           <h2 className="font-display text-3xl sm:text-4xl font-bold leading-tight">
             <span className="text-frost-white">Was sich in ihrem</span>
             <br />
-            <span className="text-gradient-frost">Trading geaendert hat.</span>
+            <span className="text-gradient-frost">Trading geändert hat.</span>
           </h2>
         </motion.div>
 

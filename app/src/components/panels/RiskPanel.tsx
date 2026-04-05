@@ -49,7 +49,7 @@ function warningLevel(
 const WARNING_COLORS = {
   ok:     undefined,           // use default
   warn:   'var(--color-warning, #F7941D)',
-  danger: 'var(--color-loss, #FF3B3B)',
+  danger: 'var(--color-loss, #F87171)',
 } as const
 
 // ---------------------------------------------------------------------------
@@ -106,7 +106,7 @@ function RiskCard({ icon, label, value, valueColor, warningState }: RiskCardProp
           <span
             className="w-1.5 h-1.5 rounded-full flex-shrink-0"
             style={{
-              background: warningState === 'danger' ? 'var(--color-loss, #FF3B3B)' : 'var(--color-warning, #F7941D)',
+              background: warningState === 'danger' ? 'var(--color-loss, #F87171)' : 'var(--color-warning, #F7941D)',
             }}
             aria-label={warningState === 'danger' ? 'Limit reached' : 'Approaching limit'}
           />
@@ -143,7 +143,7 @@ export function RiskPanel({ trades, contracts, config, loading, error }: RiskPan
   if (error && config == null) {
     return (
       <div className="flex items-center justify-center py-3">
-        <span className="text-[10px] text-[var(--color-loss,#FF3B3B)]">{error}</span>
+        <span className="text-[10px] text-[var(--color-loss,#F87171)]">{error}</span>
       </div>
     )
   }
@@ -204,7 +204,7 @@ export function RiskPanel({ trades, contracts, config, loading, error }: RiskPan
         icon={<ShieldAlert size={10} strokeWidth={2} />}
         label="Max Loss"
         value={maxLoss}
-        valueColor="var(--color-loss, #FF3B3B)"
+        valueColor="var(--color-loss, #F87171)"
       />
 
       {/* Daily Loss Limit — previously hidden, now shown */}
@@ -212,7 +212,7 @@ export function RiskPanel({ trades, contracts, config, loading, error }: RiskPan
         icon={<TrendingDown size={10} strokeWidth={2} />}
         label="Daily Limit"
         value={dailyLossLimitValue}
-        valueColor="var(--color-loss, #FF3B3B)"
+        valueColor="var(--color-loss, #F87171)"
       />
 
       {/* Position / Contract Limit */}

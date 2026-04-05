@@ -26,7 +26,7 @@ const ROWS: ComparisonRow[] = [
   },
   {
     feature: 'Tages-Bias',
-    traditional: { status: 'x', label: 'Bauchgefuehl' },
+    traditional: { status: 'x', label: 'Bauchgefühl' },
     arctis: { status: 'check', label: 'Automatisch, 7 Faktoren' },
   },
   {
@@ -36,7 +36,7 @@ const ROWS: ComparisonRow[] = [
   },
   {
     feature: 'Confluence',
-    traditional: { status: 'x', label: 'Subjektive Einschaetzung' },
+    traditional: { status: 'x', label: 'Subjektive Einschätzung' },
     arctis: { status: 'check', label: 'Score 0-100, objektiv' },
   },
   {
@@ -46,8 +46,8 @@ const ROWS: ComparisonRow[] = [
   },
   {
     feature: 'Replay & Proberun',
-    traditional: { status: 'x', label: 'Nicht verfuegbar' },
-    arctis: { status: 'check', label: 'Historische Setups ueberpruefen' },
+    traditional: { status: 'x', label: 'Nicht verfügbar' },
+    arctis: { status: 'check', label: 'Historische Setups überprüfen' },
   },
 ]
 

@@ -238,7 +238,7 @@ export function HudStrip({
         )}
         {sessionChange != null && changePct != null && (
           <span
-            className="font-mono text-[9px] leading-none tabular-nums"
+            className="font-mono text-[10px] leading-none tabular-nums"
             style={{ color: sessionChange >= 0 ? 'var(--color-profit)' : 'var(--color-loss)' }}
           >
             {sessionChange >= 0 ? '+' : ''}{sessionChange.toFixed(2)} ({changePct >= 0 ? '+' : ''}{changePct.toFixed(2)}%)
@@ -254,7 +254,7 @@ export function HudStrip({
         key="rvol"
         label="RVOL"
         value={
-          <span style={{ color: getRvolColor(rvol) }}>
+          <span className="tabular-nums" style={{ color: getRvolColor(rvol) }}>
             {rvol.toFixed(1)}x
           </span>
         }
@@ -268,7 +268,7 @@ export function HudStrip({
         key="rsi"
         label="RSI"
         value={
-          <span style={{ color: getRsiColor(rsi) }}>
+          <span className="tabular-nums" style={{ color: getRsiColor(rsi) }}>
             {rsi.toFixed(1)}
           </span>
         }

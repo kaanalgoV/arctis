@@ -21,16 +21,17 @@ import {
 
 function CandlestickIllustration() {
   const bars = [
-    { height: 28, wick: 8, bullish: false, delay: 0 },
-    { height: 40, wick: 10, bullish: true, delay: 0.05 },
-    { height: 22, wick: 6, bullish: false, delay: 0.1 },
-    { height: 50, wick: 12, bullish: true, delay: 0.15 },
+    { height: 36, wick: 10, bullish: false, delay: 0 },
+    { height: 52, wick: 14, bullish: true, delay: 0.05 },
+    { height: 28, wick: 8, bullish: false, delay: 0.1 },
+    { height: 60, wick: 16, bullish: true, delay: 0.15 },
+    { height: 44, wick: 12, bullish: true, delay: 0.2 },
   ]
 
   return (
     <div
       aria-hidden="true"
-      className="pointer-events-none absolute right-6 top-6 flex items-end gap-1.5 opacity-[0.12]"
+      className="pointer-events-none absolute right-6 top-6 flex items-end gap-2 opacity-[0.35]"
     >
       {bars.map((bar, i) => (
         <div key={i} className="flex flex-col items-center gap-0.5">
@@ -70,7 +71,7 @@ function ArrowIllustration() {
   return (
     <div
       aria-hidden="true"
-      className="pointer-events-none absolute right-4 top-4 opacity-[0.18]"
+      className="pointer-events-none absolute right-4 top-4 opacity-[0.4]"
     >
       <svg
         width="80"
@@ -103,7 +104,7 @@ function ConfluenceIllustration() {
   return (
     <div
       aria-hidden="true"
-      className="pointer-events-none absolute right-4 top-4 opacity-[0.15]"
+      className="pointer-events-none absolute right-4 top-4 opacity-[0.35]"
     >
       <svg
         width="72"
@@ -126,7 +127,7 @@ function ZigzagIllustration() {
   return (
     <div
       aria-hidden="true"
-      className="pointer-events-none absolute right-4 top-4 opacity-[0.15]"
+      className="pointer-events-none absolute right-4 top-4 opacity-[0.35]"
     >
       <svg
         width="80"
@@ -157,7 +158,7 @@ function TimelineIllustration() {
   return (
     <div
       aria-hidden="true"
-      className="pointer-events-none absolute right-4 top-4 opacity-[0.15]"
+      className="pointer-events-none absolute right-4 top-4 opacity-[0.35]"
     >
       <svg
         width="88"
@@ -197,7 +198,7 @@ function ShieldIllustration() {
   return (
     <div
       aria-hidden="true"
-      className="pointer-events-none absolute right-4 top-4 opacity-[0.13]"
+      className="pointer-events-none absolute right-4 top-4 opacity-[0.3]"
     >
       <svg
         width="60"
@@ -247,7 +248,7 @@ const features: Feature[] = [
     icon: LineChart,
     title: 'Dein Chart. Sauber und klar.',
     description:
-      'ES und NQ in Echtzeit mit Volumenprofil, VWAP und EMA auf einem Screen. Trader sparen durchschnittlich 28 Minuten Pre-Market, weil sie nicht zwischen 5 Tabs wechseln muessen.',
+      'ES und NQ in Echtzeit mit Volumenprofil, VWAP und EMA auf einem Screen. Trader sparen durchschnittlich 28 Minuten Pre-Market, weil sie nicht zwischen 5 Tabs wechseln müssen.',
     illustration: CandlestickIllustration,
     colSpan: 2,
     accent: true,
@@ -257,7 +258,7 @@ const features: Feature[] = [
     icon: TrendingUp,
     title: 'Welche Seite handelst du heute?',
     description:
-      'Arctis berechnet einen Bias-Score von -10 bis +10 aus 7 Faktoren: Overnight-Flow, Globex-Range, VWAP-Lage, Delta, EMA-Slope, Volumen-Trend und Struktur. Ueber +5 = Long, unter -5 = Short. Um 0 = Finger weg.',
+      'Arctis berechnet einen Bias-Score von -10 bis +10 aus 7 Faktoren: Overnight-Flow, Globex-Range, VWAP-Lage, Delta, EMA-Slope, Volumen-Trend und Struktur. Über +5 = Long, unter -5 = Short. Um 0 = Finger weg.',
     illustration: ArrowIllustration,
     colSpan: 1,
   },
@@ -266,7 +267,7 @@ const features: Feature[] = [
     icon: Layers,
     title: 'Nur handeln wenn alles stimmt.',
     description:
-      'Confluence misst ob VWAP, EMA, Struktur, Volume und Bias in die gleiche Richtung zeigen. Score ueber 70 bedeutet ca. 68% Trefferquote historisch. Unter 30? Kein Trade — und das allein spart die meisten Blow-Ups.',
+      'Confluence misst ob VWAP, EMA, Struktur, Volume und Bias in die gleiche Richtung zeigen. Score über 70 bedeutet ca. 68% Trefferquote historisch. Unter 30? Kein Trade — und das allein spart die meisten Blow-Ups.',
     illustration: ConfluenceIllustration,
     colSpan: 1,
   },
@@ -285,7 +286,7 @@ const features: Feature[] = [
     icon: Clock,
     title: 'Wisse wo du in der Session stehst.',
     description:
-      'Pre-Market, NY Open, Midday, Power Hour — jede Phase hat eigene Volatilitaetsmuster. Arctis zeigt dir welche Session aktiv ist, wie sie historisch performt hat und ob die aktuelle Bewegung typisch oder anomal ist.',
+      'Pre-Market, NY Open, Midday, Power Hour — jede Phase hat eigene Volatilitätsmuster. Arctis zeigt dir welche Session aktiv ist, wie sie historisch performt hat und ob die aktuelle Bewegung typisch oder anomal ist.',
     illustration: TimelineIllustration,
     colSpan: 1,
   },

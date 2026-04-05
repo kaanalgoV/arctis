@@ -315,7 +315,7 @@ function AppShell() {
     setups: setupsList,
     isLoading: setupsLoading,
     error: setupsError,
-  } = useSetups(market, timeframe)
+  } = useSetups(market, timeframe, 5, mode === 'replay' ? 1500 : 5000)
 
   // Cast untyped analysis results to expected types
   const structureData = structureDataRaw as StructureAPIData | null

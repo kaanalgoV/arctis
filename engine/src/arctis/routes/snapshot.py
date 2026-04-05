@@ -428,10 +428,10 @@ def _build_bias(bars, market: str, timeframe: str, ctx: "MarketContext | None" =
     switch_level = calculate_bias_switch(bars)
 
     session_levels = calculate_session_levels(bars)
-    prev_high = session_levels.prev_high if session_levels else 0
-    prev_low = session_levels.prev_low if session_levels else 0
+    prev_high = (session_levels.prev_high if session_levels and session_levels.prev_high is not None else 0) or 0
+    prev_low = (session_levels.prev_low if session_levels and session_levels.prev_low is not None else 0) or 0
 
-    opening_fake = detect_opening_fake(bars, prev_high=prev_high, prev_low=prev_low)
+    opening_fake = detect_opening_fake(bars, prev_high=prev_high, prev_low=prev_low) if prev_high and prev_low else None
 
     double_fake = None
     if switch_level:

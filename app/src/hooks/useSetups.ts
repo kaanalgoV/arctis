@@ -118,6 +118,7 @@ export function useSetups(
   market: string,
   timeframe: string = '1min',
   days: number = 5,
+  pollIntervalMs: number = POLL_INTERVAL_MS,
 ) {
   const [data, setData] = useState<SetupsResponse | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -154,14 +155,14 @@ export function useSetups(
 
     timerRef.current = setInterval(() => {
       void fetchSetups()
-    }, POLL_INTERVAL_MS)
+    }, pollIntervalMs)
 
     return () => {
       if (timerRef.current) clearInterval(timerRef.current)
       if (abortRef.current) abortRef.current.abort()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [market, timeframe, days])
+  }, [market, timeframe, days, pollIntervalMs])
 
   const activeSetups = data?.setups.filter(s => !isTerminalStatus(s.status)) ?? []
   const historicalSetups = data?.setups.filter(s => isTerminalStatus(s.status)) ?? []

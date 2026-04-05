@@ -55,7 +55,7 @@ function ItemIcon({ type, message }: { type: FeedItem['type']; message: string }
       return (
         <TrendingUp
           {...iconProps}
-          style={{ color: isShort ? 'var(--color-loss, #FF3B3B)' : 'var(--color-profit, #00B775)' }}
+          style={{ color: isShort ? 'var(--color-loss, #F87171)' : 'var(--color-profit, #34D399)' }}
         />
       )
     case 'warning':
@@ -65,12 +65,12 @@ function ItemIcon({ type, message }: { type: FeedItem['type']; message: string }
     case 'volume':
       return <BarChart3 {...iconProps} style={{ color: 'var(--color-warning, #F7941D)' }} />
     case 'risk':
-      return <AlertTriangle {...iconProps} style={{ color: 'var(--color-loss, #FF3B3B)' }} />
+      return <AlertTriangle {...iconProps} style={{ color: 'var(--color-loss, #F87171)' }} />
     case 'bias':
       return (
         <Compass
           {...iconProps}
-          style={{ color: isShort ? 'var(--color-loss, #FF3B3B)' : 'var(--color-profit, #00B775)' }}
+          style={{ color: isShort ? 'var(--color-loss, #F87171)' : 'var(--color-profit, #34D399)' }}
         />
       )
     case 'info':
@@ -89,7 +89,7 @@ const messageColor: Record<FeedItem['type'], string> = {
   warning:   'var(--color-warning, #F7941D)',
   structure: 'var(--color-accent, #5CB8F0)',
   volume:    'var(--color-text-secondary, #8B949E)',
-  risk:      'var(--color-loss, #FF3B3B)',
+  risk:      'var(--color-loss, #F87171)',
   bias:      'var(--color-text-secondary, #A8B5C1)',
 }
 
@@ -99,10 +99,13 @@ const messageColor: Record<FeedItem['type'], string> = {
 
 function formatHHMMSS(timestamp: number): string {
   const d = new Date(timestamp * 1000)
-  const hh = d.getHours().toString().padStart(2, '0')
-  const mm = d.getMinutes().toString().padStart(2, '0')
-  const ss = d.getSeconds().toString().padStart(2, '0')
-  return `${hh}:${mm}:${ss}`
+  return d.toLocaleTimeString('en-US', {
+    timeZone: 'America/New_York',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  })
 }
 
 // ---------------------------------------------------------------------------
@@ -196,7 +199,7 @@ export function FeedPanel({ items, loading, error, onItemClick, relativeTimestam
   if (error && (items == null || items.length === 0)) {
     return (
       <div className="flex items-center justify-center py-3">
-        <span className="text-[10px] text-[var(--color-loss,#FF3B3B)]">{error}</span>
+        <span className="text-[10px] text-[var(--color-loss,#F87171)]">{error}</span>
       </div>
     )
   }
