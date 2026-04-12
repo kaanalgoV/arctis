@@ -47,6 +47,8 @@ export interface ArctisChartWrapperProps {
   chartType?: ChartType
   /** Show volume histogram (default: true) */
   showVolume?: boolean
+  /** Show cumulative delta mountain series (default: false) */
+  showCumDelta?: boolean
   /** When true, builds and passes DayVolumeProfile[] to the chart (VP overlay) */
   showVp?: boolean
   /** Daily volume profiles for sidebar VP overlay */
@@ -239,6 +241,7 @@ export function ArctisChartWrapper({
   error,
   chartType = 'candlestick',
   showVolume = true,
+  showCumDelta = false,
   showVp = false,
   volumeProfiles,
   onCrosshairMove,
@@ -444,6 +447,8 @@ export function ArctisChartWrapper({
         isLoading={isLoading}
         error={error}
         showVolume={showVolume}
+        showCumDelta={showCumDelta}
+        cumDeltaData={indicatorData?.cum_delta ?? null}
         volumeProfiles={resolvedVolumeProfiles}
         onCrosshairMove={handleCrosshairMove}
         onPriceRangeChange={onPriceRangeChange}

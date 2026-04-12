@@ -4,7 +4,7 @@ import { CHART_TOKENS } from '../../lib/chart-tokens'
 
 // ─── Overlay toggle config ──────────────────────────────────────────────────
 
-type OverlayKey = 'vwap' | 'ema' | 'volume' | 'vp' | 'levels' | 'zones'
+type OverlayKey = 'vwap' | 'ema' | 'volume' | 'vp' | 'levels' | 'zones' | 'cum_delta'
 
 interface OverlayConfig {
   key: OverlayKey
@@ -20,6 +20,7 @@ const OVERLAYS: OverlayConfig[] = [
   { key: 'vp',     label: 'VP',     color: CHART_TOKENS.overlay.volumeProfile.poc,      icon: LayoutGrid },
   { key: 'levels', label: 'Levels', color: '#5CB8F0',                                   icon: Ruler },
   { key: 'zones',  label: 'Zones',  color: '#34D399',                                   icon: Layers },
+  { key: 'cum_delta', label: 'CD', color: '#A78BFA',                                   icon: Activity },
 ]
 
 // ─── Props ──────────────────────────────────────────────────────────────────

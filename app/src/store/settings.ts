@@ -8,7 +8,7 @@ interface SettingsState {
   pollInterval: number
   maxTrades: number
   riskAmount: number
-  overlays: { vwap: boolean; ema: boolean; volume: boolean; vp: boolean; levels: boolean; zones: boolean }
+  overlays: { vwap: boolean; ema: boolean; volume: boolean; vp: boolean; levels: boolean; zones: boolean; cum_delta: boolean }
   soundAlerts: boolean
   setEngineUrl: (url: string) => void
   setAutoReconnect: (v: boolean) => void
@@ -31,7 +31,7 @@ export const useSettingsStore = create<SettingsState>()(
       pollInterval: 5000,
       maxTrades: 10,
       riskAmount: 500,
-      overlays: { vwap: true, ema: true, volume: true, vp: true, levels: true, zones: false },
+      overlays: { vwap: true, ema: true, volume: true, vp: true, levels: true, zones: false, cum_delta: false },
       soundAlerts: false,
       setEngineUrl: (url) => set({ engineUrl: url }),
       setAutoReconnect: (v) => set({ autoReconnect: v }),

@@ -20,3 +20,10 @@ VIEW_OHLCV_1M: str = "ohlcv_1m"
 # ohlcv_1m exposes: timestamp, open, high, low, close, volume
 CANDLES_TS_COL: str = "ts"
 OHLCV_TS_COL: str = "timestamp"
+
+# Migration: add delta columns to candles table
+MIGRATION_ADD_DELTA_COLUMNS: str = """
+ALTER TABLE candles ADD COLUMN IF NOT EXISTS buy_volume INTEGER DEFAULT 0;
+ALTER TABLE candles ADD COLUMN IF NOT EXISTS sell_volume INTEGER DEFAULT 0;
+ALTER TABLE candles ADD COLUMN IF NOT EXISTS delta INTEGER DEFAULT 0;
+"""

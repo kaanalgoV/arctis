@@ -1252,12 +1252,111 @@ def detect_signals(
                     if sig:
                         signals.append(sig)
 
+    # ── 7. Session Fade — Power Hour mean-reversion ───────────────────────
+    # Fade the dominant session move during power hour (14:00-16:00 ET).
+    # After a strong directional move in NY Open/Midday, price often
+    # mean-reverts as institutional activity winds down.
+    # Conditions:
+    #   - Session must be POWER_HOUR
+    #   - Price at session extreme (within 2pts of session high/low)
+    #   - Volume declining (last 10 bars avg < session avg)
+    #   - Session range > 1.5x ATR (meaningful move to fade)
+    #   - Bias NOT strongly directional (LONG/SHORT = trend day, don't fade)
+    #   - Reversal bar confirmation (close reverses from extreme)
+    _session_fade_bar_idx = session_bar_idx if session_bar_idx is not None else _bar_index_in_session(bars)
+    if (current_session_str == Session.POWER_HOUR.value
+            and len(bars) >= 30
+            and _session_fade_bar_idx >= 10
+            and bias_state in ("RANGE", "RANGE_LONG", "RANGE_SHORT")):
+
+        # Calculate session stats from available bars (approximate session)
+        session_bars = bars[-min(len(bars), 300):]  # use up to 300 bars
+        session_high = max(b.high for b in session_bars)
+        session_low = min(b.low for b in session_bars)
+        session_range = session_high - session_low
+
+        if session_range > atr * 1.5:
+            # Check for declining volume (last 10 bars vs session avg)
+            recent_vol = sum(b.volume for b in bars[-10:]) / 10 if len(bars) >= 10 else 0
+            session_vol = sum(b.volume for b in session_bars) / len(session_bars)
+            volume_declining = recent_vol < session_vol * 0.9
+
+            # Near extreme = within 1.5 ATR of session high/low (min 5pts)
+            _fade_proximity = max(atr * 1.5, 5.0)
+            near_session_high = last_price > session_high - _fade_proximity
+            near_session_low = last_price < session_low + _fade_proximity
+
+            # Session Fade signals bypass RVOL filter (declining volume IS the setup).
+            # We build the signal directly instead of _try_build_signal.
+
+            # SHORT fade: price at session high, volume declining, reversal bar
+            if near_session_high and volume_declining and len(bars) >= 2:
+                reversal_bar = last.close < bars[-2].low  # bearish reversal
+                if reversal_bar:
+                    entry = _round_tick(last_price, tick_size)
+                    stop = _round_tick(session_high + 0.5, tick_size)
+                    risk = stop - entry
+                    if _MIN_STOP_TICKS * tick_size <= risk <= _max_stop_pts:
+                        target = _round_tick(entry - risk * 1.5, tick_size)
+                        rr = abs(target - entry) / risk
+                        if rr >= _MIN_RR:
+                            sig = TradeSignal(
+                                direction="short", signal_type="session_fade",
+                                entry_price=round(entry, 2), stop_price=round(stop, 2),
+                                target_price=round(target, 2), risk_reward=round(rr, 2),
+                                confidence="medium", timestamp=last.timestamp,
+                                session=current_session_str, confluence_count=1,
+                                reason=(
+                                    f"Session Fade Short: Near session high {session_high:.2f},"
+                                    f" volume declining, reversal bar. Entry {entry:.2f}"
+                                ),
+                                reasoning=(
+                                    f"Power Hour fade: price near session high {session_high:.2f}"
+                                    f" (range {session_range:.1f}pts). Volume declining"
+                                    f" ({recent_vol:.0f} < {session_vol:.0f} avg). Reversal bar."
+                                ),
+                                invalidation=f"Above {stop:.2f} (session high + buffer)",
+                            )
+                            _enrich_signal(sig, sig.reasoning, sig.invalidation, tick_size)
+                            signals.append(sig)
+
+            # LONG fade: price at session low, volume declining, reversal bar
+            elif near_session_low and volume_declining and len(bars) >= 2:
+                reversal_bar = last.close > bars[-2].high  # bullish reversal
+                if reversal_bar:
+                    entry = _round_tick(last_price, tick_size)
+                    stop = _round_tick(session_low - 0.5, tick_size)
+                    risk = entry - stop
+                    if _MIN_STOP_TICKS * tick_size <= risk <= _max_stop_pts:
+                        target = _round_tick(entry + risk * 1.5, tick_size)
+                        rr = abs(target - entry) / risk
+                        if rr >= _MIN_RR:
+                            sig = TradeSignal(
+                                direction="long", signal_type="session_fade",
+                                entry_price=round(entry, 2), stop_price=round(stop, 2),
+                                target_price=round(target, 2), risk_reward=round(rr, 2),
+                                confidence="medium", timestamp=last.timestamp,
+                                session=current_session_str, confluence_count=1,
+                                reason=(
+                                    f"Session Fade Long: Near session low {session_low:.2f},"
+                                    f" volume declining, reversal bar. Entry {entry:.2f}"
+                                ),
+                                reasoning=(
+                                    f"Power Hour fade: price near session low {session_low:.2f}"
+                                    f" (range {session_range:.1f}pts). Volume declining"
+                                    f" ({recent_vol:.0f} < {session_vol:.0f} avg). Reversal bar."
+                                ),
+                                invalidation=f"Below {stop:.2f} (session low - buffer)",
+                            )
+                            _enrich_signal(sig, sig.reasoning, sig.invalidation, tick_size)
+                            signals.append(sig)
+
     # ── Post-filter 1: Enforce bias direction consistency ─────────────────
     # If bias is clearly directional (LONG/SHORT, not RANGE), remove signals
     # that contradict the bias. RANGE_LONG/RANGE_SHORT allow bias-aligned
     # signals plus mean-reversion (poc_rejection, vwap_bounce).
     # v8: Disabled for NQ — bias accuracy only 47% (worse than coin flip).
-    _MEAN_REVERSION_TYPES = {"poc_rejection", "vwap_bounce"}
+    _MEAN_REVERSION_TYPES = {"poc_rejection", "vwap_bounce", "session_fade"}
 
     if not _is_nq:  # v8: skip bias filter for NQ (unreliable at 47%)
         if bias_state in ("LONG",):

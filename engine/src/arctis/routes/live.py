@@ -112,13 +112,16 @@ async def _stream_ticks_to_bars(client) -> None:
         try:
             # Insert into the real candles table (ohlcv_1m is a view)
             upsert_sql = text("""
-                INSERT INTO candles (ts, symbol, timeframe, o, h, l, c, volume)
-                VALUES (:ts, :sym, '1m', :o, :h, :l, :c, :v)
+                INSERT INTO candles (ts, symbol, timeframe, o, h, l, c, volume, buy_volume, sell_volume, delta)
+                VALUES (:ts, :sym, '1m', :o, :h, :l, :c, :v, :bv, :sv, :d)
                 ON CONFLICT (symbol, timeframe, ts) DO UPDATE
                     SET h = GREATEST(candles.h, EXCLUDED.h),
                         l = LEAST(candles.l, EXCLUDED.l),
                         c = EXCLUDED.c,
-                        volume = EXCLUDED.volume
+                        volume = EXCLUDED.volume,
+                        buy_volume = EXCLUDED.buy_volume,
+                        sell_volume = EXCLUDED.sell_volume,
+                        delta = EXCLUDED.delta
             """)
             with engine.begin() as conn:
                 conn.execute(upsert_sql, {
@@ -126,6 +129,8 @@ async def _stream_ticks_to_bars(client) -> None:
                     "o": bar["open"], "h": bar["high"],
                     "l": bar["low"], "c": bar["close"],
                     "v": bar["volume"],
+                    "bv": bar["buy_volume"], "sv": bar["sell_volume"],
+                    "d": bar["delta"],
                 })
             logger.info("Bar %s %s O=%.2f H=%.2f L=%.2f C=%.2f V=%d",
                         symbol, bar_dt.strftime("%H:%M"), bar["open"], bar["high"],
@@ -164,15 +169,29 @@ async def _stream_ticks_to_bars(client) -> None:
             for k in stale_keys:
                 _flush_bar(k, bars.pop(k))
 
+            # Aggressor side from Rithmic feed: 1=BUY, 2=SELL (0 or missing = unknown)
+            aggressor = int(data.get("aggressor", 0) or 0)
+
             # Update current minute bar
             if key not in bars:
-                bars[key] = {"open": price, "high": price, "low": price, "close": price, "volume": size}
+                bars[key] = {
+                    "open": price, "high": price, "low": price, "close": price,
+                    "volume": size, "buy_volume": 0, "sell_volume": 0, "delta": 0,
+                }
             else:
                 b = bars[key]
                 b["high"] = max(b["high"], price)
                 b["low"] = min(b["low"], price)
                 b["close"] = price
                 b["volume"] += size
+
+            # Accumulate buy/sell volume based on aggressor side
+            b = bars[key]
+            if aggressor == 1:  # BUY
+                b["buy_volume"] += size
+            elif aggressor == 2:  # SELL
+                b["sell_volume"] += size
+            b["delta"] = b["buy_volume"] - b["sell_volume"]
 
     except asyncio.CancelledError:
         # Flush remaining bars

@@ -36,6 +36,11 @@ const SIGNAL_TYPE_LABELS: Record<string, string> = {
   va_edge: 'VA Edge',
   fakeout: 'Fakeout',
   bos: 'BOS / NPOC',
+  vwap_bounce: 'VWAP Bounce',
+  daily_breakout: 'Daily Break',
+  sammelzone_breakout: 'Consol. Break',
+  session_fade: 'Session Fade',
+  cum_delta_divergence: 'CD Divergenz',
 }
 
 function formatPrice(price: number): string {

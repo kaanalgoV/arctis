@@ -92,6 +92,7 @@ export interface IndicatorData {
   /** Per-day volume profiles sorted ascending by date. */
   daily_volume_profiles?: DailyVolumeProfile[]
   session_levels: Record<string, number | null>
+  cum_delta?: Array<{ timestamp: number; bar_delta: number; cum_delta: number }>
 }
 
 export interface TradingConfig {

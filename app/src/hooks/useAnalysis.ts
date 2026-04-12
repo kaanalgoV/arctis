@@ -13,6 +13,7 @@ interface AnalysisData {
   bias: any | null
   zones: any | null
   signals: any | null
+  cum_delta: any | null
 }
 
 export function useAnalysis(pollIntervalMs = 5000) {
@@ -21,6 +22,7 @@ export function useAnalysis(pollIntervalMs = 5000) {
     sessions: null, confluence: null, patterns: null,
     indicators: null, volume: null, structure: null,
     config: null, bias: null, zones: null, signals: null,
+    cum_delta: null,
   })
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -35,7 +37,11 @@ export function useAnalysis(pollIntervalMs = 5000) {
     abortRef.current = controller
 
     try {
-      const snapshot = await api.fetchSnapshot(market, timeframe, days)
+      // Fetch snapshot and cum_delta in parallel; cum_delta failure is non-fatal
+      const [snapshot, cumDeltaResult] = await Promise.all([
+        api.fetchSnapshot(market, timeframe, days),
+        api.fetchCumDelta(market, timeframe, days).catch(() => null),
+      ])
 
       // If this request was aborted while awaiting, discard the result
       if (controller.signal.aborted) return
@@ -51,6 +57,7 @@ export function useAnalysis(pollIntervalMs = 5000) {
         bias:        snapshot.bias        ?? null,
         zones:       snapshot.zones       ?? null,
         signals:     snapshot.signals     ?? null,
+        cum_delta:   cumDeltaResult       ?? null,
       })
       setError(null)
     } catch (e) {

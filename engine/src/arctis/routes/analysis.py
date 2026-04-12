@@ -378,6 +378,42 @@ async def get_confluence(
     }
 
 
+@router.get("/cum_delta")
+async def analyze_cum_delta(
+    market: Market = Query(...),
+    timeframe: Timeframe = Query(default=Timeframe.M1),
+    days: int = Query(default=1, ge=1, le=30),
+):
+    """Return cumulative delta series and optional price/delta divergence."""
+    try:
+        bars = _load_bars(market, timeframe, days=days)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Fehler beim Laden der Cum-Delta-Daten: {e}")
+
+    from arctis.analysis.cum_delta import compute_cum_delta, detect_divergence
+
+    points = compute_cum_delta(bars)
+    divergence = detect_divergence(bars, points)
+
+    return {
+        "market": market.value,
+        "timeframe": timeframe.value,
+        **_shared_meta(market, bars),
+        "cum_delta": [
+            {"timestamp": p.timestamp, "bar_delta": p.bar_delta, "cum_delta": p.cum_delta}
+            for p in points
+        ],
+        "divergence": {
+            "type": divergence.type,
+            "severity": divergence.severity,
+            "message": divergence.message,
+        } if divergence else None,
+        "bar_count": len(bars),
+    }
+
+
 @router.get("/patterns")
 async def get_patterns(
     market: Market = Query(...),

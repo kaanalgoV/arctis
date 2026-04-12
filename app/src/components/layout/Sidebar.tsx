@@ -5,10 +5,11 @@ import {
   Zap,
   Play,
   SlidersHorizontal,
+  Crosshair,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-type NavItemId = 'dashboard' | 'chart' | 'patterns' | 'replay' | 'settings'
+type NavItemId = 'dashboard' | 'chart' | 'patterns' | 'engine' | 'replay' | 'settings'
 
 interface NavItem {
   id: NavItemId
@@ -20,6 +21,7 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { id: 'chart', icon: CandlestickChart, label: 'Chart' },
   { id: 'patterns', icon: Zap, label: 'Patterns' },
+  { id: 'engine', icon: Crosshair, label: 'Engine' },
   { id: 'replay', icon: Play, label: 'Replay' },
 ]
 

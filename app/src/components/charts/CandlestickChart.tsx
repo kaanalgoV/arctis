@@ -123,6 +123,10 @@ interface CandlestickChartProps {
   volumeProfiles?: DayVolumeProfile[] | null;
   /** Vertical session background bands (e.g. Asia/EU/US time windows) */
   sessionBands?: SessionBand[] | null;
+  /** Show cumulative delta mountain series at the bottom (default: false) */
+  showCumDelta?: boolean;
+  /** Cumulative delta data points to render */
+  cumDeltaData?: Array<{ timestamp: number; bar_delta: number; cum_delta: number }> | null;
 }
 
 /** Per-day volume profile with index positioning */
@@ -274,6 +278,8 @@ export const CandlestickChart = forwardRef<CandlestickChartHandle, CandlestickCh
       priceZones,
       volumeProfiles,
       sessionBands,
+      showCumDelta = false,
+      cumDeltaData,
     },
     ref
   ) {
@@ -296,6 +302,12 @@ export const CandlestickChart = forwardRef<CandlestickChartHandle, CandlestickCh
   const volumeDataSeriesRef = useRef<XyDataSeries | null>(null);
   /** Volume column series ref */
   const volumeSeriesRef = useRef<FastColumnRenderableSeries | null>(null);
+  /** Cumulative delta XyDataSeries */
+  const cumDeltaDataSeriesRef = useRef<XyDataSeries | null>(null);
+  /** Cumulative delta mountain renderable series */
+  const cumDeltaSeriesRef = useRef<FastMountainRenderableSeries | null>(null);
+  /** Stable ref for cumDeltaData so loadCandlesIntoChart can access latest values */
+  const cumDeltaDataRef = useRef<Array<{ timestamp: number; bar_delta: number; cum_delta: number }> | null>(null);
   /** Last price horizontal line annotation */
   const lastPriceLineRef = useRef<HorizontalLineAnnotation | null>(null);
   // Track how many candles we last loaded so we can detect tick-only updates
@@ -610,6 +622,28 @@ export const CandlestickChart = forwardRef<CandlestickChartHandle, CandlestickCh
         }
       }
 
+      // Update cumulative delta data series
+      if (cumDeltaDataSeriesRef.current && cumDeltaDataRef.current && cumDeltaDataRef.current.length > 0) {
+        cumDeltaDataSeriesRef.current.clear();
+        // Build a timestamp→index lookup from the loaded candles
+        const tsToIndex = new Map<number, number>();
+        for (let i = 0; i < count; i++) {
+          tsToIndex.set(candlesToLoad[i].time, i);
+        }
+        const cdXValues: number[] = [];
+        const cdYValues: number[] = [];
+        for (const pt of cumDeltaDataRef.current) {
+          const idx = tsToIndex.get(pt.timestamp);
+          if (idx !== undefined) {
+            cdXValues.push(idx);
+            cdYValues.push(pt.cum_delta);
+          }
+        }
+        if (cdXValues.length > 0) {
+          cumDeltaDataSeriesRef.current.appendRange(cdXValues, cdYValues);
+        }
+      }
+
       // Update X-axis labels
       if (labelProviderRef.current) {
         labelProviderRef.current.labels = labels;
@@ -899,6 +933,12 @@ export const CandlestickChart = forwardRef<CandlestickChartHandle, CandlestickCh
         const { sciChartSurface, wasmContext } = await SciChartSurface.create(divElement, {
           theme,
         });
+        try {
+          const wp = (sciChartSurface as unknown as Record<string, unknown>).watermarkProperties as
+            { SetOpacity?: (v: number) => void } | undefined;
+          if (wp?.SetOpacity) wp.SetOpacity(0);
+          (sciChartSurface as unknown as Record<string, unknown>).updateWatermark = () => {};
+        } catch (_) { /* non-critical */ }
         registerSurface(sciChartSurface);
 
         if (!mounted) {
@@ -1010,6 +1050,51 @@ export const CandlestickChart = forwardRef<CandlestickChartHandle, CandlestickCh
           volumeSeriesRef.current = volumeSeries;
         }
 
+        // Cumulative Delta — secondary Y-axis + mountain series
+        {
+          const cumDeltaYAxis = new NumericAxis(wasmContext, {
+            id: 'cumDeltaAxis',
+            autoRange: EAutoRange.Always,
+            isVisible: false,
+            // Push cum delta to the bottom ~20% of the chart
+            growBy: new NumberRange(0, 5),
+          });
+          sciChartSurface.yAxes.add(cumDeltaYAxis);
+
+          const cumDeltaDataSeries = new XyDataSeries(wasmContext, {
+            xValues: [],
+            yValues: [],
+            capacity: 100_000,
+            containsNaN: false,
+            isSorted: true,
+          });
+          cumDeltaDataSeriesRef.current = cumDeltaDataSeries;
+
+          const cumDeltaSeries = new FastMountainRenderableSeries(wasmContext, {
+            dataSeries: cumDeltaDataSeries,
+            yAxisId: 'cumDeltaAxis',
+            fill: '#A78BFA33',
+            stroke: '#A78BFA',
+            strokeThickness: 1,
+            opacity: 0.8,
+            isVisible: showCumDelta,
+          });
+          try { sciChartSurface.renderableSeries.add(cumDeltaSeries); } catch { /* surface disposal race */ }
+          cumDeltaSeriesRef.current = cumDeltaSeries;
+
+          // Zero-line annotation for cum delta
+          const zeroLine = new HorizontalLineAnnotation({
+            yAxisId: 'cumDeltaAxis',
+            y1: 0,
+            stroke: '#A78BFA44',
+            strokeThickness: 1,
+            strokeDashArray: [4, 4],
+            isEditable: false,
+            showLabel: false,
+          });
+          try { sciChartSurface.annotations.add(zeroLine); } catch { /* surface disposal race */ }
+        }
+
         // Drawing modifier — created first so it receives mouse events before
         // other modifiers when a drawing tool is active. Uses callback refs to
         // avoid stale closures.
@@ -1104,6 +1189,8 @@ export const CandlestickChart = forwardRef<CandlestickChartHandle, CandlestickCh
       xyMainDataSeriesRef.current = null;
       volumeDataSeriesRef.current = null;
       volumeSeriesRef.current = null;
+      cumDeltaDataSeriesRef.current = null;
+      cumDeltaSeriesRef.current = null;
       mainSeriesRef.current = null;
       labelProviderRef.current = null;
       drawingModifierRef.current = null;
@@ -1174,6 +1261,43 @@ export const CandlestickChart = forwardRef<CandlestickChartHandle, CandlestickCh
       volSeries.isVisible = showVolume;
     }
   }, [showVolume, isInitializing]);
+
+  // Toggle cum delta series visibility when showCumDelta changes
+  useEffect(() => {
+    if (!surfaceRef.current || isInitializing || surfaceRef.current.isDeleted) return;
+    const cdSeries = cumDeltaSeriesRef.current;
+    if (cdSeries) {
+      cdSeries.isVisible = showCumDelta;
+    }
+  }, [showCumDelta, isInitializing]);
+
+  // Keep cumDeltaDataRef in sync and re-render cum delta when data changes
+  useEffect(() => {
+    cumDeltaDataRef.current = cumDeltaData ?? null;
+    // If chart is ready and we have candles, reload cum delta data
+    if (surfaceRef.current && !surfaceRef.current.isDeleted && cumDeltaDataSeriesRef.current && candlesRef.current.length > 0) {
+      cumDeltaDataSeriesRef.current.clear();
+      if (cumDeltaData && cumDeltaData.length > 0) {
+        const currentCandles = candlesRef.current;
+        const tsToIndex = new Map<number, number>();
+        for (let i = 0; i < currentCandles.length; i++) {
+          tsToIndex.set(currentCandles[i].time, i);
+        }
+        const cdXValues: number[] = [];
+        const cdYValues: number[] = [];
+        for (const pt of cumDeltaData) {
+          const idx = tsToIndex.get(pt.timestamp);
+          if (idx !== undefined) {
+            cdXValues.push(idx);
+            cdYValues.push(pt.cum_delta);
+          }
+        }
+        if (cdXValues.length > 0) {
+          cumDeltaDataSeriesRef.current.appendRange(cdXValues, cdYValues);
+        }
+      }
+    }
+  }, [cumDeltaData, isInitializing]);
 
   // Switch renderable series when chartType changes
   useEffect(() => {

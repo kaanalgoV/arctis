@@ -99,6 +99,9 @@ class OHLCVBar(BaseModel):
     low: float
     close: float
     volume: int
+    buy_volume: int = 0
+    sell_volume: int = 0
+    delta: int = 0  # buy_volume - sell_volume
 
 
 class CSVMapping(BaseModel):

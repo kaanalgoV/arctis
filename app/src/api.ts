@@ -104,6 +104,10 @@ export async function fetchSignals(market: string, timeframe: string) {
   return fetchJSON('/api/analysis/signals', { market, timeframe })
 }
 
+export async function fetchCumDelta(market: string, timeframe: string, days: number) {
+  return fetchJSON('/api/analysis/cum_delta', { market, timeframe, days: String(days) })
+}
+
 /**
  * Fetch all analysis data in a single request.
  *
@@ -121,7 +125,7 @@ export async function fetchSignals(market: string, timeframe: string) {
 export async function fetchSnapshot(
   market: string,
   timeframe = '15min',
-  days = 5,
+  days = 31,
 ) {
   return fetchJSON('/api/snapshot', {
     market,

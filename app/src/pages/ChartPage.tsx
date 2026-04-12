@@ -607,6 +607,7 @@ export function ChartPage({
               isLoading={isLoading}
               error={error}
               showVolume={activeOverlays.has('volume')}
+              showCumDelta={activeOverlays.has('cum_delta')}
               showVp={activeOverlays.has('vp')}
               showVwap={activeOverlays.has('vwap')}
               showEma={activeOverlays.has('ema')}

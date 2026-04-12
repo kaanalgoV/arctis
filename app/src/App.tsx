@@ -45,6 +45,7 @@ import { PatternsPage } from '@/pages/PatternsPage'
 import { ChangelogPage } from '@/pages/ChangelogPage'
 import { AuthPage } from '@/pages/AuthPage'
 import { CheckoutPage } from '@/pages/CheckoutPage'
+import { EngineOverviewPage } from '@/pages/EngineOverviewPage'
 import { useSettingsStore } from '@/store/settings'
 import { useAuthStore } from '@/store/auth'
 import { useLiveStore } from '@/live'
@@ -69,7 +70,7 @@ const SESSION_DISPLAY: Record<string, string> = {
 type AppMode = 'live' | 'replay'
 
 // Active page in sidebar navigation
-type ActivePage = 'dashboard' | 'chart' | 'patterns' | 'replay' | 'settings'
+type ActivePage = 'dashboard' | 'chart' | 'patterns' | 'engine' | 'replay' | 'settings'
 
 interface StructureBreak {
   type: string
@@ -223,6 +224,7 @@ function AppShell() {
     market,
     symbol,
     timeframe,
+    days,
     markets,
     setMarket: storeSetMarket,
     setTimeframe: storeSetTimeframe,
@@ -269,7 +271,6 @@ function AppShell() {
   }, [])
 
   // ── Status ────────────────────────────────────────────────────────────────
-  const [latencyMs, setLatencyMs] = useState<number>(0)
   const [lastUpdate, setLastUpdate] = useState<string>('--:--:--')
 
   // ── Chart bars via hook (REST + WebSocket auto-reconnect) ──────────────────
@@ -277,22 +278,37 @@ function AppShell() {
   const { wsStatus } = useMarketStore()
   const liveConnected = useLiveStore((s) => s.isConnected)
 
-  // Poll Rithmic connection status from engine /api/live/status (every 10s)
+  // Poll engine connection status (every 10s) — checks both health and live feed
   const [rithmicConnected, setRithmicConnected] = useState(false)
+  const [engineReachable, setEngineReachable] = useState(false)
+  const [engineLatencyMs, setEngineLatencyMs] = useState<number | null>(null)
+  const latencyMs = engineLatencyMs ?? 0
   useEffect(() => {
     const check = () => {
-      fetch(`${engineUrl}/api/live/status`)
-        .then(r => r.ok ? r.json() : null)
-        .then(d => { if (d) setRithmicConnected(!!d.rithmic_connected) })
-        .catch(() => setRithmicConnected(false))
+      const t0 = performance.now()
+      fetch(`${engineUrl}/health`)
+        .then(r => {
+          setEngineLatencyMs(Math.round(performance.now() - t0))
+          if (r.ok) { setEngineReachable(true); return r.json() }
+          setEngineReachable(false)
+          return null
+        })
+        .then(() => {
+          // Also check live feed status
+          fetch(`${engineUrl}/api/live/status`)
+            .then(r => r.ok ? r.json() : null)
+            .then(d => { if (d) setRithmicConnected(!!d.rithmic_connected) })
+            .catch(() => setRithmicConnected(false))
+        })
+        .catch(() => { setEngineReachable(false); setEngineLatencyMs(null) })
     }
     check()
     const id = setInterval(check, 10_000)
     return () => clearInterval(id)
   }, [engineUrl])
 
-  // Connected = Rithmic live feed OR WS bar stream OR liveStore
-  const isConnected = rithmicConnected || liveConnected || wsStatus === 'connected'
+  // Connected = engine reachable (REST) OR Rithmic live feed OR WS bar stream
+  const isConnected = engineReachable || rithmicConnected || liveConnected || wsStatus === 'connected'
   const barsCount = bars.length
 
   // ── Analysis via hook (replaces 10 parallel fetches) ──────────────────────
@@ -307,6 +323,7 @@ function AppShell() {
     bias: biasData,
     zones: zonesDataRaw,
     signals: signalsData,
+    cum_delta: cumDeltaData,
     error: analysisError,
   } = useAnalysis(mode === 'replay' ? 1500 : 5000)
 
@@ -315,7 +332,7 @@ function AppShell() {
     setups: setupsList,
     isLoading: setupsLoading,
     error: setupsError,
-  } = useSetups(market, timeframe, 5, mode === 'replay' ? 1500 : 5000)
+  } = useSetups(market, timeframe, days, mode === 'replay' ? 1500 : 5000)
 
   // Cast untyped analysis results to expected types
   const structureData = structureDataRaw as StructureAPIData | null
@@ -330,7 +347,7 @@ function AppShell() {
     setLastUpdate(
       `${n.getHours().toString().padStart(2, '0')}:${n.getMinutes().toString().padStart(2, '0')}:${n.getSeconds().toString().padStart(2, '0')}`,
     )
-    setLatencyMs(0) // latency is not measured separately anymore
+    // latency is now measured via engine health polling (engineLatencyMs)
   }, [lastBarTs])
 
   // ── Real-time session clock (ET, independent of API) ──────────────────────
@@ -650,6 +667,7 @@ function AppShell() {
           onTimeframeChange={handleTimeframeChange}
           currentPrice={price}
           isConnected={isConnected}
+          liveFeed={liveConnected}
           onSettingsClick={() => setShowSettings(true)}
           rightPanelOpen={rightPanelOpen}
           onToggleRightPanel={() => setRightPanelOpen((v) => !v)}
@@ -742,7 +760,7 @@ function AppShell() {
                 error={error}
                 activeOverlays={activeOverlays}
                 onToggleOverlay={handleToggleOverlay}
-                indicatorData={indicatorData as IndicatorData | null}
+                indicatorData={indicatorData ? { ...(indicatorData as IndicatorData), cum_delta: cumDeltaData ?? undefined } : null}
                 structureBreaks={structureData?.structure_breaks}
                 patternAnnotations={(patternsData as PatternsAPIData | null)?.annotations}
                 zones={zonesData?.zones}
@@ -759,6 +777,10 @@ function AppShell() {
 
             {activePage === 'patterns' && (
               <PatternsPage data={patternsData as PatternsAPIData | null} />
+            )}
+
+            {activePage === 'engine' && (
+              <EngineOverviewPage onNavigateToChart={() => setActivePage('chart')} />
             )}
           </motion.div>
         </AnimatePresence>
