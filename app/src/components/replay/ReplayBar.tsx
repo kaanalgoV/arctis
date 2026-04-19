@@ -31,7 +31,7 @@ export interface ReplayBarProps {
 
 // ── Speed options ─────────────────────────────────────────────────────────────
 
-const SPEED_OPTIONS = [0.5, 1, 5, 10] as const
+const SPEED_OPTIONS = [1, 5, 10] as const
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
@@ -233,7 +233,8 @@ export function ReplayBar({
           <button
             key={s}
             onClick={() => onSpeedChange?.(s)}
-            aria-label={`Speed ${s === 0.5 ? '0.5' : String(s)}x`}
+            aria-label={`Speed ${s}x`}
+            title={s === 1 ? 'Echtzeit (1 Bar pro Sekunde)' : `${s}-fache Geschwindigkeit`}
             className={cn(
               'px-1.5 py-0.5 rounded cursor-pointer',
               'font-mono text-[10px] leading-none',
@@ -244,7 +245,7 @@ export function ReplayBar({
                 : 'text-[var(--color-text-muted)] hover:bg-white/[0.04] hover:text-[var(--color-text-secondary)]',
             )}
           >
-            {s === 0.5 ? '½x' : `${s}x`}
+            {`${s}x`}
           </button>
         ))}
       </div>

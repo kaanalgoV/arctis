@@ -412,32 +412,37 @@ function StalenessDot({ lastUpdateTs }: { lastUpdateTs?: number | null }) {
 function EmptyState() {
   return (
     <div
-      className="flex flex-col items-center justify-center gap-2 py-8"
+      className="flex flex-col items-center justify-center gap-3 py-8 px-4"
       style={{ color: 'var(--color-text-muted)' }}
     >
-      {/* Muted icon: simple horizontal lines suggesting an empty list */}
-      <svg
-        width="20"
-        height="16"
-        viewBox="0 0 20 16"
-        fill="none"
-        style={{ opacity: 0.35 }}
+      <div
+        className="relative flex items-center justify-center"
+        style={{ width: 44, height: 44 }}
       >
-        <rect x="0" y="0" width="8" height="2" rx="1" fill="currentColor" />
-        <rect x="0" y="5" width="14" height="2" rx="1" fill="currentColor" />
-        <rect x="0" y="10" width="10" height="2" rx="1" fill="currentColor" />
-        <circle cx="17" cy="14" r="2.5" stroke="currentColor" strokeWidth="1.2" />
-        <line x1="19" y1="15.5" x2="20.5" y2="17" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-      </svg>
-      <span
-        style={{
-          fontSize: 10,
-          fontFamily: 'var(--font-mono)',
-          letterSpacing: '0.06em',
-        }}
-      >
-        No active signals
-      </span>
+        <div
+          className="absolute inset-0 rounded-full"
+          style={{ background: 'radial-gradient(circle, rgba(92,184,240,0.09) 0%, transparent 70%)' }}
+        />
+        <svg width="22" height="22" viewBox="0 0 22 22" fill="none" className="relative" style={{ opacity: 0.55 }}>
+          <path
+            d="M1 16 L5 12 L9 14 L13 8 L17 10 L21 4"
+            stroke="var(--color-accent, #5CB8F0)"
+            strokeWidth="1.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            opacity="0.55"
+          />
+          <circle cx="21" cy="4" r="1.5" fill="var(--color-accent, #5CB8F0)" opacity="0.9" />
+        </svg>
+      </div>
+      <div className="flex flex-col items-center gap-1 text-center">
+        <span style={{ fontSize: 11, color: 'var(--color-text-secondary)', fontWeight: 500 }}>
+          Keine aktiven Signale
+        </span>
+        <span style={{ fontSize: 10, lineHeight: 1.5, maxWidth: 200 }}>
+          Signale erscheinen, sobald Confluence, BIAS und Struktur übereinstimmen.
+        </span>
+      </div>
     </div>
   )
 }

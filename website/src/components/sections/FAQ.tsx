@@ -42,7 +42,7 @@ const FAQ_ITEMS: FAQItem[] = [
     id: 'signal-accuracy',
     question: 'Wie genau sind die Setup-Signale?',
     answer:
-      'Die Setup-Erkennung (ORB, IB, POC, VA) liefert Entry, Stop und Target mit berechnetem R:R. Die historische Trefferquote liegt bei ca. 60-70% — aber nur wenn der Confluence-Score über 50 ist.',
+      'Arctis erkennt 7 datengetriebene Setups (ORB Breakout, MBO Confluence, Daily Breakout, POC Rejection, VWAP Mean Reversion, Session Fade, Sammelzonen-Ausbruch) plus 2 Pattern-Detektoren (Double Fake, Opening Fake). Jedes Setup liefert Entry, Stop und Target mit berechnetem R:R. Backtest-Kalibrierung auf 4,398 echten Trades über 8 Monate (Aug 2025 – März 2026) auf NQ-Futures: MBO Confluence 40.4% WR · PF 1.59 (n=1005), Daily Breakout 48.4% WR · PF 1.62 (n=188), Arctis Double Fake 45.8% WR · PF 1.74 (n=48), Opening Fake 16% WR · PF 3.83 bei R:R 6.72 (n=50, extreme Payoff). Aggressive Win-Rate-Claims wie 80%+ sind bewusst ausgelassen — kein Futures-Pattern erreicht das nachhaltig. Signale greifen nur bei Confluence ab Score 3.',
   },
   {
     id: 'markets',
@@ -82,13 +82,32 @@ function AccordionItem({ item, isOpen, onToggle }: AccordionItemProps) {
   return (
     <motion.div
       variants={staggerItem}
-      className="border-b border-frost-border-subtle/50 last:border-b-0"
+      className={cn(
+        'relative border-b border-frost-border-subtle/50 last:border-b-0',
+        'transition-colors duration-300',
+        isOpen && 'bg-gradient-to-r from-ice/[0.03] to-transparent',
+      )}
     >
+      {/* Left accent line when open */}
+      <motion.div
+        aria-hidden="true"
+        className="absolute left-0 top-0 bottom-0 w-[2px] bg-ice"
+        initial={false}
+        animate={{ scaleY: isOpen ? 1 : 0, opacity: isOpen ? 0.7 : 0 }}
+        transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
+        style={{ transformOrigin: 'center' }}
+      />
+
       <button
         type="button"
         onClick={onToggle}
         aria-expanded={isOpen}
-        className="group flex w-full items-center justify-between py-5 text-left"
+        className={cn(
+          'group flex w-full items-center justify-between py-5 pr-2 text-left cursor-pointer rounded-md',
+          'transition-all duration-200',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ice/60 focus-visible:ring-offset-2 focus-visible:ring-offset-arctic-base',
+          !isOpen && 'hover:pl-3',
+        )}
       >
         <span
           className={cn(
@@ -102,15 +121,21 @@ function AccordionItem({ item, isOpen, onToggle }: AccordionItemProps) {
         </span>
 
         <motion.span
-          animate={{ rotate: isOpen ? 180 : 0 }}
+          animate={{
+            rotate: isOpen ? 180 : 0,
+            scale: isOpen ? 1.05 : 1,
+          }}
           transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
           className={cn(
-            'ml-4 shrink-0 transition-colors duration-200',
-            isOpen ? 'text-ice' : 'text-frost-muted group-hover:text-frost-secondary',
+            'ml-4 shrink-0 flex items-center justify-center rounded-full',
+            'h-8 w-8 border transition-colors duration-200',
+            isOpen
+              ? 'border-ice/40 bg-ice/10 text-ice'
+              : 'border-frost-border-subtle/70 text-frost-muted group-hover:border-ice/30 group-hover:text-frost-secondary',
           )}
           aria-hidden="true"
         >
-          <ChevronDown size={20} strokeWidth={1.75} />
+          <ChevronDown size={16} strokeWidth={2} />
         </motion.span>
       </button>
 
@@ -124,7 +149,7 @@ function AccordionItem({ item, isOpen, onToggle }: AccordionItemProps) {
             transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
             className="overflow-hidden"
           >
-            <p className="pb-5 pt-1 text-sm leading-relaxed text-frost-secondary sm:text-base">
+            <p className="max-w-2xl pb-6 pt-1 text-sm text-frost-secondary sm:text-base" style={{ lineHeight: 1.7 }}>
               {item.answer}
             </p>
           </motion.div>
@@ -162,9 +187,10 @@ function LeftPanel() {
         <a
           href="mailto:support@arctis.app"
           className={cn(
-            'inline-flex items-center gap-1.5',
+            'inline-flex items-center gap-1.5 cursor-pointer rounded-sm',
             'text-sm font-medium text-ice underline underline-offset-4',
             'transition-colors duration-200 hover:text-ice-light',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ice/60 focus-visible:ring-offset-2 focus-visible:ring-offset-arctic-base',
           )}
         >
           Support kontaktieren

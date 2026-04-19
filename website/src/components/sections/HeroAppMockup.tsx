@@ -27,33 +27,33 @@ interface Setup {
 // ─── Static Candle Data (first 27 candles) ─────────────────────────────────
 
 const BASE_CANDLES: Candle[] = [
-  { o: 23420, h: 23445, l: 23415, c: 23440, bull: true },
-  { o: 23440, h: 23455, l: 23430, c: 23435, bull: false },
-  { o: 23435, h: 23470, l: 23430, c: 23465, bull: true },
-  { o: 23465, h: 23475, l: 23450, c: 23455, bull: false },
-  { o: 23455, h: 23490, l: 23450, c: 23485, bull: true },
-  { o: 23485, h: 23510, l: 23480, c: 23505, bull: true },
-  { o: 23505, h: 23515, l: 23490, c: 23495, bull: false },
-  { o: 23495, h: 23530, l: 23490, c: 23525, bull: true },
-  { o: 23525, h: 23545, l: 23520, c: 23540, bull: true },
-  { o: 23540, h: 23550, l: 23525, c: 23530, bull: false },
-  { o: 23530, h: 23535, l: 23510, c: 23515, bull: false },
-  { o: 23515, h: 23550, l: 23510, c: 23545, bull: true },
-  { o: 23545, h: 23555, l: 23535, c: 23540, bull: false },
-  { o: 23540, h: 23580, l: 23535, c: 23575, bull: true },
-  { o: 23575, h: 23600, l: 23570, c: 23595, bull: true },
-  { o: 23595, h: 23605, l: 23580, c: 23585, bull: false },
-  { o: 23585, h: 23620, l: 23580, c: 23615, bull: true },
-  { o: 23615, h: 23625, l: 23600, c: 23605, bull: false },
-  { o: 23605, h: 23645, l: 23600, c: 23640, bull: true },
-  { o: 23640, h: 23650, l: 23630, c: 23635, bull: false },
-  { o: 23635, h: 23670, l: 23630, c: 23665, bull: true },
-  { o: 23665, h: 23690, l: 23660, c: 23685, bull: true },
-  { o: 23685, h: 23695, l: 23670, c: 23675, bull: false },
-  { o: 23675, h: 23680, l: 23660, c: 23665, bull: false },
-  { o: 23665, h: 23710, l: 23660, c: 23705, bull: true },
-  { o: 23705, h: 23730, l: 23700, c: 23725, bull: true },
-  { o: 23725, h: 23735, l: 23710, c: 23715, bull: false },
+  { o: 26620, h: 26645, l: 26615, c: 26640, bull: true },
+  { o: 26640, h: 26655, l: 26630, c: 26635, bull: false },
+  { o: 26635, h: 26670, l: 26630, c: 26665, bull: true },
+  { o: 26665, h: 26675, l: 26650, c: 26655, bull: false },
+  { o: 26655, h: 26690, l: 26650, c: 26685, bull: true },
+  { o: 26685, h: 26710, l: 26680, c: 26705, bull: true },
+  { o: 26705, h: 26715, l: 26690, c: 26695, bull: false },
+  { o: 26695, h: 26730, l: 26690, c: 26725, bull: true },
+  { o: 26725, h: 26745, l: 26720, c: 26740, bull: true },
+  { o: 26740, h: 26750, l: 26725, c: 26730, bull: false },
+  { o: 26730, h: 26735, l: 26710, c: 26715, bull: false },
+  { o: 26715, h: 26750, l: 26710, c: 26745, bull: true },
+  { o: 26745, h: 26755, l: 26735, c: 26740, bull: false },
+  { o: 26740, h: 26780, l: 26735, c: 26775, bull: true },
+  { o: 26775, h: 26800, l: 26770, c: 26795, bull: true },
+  { o: 26795, h: 26805, l: 26780, c: 26785, bull: false },
+  { o: 26785, h: 26820, l: 26780, c: 26815, bull: true },
+  { o: 26815, h: 26825, l: 26800, c: 26805, bull: false },
+  { o: 26805, h: 26845, l: 26800, c: 26840, bull: true },
+  { o: 26840, h: 26850, l: 26830, c: 26835, bull: false },
+  { o: 26835, h: 26870, l: 26830, c: 26865, bull: true },
+  { o: 26865, h: 26890, l: 26860, c: 26885, bull: true },
+  { o: 26885, h: 26895, l: 26870, c: 26875, bull: false },
+  { o: 26875, h: 26880, l: 26860, c: 26865, bull: false },
+  { o: 26865, h: 26910, l: 26860, c: 26905, bull: true },
+  { o: 26905, h: 26930, l: 26900, c: 26925, bull: true },
+  { o: 26925, h: 26935, l: 26910, c: 26915, bull: false },
 ]
 
 // Volume data (synthetic)
@@ -70,19 +70,19 @@ const SETUPS: Setup[] = [
     candleIdx: 13,
     type: 'long',
     label: 'ORB Breakout',
-    entry: 23575,
-    stop: 23535,
-    target: 23655,
+    entry: 26775,
+    stop: 26735,
+    target: 26855,
     rr: 2.0,
     confidence: 72,
   },
   {
     candleIdx: 24,
     type: 'long',
-    label: 'IB Extension',
-    entry: 23705,
-    stop: 23660,
-    target: 23795,
+    label: 'POC Rejection',
+    entry: 26905,
+    stop: 26860,
+    target: 26995,
     rr: 2.0,
     confidence: 81,
   },
@@ -90,8 +90,8 @@ const SETUPS: Setup[] = [
 
 // ─── Chart Constants ───────────────────────────────────────────────────────
 
-const PRICE_MIN = 23400
-const PRICE_MAX = 23820
+const PRICE_MIN = 26600
+const PRICE_MAX = 27020
 const CHART_W = 600
 const CHART_H = 320
 const VOL_H = 50
@@ -161,9 +161,9 @@ function useLiveCandles(inView: boolean) {
     // Start live candles after base candles are revealed
     const liveTimeout = setTimeout(() => {
       setLiveCandles([
-        { o: 23715, h: 23755, l: 23710, c: 23750, bull: true },
-        { o: 23750, h: 23770, l: 23745, c: 23765, bull: true },
-        { o: 23765, h: 23775, l: 23755, c: 23770, bull: true },
+        { o: 26915, h: 26955, l: 26910, c: 26950, bull: true },
+        { o: 26950, h: 26970, l: 26945, c: 26965, bull: true },
+        { o: 26965, h: 26975, l: 26955, c: 26970, bull: true },
       ])
       setLiveVolumes([250, 235, 180])
     }, BASE_CANDLES.length * 80)
@@ -350,12 +350,12 @@ export function HeroAppMockup() {
               </div>
             </div>
             <div className="flex items-center gap-3 font-mono text-[11px]">
-              <span className="text-[#949DA8]">NQH5</span>
+              <span className="text-[#949DA8]">NQM6</span>
               <span className="text-[#F0F6FC]" style={{ fontVariantNumeric: 'tabular-nums' }}>
                 {currentPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </span>
               <span className={priceUp ? 'text-[#34D399]' : 'text-[#F87171]'}>
-                {priceUp ? '\u2197' : '\u2198'} {priceUp ? '+' : ''}{((currentPrice - 23540) / 23540 * 100).toFixed(2)}%
+                {priceUp ? '\u2197' : '\u2198'} {priceUp ? '+' : ''}{((currentPrice - BASE_CANDLES[0].o) / BASE_CANDLES[0].o * 100).toFixed(2)}%
               </span>
               <span className="flex items-center gap-1 text-[#34D399]">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#34D399]" style={{ animation: 'livePulse 1.5s infinite' }} />
@@ -407,7 +407,7 @@ export function HeroAppMockup() {
             >
               <div className="flex items-center justify-between flex-wrap gap-y-1">
                 <div className="flex items-center gap-3 font-mono text-[11px]">
-                  <span className="text-[#F0F6FC] font-semibold">NQM5</span>
+                  <span className="text-[#F0F6FC] font-semibold">NQM6</span>
                   <span className="text-[#F0F6FC]" style={{ fontVariantNumeric: 'tabular-nums', animation: 'priceTick 0.3s' }}>
                     {currentPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </span>
@@ -448,7 +448,7 @@ export function HeroAppMockup() {
             >
               {lastRevealed && (
                 <>
-                  <span className="text-[#949DA8]">NQM5</span>
+                  <span className="text-[#949DA8]">NQM6</span>
                   {' '}O:<span className="text-[#F0F6FC]">{lastRevealed.o.toLocaleString()}</span>
                   {' '}H:<span className="text-[#F0F6FC]">{lastRevealed.h.toLocaleString()}</span>
                   {' '}L:<span className="text-[#F0F6FC]">{lastRevealed.l.toLocaleString()}</span>
@@ -684,7 +684,7 @@ export function HeroAppMockup() {
                       <span className="font-mono text-[9px] text-[#F0F6FC]">IB Extension</span>
                     </div>
                     <div className="font-mono text-[8px] text-[#6E7681] pl-2.5">
-                      Entry 23,705 {'\u2192'} 23,780
+                      Entry 26,905 {'\u2192'} 26,980
                     </div>
                   </div>
                   <div className="border-t border-[#272F3A]" />
@@ -735,7 +735,7 @@ export function HeroAppMockup() {
                   <div className="mt-1.5 border-t border-[#272F3A] pt-1.5">
                     <div className="flex items-center justify-between">
                       <span className="text-[#6E7681]">IB Range</span>
-                      <span className="text-[#949DA8]">23,640 - 23,715</span>
+                      <span className="text-[#949DA8]">26,840 - 26,915</span>
                     </div>
                     <div className="flex items-center justify-between mt-0.5">
                       <span className="text-[#6E7681]">IB End in</span>

@@ -4,6 +4,7 @@ import { useRef } from 'react'
 import { motion, useScroll, useTransform } from 'framer-motion'
 import { ArrowRight, LogIn, ChevronDown, TrendingUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { CHECKOUT_URL } from '@/lib/app-urls'
 import {
   heroWordContainer,
   heroWord,
@@ -981,16 +982,41 @@ export function Hero() {
           />
         </h1>
 
-        {/* Subheadline */}
+        {/* Subheadline — focused value prop, no feature dump */}
         <motion.p
           variants={fadeInUp}
           initial="hidden"
           animate="visible"
           transition={{ delay: 0.25 }}
-          className="font-sans mx-auto mb-10 max-w-2xl text-lg leading-relaxed text-frost-secondary sm:text-xl"
+          className="font-sans mx-auto mb-6 max-w-3xl text-lg leading-relaxed text-frost-secondary sm:text-xl"
         >
-          Arctis analysiert NQ und ES in Echtzeit — BIAS, Confluence, Setups — und sagt dir genau: Entry, Stop, Target. In 14 Minuten bist du bereit für den Trade.
+          In 14 Minuten am Morgen weißt du <span className="text-frost-white">BIAS</span>, <span className="text-frost-white">Setup</span>, <span className="text-frost-white">Entry</span> und <span className="text-frost-white">Stop</span> für NQ und ES.
+          <span className="mt-1 block text-frost-muted">Strukturierte Analyse für deine Entscheidung — nicht für dich.</span>
         </motion.p>
+
+        {/* Feature chip row — quick credibility without dumping everything */}
+        <motion.ul
+          variants={fadeInUp}
+          initial="hidden"
+          animate="visible"
+          transition={{ delay: 0.35 }}
+          className="mb-10 flex flex-wrap items-center justify-center gap-2"
+          aria-label="Key capabilities"
+        >
+          {[
+            '7 Setups · 2 Patterns',
+            '4,398 Trades kalibriert',
+            '5-Punkte Confluence',
+            'Replay & Proberun',
+          ].map((chip) => (
+            <li
+              key={chip}
+              className="rounded-full border border-frost-border-subtle/60 bg-arctic-secondary/40 px-4 py-2 min-h-[44px] sm:min-h-0 sm:py-1 flex items-center justify-center font-mono text-[11px] tracking-wide text-frost-muted transition-colors duration-200 hover:border-ice/30"
+            >
+              {chip}
+            </li>
+          ))}
+        </motion.ul>
 
         {/* CTA Buttons */}
         <motion.div
@@ -1000,15 +1026,16 @@ export function Hero() {
           className="flex flex-wrap items-center justify-center gap-4"
         >
           <motion.a
-            href="http://localhost:5174/login"
+            href={CHECKOUT_URL}
             variants={staggerItem}
             whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.98 }}
             transition={{ duration: 0.2 }}
             className={cn(
               'font-display group relative flex cursor-pointer items-center gap-2.5 overflow-hidden',
-              'rounded-xl bg-ice px-8 py-4 text-lg font-semibold text-arctic-base',
+              'rounded-xl bg-ice px-8 py-4 text-lg font-semibold text-arctic-base min-h-[44px]',
               'transition-all duration-200 hover:bg-ice-light',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ice/60 focus-visible:ring-offset-2 focus-visible:ring-offset-arctic-base',
             )}
             style={{ boxShadow: '0 0 0 0 transparent' }}
             onMouseEnter={(e) => {
@@ -1024,7 +1051,6 @@ export function Hero() {
               aria-hidden="true"
               className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/10 to-transparent transition-transform duration-700 group-hover:translate-x-full"
             />
-            <LogIn size={18} strokeWidth={2.2} />
             Jetzt starten
             <ArrowRight
               size={16}
@@ -1048,7 +1074,7 @@ export function Hero() {
             'Web App',
             'Deine Daten bleiben lokal',
           ].map((text, i) => (
-            <span key={i} className="flex items-center gap-2 font-sans text-sm text-frost-muted">
+            <span key={i} className="flex items-center gap-2 font-sans text-sm text-frost-muted min-h-[44px] px-4 py-2 sm:min-h-0 sm:px-0 sm:py-0">
               <span
                 className="h-1 w-1 rounded-full bg-ice/40"
               />

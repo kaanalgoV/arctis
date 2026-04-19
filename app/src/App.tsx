@@ -284,27 +284,49 @@ function AppShell() {
   const [engineLatencyMs, setEngineLatencyMs] = useState<number | null>(null)
   const latencyMs = engineLatencyMs ?? 0
   useEffect(() => {
-    const check = () => {
+    // Exponentially-weighted moving average smooths out the occasional
+    // browser connection-pool spikes during heavy initial-load traffic.
+    let smoothed: number | null = null
+    let inflight = false
+
+    const check = async () => {
+      if (inflight) return
+      inflight = true
       const t0 = performance.now()
-      fetch(`${engineUrl}/health`)
-        .then(r => {
-          setEngineLatencyMs(Math.round(performance.now() - t0))
-          if (r.ok) { setEngineReachable(true); return r.json() }
-          setEngineReachable(false)
-          return null
-        })
-        .then(() => {
-          // Also check live feed status
-          fetch(`${engineUrl}/api/live/status`)
-            .then(r => r.ok ? r.json() : null)
-            .then(d => { if (d) setRithmicConnected(!!d.rithmic_connected) })
-            .catch(() => setRithmicConnected(false))
-        })
-        .catch(() => { setEngineReachable(false); setEngineLatencyMs(null) })
+      try {
+        const r = await fetch(`${engineUrl}/health`, { cache: 'no-store' })
+        const sample = Math.round(performance.now() - t0)
+        smoothed = smoothed == null ? sample : Math.round(smoothed * 0.6 + sample * 0.4)
+        setEngineLatencyMs(smoothed)
+        setEngineReachable(r.ok)
+      } catch {
+        setEngineReachable(false)
+        setEngineLatencyMs(null)
+        smoothed = null
+      } finally {
+        inflight = false
+      }
+
+      // Feed status is independent — failures don't tarnish the latency signal
+      try {
+        const r = await fetch(`${engineUrl}/api/live/status`, { cache: 'no-store' })
+        if (r.ok) {
+          const d = await r.json()
+          setRithmicConnected(!!d?.rithmic_connected)
+        }
+      } catch {
+        setRithmicConnected(false)
+      }
     }
-    check()
-    const id = setInterval(check, 10_000)
-    return () => clearInterval(id)
+
+    // Delay first probe so it doesn't collide with the initial burst of
+    // data/analysis fetches the page kicks off on mount.
+    const bootTimer = window.setTimeout(check, 1_200)
+    const id = window.setInterval(check, 10_000)
+    return () => {
+      window.clearTimeout(bootTimer)
+      window.clearInterval(id)
+    }
   }, [engineUrl])
 
   // Connected = engine reachable (REST) OR Rithmic live feed OR WS bar stream
@@ -827,18 +849,7 @@ function AppShell() {
 
           <RightPanelDivider />
 
-          {/* Session: badge always uses clock (real-time), panel uses merged data */}
-          <RightPanelSection
-            title="Session"
-            accent="ice"
-            count={hudSessionBadge}
-          >
-            <SessionPanel data={sessionData as SessionAPIData | null} />
-          </RightPanelSection>
-
-          <RightPanelDivider />
-
-          {/* Confluence: show signal count in badge */}
+          {/* Confluence: show signal count in badge — directly after Signals for quick scanning */}
           <RightPanelSection
             title="Confluence"
             accent="ice"
@@ -856,7 +867,7 @@ function AppShell() {
           {/* Bias: show state label in badge */}
           <RightPanelSection
             title="Bias"
-            accent="profit"
+            accent="ice"
             count={
               (biasData as BiasData | null) != null
                 ? ((biasData as BiasData).bias_state?.state?.toUpperCase() ?? undefined)
@@ -864,6 +875,17 @@ function AppShell() {
             }
           >
             {biasData == null ? <PanelSkeleton lines={6} label="Connecting..." /> : <BiasPanel data={biasData as BiasData} currentPrice={currentPrice} vwapLevel={latestVwapLevel} lastUpdateTs={analysisLastUpdateTs} />}
+          </RightPanelSection>
+
+          <RightPanelDivider />
+
+          {/* Session: badge always uses clock (real-time), panel uses merged data */}
+          <RightPanelSection
+            title="Session"
+            accent="ice"
+            count={hudSessionBadge}
+          >
+            <SessionPanel data={sessionData as SessionAPIData | null} />
           </RightPanelSection>
 
           <RightPanelDivider />

@@ -130,7 +130,7 @@ def _extract_session_levels(bars) -> dict:
     return result
 
 
-def _extract_poc_levels(bars) -> dict:
+def _extract_poc_levels(bars, reference_ts: int | None = None) -> dict:
     """Extract current session POC/VAH/VAL and naked POCs from prior days."""
     result = {"poc": None, "vah": None, "val": None, "naked_pocs": []}
     try:
@@ -139,7 +139,7 @@ def _extract_poc_levels(bars) -> dict:
         from datetime import datetime, timezone
 
         # Today's session bars only (RTH-only for intraday POC)
-        today_bars = _get_today_rth_bars(bars)
+        today_bars = _get_today_rth_bars(bars, reference_ts)
         if today_bars:
             vp = build_volume_profile(today_bars)
             if vp:
@@ -150,7 +150,8 @@ def _extract_poc_levels(bars) -> dict:
         # Naked POCs from prior sessions (unvisited by today's price)
         last_price = bars[-1].close if bars else 0.0
         daily_profiles = build_daily_volume_profiles(bars)
-        today_str = datetime.fromtimestamp(time.time(), tz=timezone.utc).strftime("%Y-%m-%d")
+        ref = reference_ts or (bars[-1].timestamp if bars else time.time())
+        today_str = datetime.fromtimestamp(ref, tz=timezone.utc).strftime("%Y-%m-%d")
         prior_pocs = [
             d.poc for d in daily_profiles
             if d.date < today_str and d.poc > 0
@@ -170,18 +171,27 @@ def _extract_poc_levels(bars) -> dict:
     return result
 
 
-def _get_today_rth_bars(bars):
-    """Filter bars to today's RTH session (09:30-16:00 ET)."""
+def _get_today_rth_bars(bars, reference_ts: int | None = None):
+    """Filter bars to the reference day's RTH session (09:30-16:00 ET).
+
+    Uses reference_ts (sim timestamp or last bar) instead of datetime.now()
+    so that replay mode picks the correct trading day.
+    """
     try:
         from zoneinfo import ZoneInfo
         from datetime import datetime
 
         et = ZoneInfo("America/New_York")
-        today_et = datetime.now(tz=et).date()
+        if reference_ts:
+            ref_date = datetime.fromtimestamp(reference_ts, tz=et).date()
+        elif bars:
+            ref_date = datetime.fromtimestamp(bars[-1].timestamp, tz=et).date()
+        else:
+            ref_date = datetime.now(tz=et).date()
         rth_bars = []
         for b in bars:
             dt = datetime.fromtimestamp(b.timestamp, tz=et)
-            if dt.date() != today_et:
+            if dt.date() != ref_date:
                 continue
             h, m = dt.hour, dt.minute
             tv = h * 60 + m
@@ -220,9 +230,9 @@ def _get_live_price(market: str) -> float | None:
     return None
 
 
-def _get_session_bar_index(bars) -> int:
+def _get_session_bar_index(bars, reference_ts: int | None = None) -> int:
     """Return the bar count within today's RTH session for session_bar_idx."""
-    today_rth = _get_today_rth_bars(bars)
+    today_rth = _get_today_rth_bars(bars, reference_ts)
     return len(today_rth)
 
 
@@ -634,12 +644,25 @@ async def get_setups(
     try:
         from arctis.models import Market, Timeframe
         bars = _load_bars(Market(market), Timeframe(timeframe), days=days)
-    except (KeyError, RuntimeError, ValueError) as exc:
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("load_bars failed for %s/%s: %s", market, timeframe, exc, exc_info=True)
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
     if not bars:
         return {"setups": [], "count": 0, "market": market, "timeframe": timeframe}
 
+    try:
+        return _compute_setups(bars, market, timeframe, days)
+    except Exception as exc:
+        logger.error("setups computation failed for %s/%s: %s", market, timeframe, exc, exc_info=True)
+        return {"setups": [], "count": 0, "market": market, "timeframe": timeframe,
+                "error": str(exc), "session": "unknown", "is_rth": False}
+
+
+def _compute_setups(bars, market: str, timeframe: str, days: int) -> dict:
+    """Internal: compute setups from loaded bars."""
     last_bar = bars[-1]
     ts = last_bar.timestamp
     price = last_bar.close
@@ -648,7 +671,6 @@ async def get_setups(
     from arctis.routes._common import get_sim
     _sim = get_sim()
     _sim_active = _sim.active and _sim.market == market
-
     # Live price (may be fresher than the last bar) — skip during replay
     live_price = None if _sim_active else _get_live_price(market)
     effective_price = live_price if live_price else price
@@ -657,6 +679,7 @@ async def get_setups(
     sim_ts = _current_timestamp() if _sim_active else None
     session_ctx = get_session_context()
     current_session_str = classify_session(int(sim_ts) if sim_ts else ts).value
+
 
     # ---------------------------------------------------------------------------
     # Analysis modules — each fails independently without blocking the endpoint
@@ -693,9 +716,9 @@ async def get_setups(
     # Extract all level parameters for detect_signals
     vwap_val = _extract_vwap(bars)
     session_lvls = _extract_session_levels(bars)
-    poc_lvls = _extract_poc_levels(bars)
+    poc_lvls = _extract_poc_levels(bars, reference_ts=ts)
     key_levels = _extract_key_levels(bars)
-    session_bar_idx = _get_session_bar_index(bars)
+    session_bar_idx = _get_session_bar_index(bars, reference_ts=ts)
     atr = _calc_atr(bars)
 
     try:
@@ -841,7 +864,7 @@ async def get_setups(
     MAX_SETUP_DIST = 50.0
     filtered_setups = [
         s for s in setups
-        if s.status in (SetupStatus.CLOSED, SetupStatus.EXPIRED)
+        if s.status in (SetupStatus.COMPLETED, SetupStatus.EXPIRED)
         or abs(effective_price - (s.entry_trigger_price or 0)) <= MAX_SETUP_DIST
     ]
 
@@ -852,9 +875,9 @@ async def get_setups(
         "timeframe": timeframe,
         # --- Shared meta block (consistent with /api/analysis/bias and /api/signals) ---
         "current_price": round(effective_price, 2),
-        "session": session_ctx.get("current_session", current_session_str),
-        "is_rth": session_ctx.get("is_rth", False),
-        "timestamp": now_ts,
+        "session": current_session_str if _sim_active else session_ctx.get("current_session", current_session_str),
+        "is_rth": current_session_str in ("ny_open", "midday", "afternoon", "power_hour") if _sim_active else session_ctx.get("is_rth", False),
+        "timestamp": sim_ts if _sim_active else now_ts,
         "price_is_live": price_is_live,
         "price_age_s": price_age_s,
         # --- Extra detail ---

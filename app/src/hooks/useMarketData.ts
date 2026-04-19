@@ -220,7 +220,7 @@ export function useMarketData(options?: { pauseWs?: boolean }) {
     rafIdRef.current = requestAnimationFrame(flush)
 
     ws.onclose = () => { tickWsRef.current = null }
-    ws.onerror = () => { ws.close() }
+    ws.onerror = () => { /* suppress connection errors when no live feed */ ws.close() }
 
     return () => {
       ws.close()

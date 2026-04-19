@@ -1,0 +1,17 @@
+version: "3.8"
+services:
+  timescaledb:
+    image: timescale/timescaledb:latest-pg16
+    container_name: algorivo-db
+    ports:
+      - "5532:5432"
+    environment:
+      POSTGRES_USER: algorivo
+      POSTGRES_PASSWORD: algorivo_dev
+      POSTGRES_DB: algorivo
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  pgdata:

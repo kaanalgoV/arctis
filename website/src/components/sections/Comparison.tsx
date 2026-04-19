@@ -27,7 +27,7 @@ const ROWS: ComparisonRow[] = [
   {
     feature: 'Tages-Bias',
     traditional: { status: 'x', label: 'Bauchgefühl' },
-    arctis: { status: 'check', label: 'Automatisch, 7 Faktoren' },
+    arctis: { status: 'check', label: 'Automatisch, 5 Faktoren' },
   },
   {
     feature: 'Setup-Erkennung',
@@ -37,7 +37,7 @@ const ROWS: ComparisonRow[] = [
   {
     feature: 'Confluence',
     traditional: { status: 'x', label: 'Subjektive Einschätzung' },
-    arctis: { status: 'check', label: 'Score 0-100, objektiv' },
+    arctis: { status: 'check', label: 'Score 0-5, objektiv' },
   },
   {
     feature: 'Risiko-Kontrolle',
@@ -49,6 +49,11 @@ const ROWS: ComparisonRow[] = [
     traditional: { status: 'x', label: 'Nicht verfügbar' },
     arctis: { status: 'check', label: 'Historische Setups überprüfen' },
   },
+  {
+    feature: 'Orderflow / Delta',
+    traditional: { status: 'x', label: 'Separate Bookmap-Lizenz nötig' },
+    arctis: { status: 'check', label: 'Cumulative Delta integriert' },
+  },
 ]
 
 // ─── Status Cell ──────────────────────────────────────────────────────────────
@@ -58,7 +63,7 @@ function StatusCell({ status, label }: { status: StatusType; label: string }) {
     return (
       <div className="flex items-center gap-2">
         <span className="flex shrink-0 items-center justify-center rounded-full bg-profit/15 p-1 text-profit">
-          <Check size={13} strokeWidth={2.5} />
+          <Check size={13} strokeWidth={2} />
         </span>
         <span className="font-sans text-xs text-frost-secondary">{label}</span>
       </div>
@@ -68,8 +73,8 @@ function StatusCell({ status, label }: { status: StatusType; label: string }) {
   if (status === 'x') {
     return (
       <div className="flex items-center gap-2">
-        <span className="flex shrink-0 items-center justify-center rounded-full bg-loss/15 p-1 text-loss">
-          <X size={13} strokeWidth={2.5} />
+        <span className="flex shrink-0 items-center justify-center rounded-full bg-loss/15 p-1 text-loss/80">
+          <X size={13} strokeWidth={2} />
         </span>
         <span className="font-sans text-xs text-frost-secondary">{label}</span>
       </div>
@@ -79,7 +84,7 @@ function StatusCell({ status, label }: { status: StatusType; label: string }) {
   return (
     <div className="flex items-center gap-2">
       <span className="flex shrink-0 items-center justify-center rounded-full bg-warning/15 p-1 text-warning">
-        <Minus size={13} strokeWidth={2.5} />
+        <Minus size={13} strokeWidth={2} />
       </span>
       <span className="font-sans text-xs text-frost-secondary">{label}</span>
     </div>
@@ -260,8 +265,9 @@ function BottomCallout() {
       <p className="font-sans text-base text-frost-secondary leading-relaxed">
         Trader die Arctis nutzen brauchen{' '}
         <span className="font-semibold text-frost-white">14 statt 42 Minuten</span>{' '}
-        Pre-Market Vorbereitung — und handeln mit{' '}
-        <span className="font-semibold text-frost-white">89% Setup-Trefferquote.</span>
+        Pre-Market Vorbereitung — und handeln mit Setups, die auf{' '}
+        <span className="font-semibold text-frost-white">4,398 echten Trades über 8 Monate</span>{' '}
+        kalibriert sind.
       </p>
     </motion.div>
   )

@@ -29,6 +29,24 @@ router = APIRouter(prefix="/api", tags=["snapshot"])
 _latest_snapshot_request: dict[str, float] = {}
 _snapshot_lock = threading.Lock()
 
+# ---------------------------------------------------------------------------
+# Response cache — keyed on (market, timeframe, days, last-bar-ts).
+# The Snapshot endpoint takes 2–3 s to compute 9 sub-analyses; a short TTL
+# collapses the storm of repeat calls (frontend polls every 5 s, but the bar
+# data only changes once per minute in live mode and never during replay).
+# ---------------------------------------------------------------------------
+_SNAPSHOT_CACHE: dict[tuple, tuple[float, dict]] = {}
+_SNAPSHOT_CACHE_TTL_S = 2.0  # tight enough that live still feels fresh
+
+
+def _snapshot_cache_key(market: str, timeframe: str, days: int) -> tuple:
+    """Key on market/timeframe/days only — freshness comes from the TTL.
+
+    Avoids calling _load_bars on every poll, which was the bottleneck
+    (500–800 ms each) swallowing most of the hot-path latency.
+    """
+    return (market, timeframe, days)
+
 
 # ---------------------------------------------------------------------------
 # Internal helpers — each mirrors what the individual route handler does,
@@ -714,7 +732,7 @@ async def get_analysis_snapshot(
     request: Request,
     market: Market = Query(...),
     timeframe: Timeframe = Query(default=Timeframe.MIN_15),
-    days: int = Query(default=5, ge=1, le=365),
+    days: int = Query(default=31, ge=1, le=365),
 ):
     """Return all analysis data in a single atomic response.
 
@@ -737,6 +755,15 @@ async def get_analysis_snapshot(
     snapshot_key = f"{market_str}:{timeframe_str}"
     with _snapshot_lock:
         _latest_snapshot_request[snapshot_key] = request_ts
+
+    # Check TTL cache BEFORE doing any work (load_bars alone was ~500 ms).
+    cache_key = _snapshot_cache_key(market_str, timeframe_str, days)
+    now_ts = time.time()
+    cached = _SNAPSHOT_CACHE.get(cache_key)
+    if cached is not None:
+        cached_at, cached_payload = cached
+        if now_ts - cached_at < _SNAPSHOT_CACHE_TTL_S:
+            return cached_payload
 
     # Load bars once — shared across all sub-analyses.
     try:
@@ -843,4 +870,12 @@ async def get_analysis_snapshot(
         )
 
     payload["errors"] = errors
+
+    # Store in TTL cache
+    _SNAPSHOT_CACHE[cache_key] = (time.time(), payload)
+    # Prune: keep only 8 most recent entries (one per market/tf combination)
+    if len(_SNAPSHOT_CACHE) > 8:
+        oldest_key = min(_SNAPSHOT_CACHE, key=lambda k: _SNAPSHOT_CACHE[k][0])
+        _SNAPSHOT_CACHE.pop(oldest_key, None)
+
     return payload

@@ -78,30 +78,38 @@ interface MetricCardProps {
   icon: React.ReactNode
   counterConfig: CounterConfig
   label: string
+  context?: string
   inView: boolean
 }
 
-function MetricCard({ icon, counterConfig, label, inView }: MetricCardProps) {
+function MetricCard({ icon, counterConfig, label, context, inView }: MetricCardProps) {
   const { ref } = useAnimatedCounter(counterConfig, inView)
 
   return (
     <motion.div
       variants={staggerItem}
       className={cn(
-        'glass-card',
+        'glass-card group',
         'p-6 rounded-xl text-center',
-        'flex flex-col items-center gap-3',
+        'flex flex-col items-center gap-2',
+        'transition-colors duration-300',
+        'hover:border-ice/40',
       )}
     >
-      <div className="text-ice">{icon}</div>
+      <div className="text-ice/70 group-hover:text-ice transition-colors">{icon}</div>
       <span
         ref={ref}
         className="font-display text-3xl sm:text-4xl font-bold text-frost-white tabular-nums"
         aria-live="polite"
       />
-      <span className="text-frost-muted text-sm uppercase tracking-wider leading-tight">
+      <span className="text-frost-muted text-[11px] uppercase tracking-[0.18em] leading-tight">
         {label}
       </span>
+      {context ? (
+        <span className="text-frost-muted/60 text-[10px] font-mono tracking-wide">
+          {context}
+        </span>
+      ) : null}
     </motion.div>
   )
 }
@@ -147,29 +155,22 @@ function Marquee() {
         Gebaut für Trader die Ergebnisse wollen, nicht Features.
       </p>
 
-      {/* Scrolling strip */}
-      <div className="relative w-full overflow-hidden">
-        {/* Left gradient mask */}
-        <div
-          className="absolute left-0 top-0 bottom-0 w-32 z-10 pointer-events-none"
-          style={{
-            background: 'linear-gradient(to right, var(--color-arctic-base), transparent)',
-          }}
-        />
-        {/* Right gradient mask */}
-        <div
-          className="absolute right-0 top-0 bottom-0 w-32 z-10 pointer-events-none"
-          style={{
-            background: 'linear-gradient(to left, var(--color-arctic-base), transparent)',
-          }}
-        />
-
-        {/* Scrolling content — two identical strips to create seamless loop */}
+      {/* Scrolling strip — uses mask-image so edges fade fully to transparent, not just to surface color */}
+      <div
+        className="relative w-full overflow-hidden"
+        style={{
+          maskImage:
+            'linear-gradient(to right, transparent 0, #000 15%, #000 85%, transparent 100%)',
+          WebkitMaskImage:
+            'linear-gradient(to right, transparent 0, #000 15%, #000 85%, transparent 100%)',
+        }}
+      >
+        {/* Scrolling content — two identical strips for seamless loop */}
         <div
           data-marquee
           className="flex gap-12 w-max"
           style={{
-            animation: 'marquee-scroll 30s linear infinite',
+            animation: 'marquee-scroll 40s linear infinite',
           }}
         >
           <LogoStrip />
@@ -186,26 +187,31 @@ const METRICS: Array<{
   icon: React.ReactNode
   config: CounterConfig
   label: string
+  context: string
 }> = [
   {
     icon: <BarChart3 size={20} />,
-    config: { type: 'integer', target: 12_400, suffix: '+' },
-    label: 'Aktive Trader',
+    config: { type: 'integer', target: 4398, suffix: '' },
+    label: 'Backtest Trades',
+    context: 'Aug 2025 – März 2026',
   },
   {
     icon: <Shield size={20} />,
-    config: { type: 'integer', target: 89, suffix: '%' },
-    label: 'Setup-Trefferquote',
+    config: { type: 'decimal', target: 3.83, decimals: 2, prefix: '', suffix: 'x' },
+    label: 'Top Profit Factor',
+    context: 'Opening Fake Pattern',
   },
   {
     icon: <Zap size={20} />,
     config: { type: 'static', display: '14 Min' },
     label: 'Pre-Market Vorbereitung',
+    context: 'Statt 42 Min manuell',
   },
   {
     icon: <Globe size={20} />,
-    config: { type: 'decimal', target: 3.2, decimals: 1 },
-    label: 'Durchschnittliches R:R',
+    config: { type: 'integer', target: 9, suffix: '' },
+    label: 'Setups & Patterns',
+    context: '7 Setups · 2 Patterns',
   },
 ]
 
@@ -250,6 +256,7 @@ function TrustBar() {
                 icon={metric.icon}
                 counterConfig={metric.config}
                 label={metric.label}
+                context={metric.context}
                 inView={inView}
               />
             ))}

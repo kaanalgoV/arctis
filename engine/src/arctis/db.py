@@ -82,6 +82,11 @@ def _resolve_symbol(market: str) -> str:
     return m[key]
 
 
+_FETCH_BARS_CACHE: dict[tuple, tuple[float, list[dict]]] = {}
+_FETCH_BARS_CACHE_TTL_S = 1.5  # replay polls every 500 ms, but DB data only
+                                # changes once per minute — 1.5 s is a fair trade
+
+
 def fetch_bars(
     symbol: str,
     days: int = 30,
@@ -90,14 +95,27 @@ def fetch_bars(
     """Fetch OHLCV bars from TimescaleDB as dicts (for REST API).
 
     Always reads from VIEW_OHLCV_1M unless an explicit override table is given.
+    Short-TTL cached — repeated calls with the same arguments within 1.5 s
+    reuse the result. Huge win for the /api/bars polling loop during replay.
     """
+    import time as _t
+
     table = table or VIEW_OHLCV_1M
+    cache_key = (symbol, days, table)
+    now = _t.time()
+    cached = _FETCH_BARS_CACHE.get(cache_key)
+    if cached is not None and (now - cached[0]) < _FETCH_BARS_CACHE_TTL_S:
+        return cached[1]
+
     end = datetime.now(timezone.utc)
     start = end - timedelta(days=days)
 
     query = f"""
         SELECT EXTRACT(EPOCH FROM timestamp)::bigint as timestamp,
-               open, high, low, close, volume
+               open, high, low, close, volume,
+               COALESCE(buy_volume, 0) as buy_volume,
+               COALESCE(sell_volume, 0) as sell_volume,
+               COALESCE(delta, 0) as delta
         FROM {table}
         WHERE symbol = %s
           AND timestamp >= %s
@@ -108,10 +126,21 @@ def fetch_bars(
     df = pd.read_sql(query, get_engine(), params=(symbol, start, end))
 
     if df.empty:
-        return []
+        result: list[dict] = []
+    else:
+        df["timestamp"] = df["timestamp"].astype(int)
+        result = df.to_dict(orient="records")
 
-    df["timestamp"] = df["timestamp"].astype(int)
-    return df.to_dict(orient="records")
+    _FETCH_BARS_CACHE[cache_key] = (now, result)
+    if len(_FETCH_BARS_CACHE) > 8:
+        oldest_key = min(_FETCH_BARS_CACHE, key=lambda k: _FETCH_BARS_CACHE[k][0])
+        _FETCH_BARS_CACHE.pop(oldest_key, None)
+
+    return result
+
+
+_BARS_CACHE: dict[tuple, tuple[float, list[OHLCVBar]]] = {}
+_BARS_CACHE_TTL_S = 2.0  # bars change at most every 60s in live mode
 
 
 def fetch_bars_as_models(
@@ -127,6 +156,18 @@ def fetch_bars_as_models(
         KeyError: If the market root is not found in the DB.
         RuntimeError: If the DB is unreachable.
     """
+    import time as _t
+
+    # Hot-path cache: repeat calls within 2s reuse the last result.
+    # Analysis endpoints fan out to several helpers that each fetch the same
+    # market+timeframe window — without this cache every helper pays the
+    # 500-800 ms DB roundtrip.
+    cache_key = (market, days, timeframe)
+    now = _t.time()
+    cached = _BARS_CACHE.get(cache_key)
+    if cached is not None and (now - cached[0]) < _BARS_CACHE_TTL_S:
+        return cached[1]
+
     symbol = _resolve_symbol(market)
     raw = fetch_bars(symbol=symbol, days=days)
 
@@ -138,12 +179,21 @@ def fetch_bars_as_models(
             low=float(r["low"]),
             close=float(r["close"]),
             volume=int(r["volume"]),
+            buy_volume=int(r.get("buy_volume", 0)),
+            sell_volume=int(r.get("sell_volume", 0)),
+            delta=int(r.get("delta", 0)),
         )
         for r in raw
     ]
 
     if timeframe != "1min" and bars:
         bars = aggregate_bars(bars, timeframe)
+
+    # Store in cache, prune to last 8 distinct keys
+    _BARS_CACHE[cache_key] = (now, bars)
+    if len(_BARS_CACHE) > 8:
+        oldest_key = min(_BARS_CACHE, key=lambda k: _BARS_CACHE[k][0])
+        _BARS_CACHE.pop(oldest_key, None)
 
     return bars
 

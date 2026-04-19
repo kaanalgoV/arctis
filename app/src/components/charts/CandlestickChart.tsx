@@ -50,6 +50,14 @@ import { formatChartAxisTime } from '@/utils/chartTimeZone';
 const INITIAL_VIEW_DAYS = 7;
 const SECONDS_PER_DAY = 86400;
 
+// Minimum visible window so a nascent dataset (e.g. early replay with only a
+// handful of bars) never fills the entire chart width and appears "too zoomed
+// in". The chart will reserve future-space on the right when fewer bars exist.
+const MIN_VISIBLE_BARS = 180;
+// Right-padding kept in front of the latest bar during auto-scroll, so the
+// live price isn't glued to the right edge.
+const RIGHT_EDGE_PADDING_BARS = 20;
+
 // HMR cleanup for this module
 initHmrCleanup(import.meta.hot);
 
@@ -708,40 +716,63 @@ export const CandlestickChart = forwardRef<CandlestickChartHandle, CandlestickCh
         if (startIndex < 0) startIndex = 0;
       }
 
+      // Effective right edge includes a small future-space padding so the
+      // latest bar sits a bit inset from the right.
+      const endIndex = totalCandles - 1 + RIGHT_EDGE_PADDING_BARS;
+
       if (startIndex > 0 && startIndex < totalCandles) {
         if (xAxis) {
-          xAxis.visibleRange = new NumberRange(startIndex, totalCandles - 1);
+          // Ensure at least MIN_VISIBLE_BARS of width — important for replay,
+          // where totalCandles starts small and the 7-day window would otherwise
+          // collapse onto a tiny slice of the screen.
+          const start = Math.min(startIndex, Math.max(0, endIndex - MIN_VISIBLE_BARS));
+          xAxis.visibleRange = new NumberRange(start, endIndex);
         }
-        // Manually fit Y-axis to the visible slice (no auto-range, no jumping)
+        // Fit Y-axis to actual visible candles (ignore the future-padding range).
         if (yAxis && xAxis) {
           fitYAxisToVisibleRange(yAxis, dataSeriesRef.current, startIndex, totalCandles - 1);
         }
       } else {
-        // Fewer bars than 7 days — show all, fit Y once
+        // Fewer bars than 7 days (e.g. replay just starting) — enforce a
+        // minimum window so it doesn't look hyper-zoomed on a handful of bars.
         if (xAxis) {
-          xAxis.visibleRange = new NumberRange(0, Math.max(0, totalCandles - 1));
+          const start = Math.max(0, endIndex - Math.max(MIN_VISIBLE_BARS, totalCandles));
+          xAxis.visibleRange = new NumberRange(start, endIndex);
         }
         if (yAxis) {
-          fitYAxisToVisibleRange(yAxis, dataSeriesRef.current, 0, totalCandles - 1);
+          fitYAxisToVisibleRange(yAxis, dataSeriesRef.current, 0, Math.max(0, totalCandles - 1));
         }
       }
     }
 
-    // Auto-scroll: when new bars arrive and the user was already viewing the
-    // right edge, shift the visible range so the latest bar stays visible.
-    // If the user has manually panned left, respect that and don't scroll.
-    if (initialZoomDoneRef.current && prevCount > 0 && count > prevCount && autoScrollRef.current) {
+    // Auto-scroll: when bar count changes and the user was already viewing the
+    // right edge, re-frame the chart so the latest bar stays visible. This
+    // handles both live/replay growth (count increases) AND replay backward
+    // seeks where the visible range would otherwise point at indices that no
+    // longer exist. If the user has manually panned left, respect that and
+    // don't scroll.
+    if (initialZoomDoneRef.current && prevCount > 0 && count !== prevCount && autoScrollRef.current) {
       const xAxis = surface.xAxes.get(0);
       const yAxis = surface.yAxes.get(0);
       if (xAxis) {
         const currentRange = xAxis.visibleRange;
-        const rangeWidth = currentRange.max - currentRange.min;
-        const newMax = count - 1;
+        // Enforce minimum width so the auto-scroll never drifts into
+        // "zoomed in on 3 bars" territory during replay.
+        const rangeWidth = Math.max(
+          MIN_VISIBLE_BARS,
+          currentRange.max - currentRange.min,
+        );
+        const newMax = count - 1 + RIGHT_EDGE_PADDING_BARS;
         const newMin = newMax - rangeWidth;
         xAxis.visibleRange = new NumberRange(Math.max(0, newMin), newMax);
-        // Fit Y-axis to the new visible window
+        // Fit Y-axis to the actual bar window (exclude future padding).
         if (yAxis && !yAxisManualModeRef.current) {
-          fitYAxisToVisibleRange(yAxis, dataSeriesRef.current, Math.max(0, newMin), newMax);
+          fitYAxisToVisibleRange(
+            yAxis,
+            dataSeriesRef.current,
+            Math.max(0, newMin),
+            Math.min(count - 1, newMax),
+          );
         }
       }
     }
@@ -2226,6 +2257,18 @@ export const CandlestickChart = forwardRef<CandlestickChartHandle, CandlestickCh
     <div className="relative h-full w-full">
       {/* Chart container - unique ID ensures SciChart gets a fresh canvas on remount */}
       <div ref={containerRef} id={`scichart-${chartId}`} className="h-full w-full" />
+
+      {/* SciChart community-license watermark cover — the watermark is painted
+          directly onto the canvas, so CSS alone can't hide it. We paint a small
+          patch in the matching chart background color over it. */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute bottom-0 left-0 h-11 w-[180px]"
+        style={{
+          background:
+            'linear-gradient(180deg, transparent 0%, var(--color-surface-base) 30%, var(--color-surface-base) 100%)',
+        }}
+      />
 
       {/* Loading overlay */}
       {(isLoading || isInitializing) && (

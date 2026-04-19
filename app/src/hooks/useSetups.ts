@@ -117,7 +117,7 @@ export function isTerminalStatus(status: SetupStatus): boolean {
 export function useSetups(
   market: string,
   timeframe: string = '1min',
-  days: number = 5,
+  days: number = 14,
   pollIntervalMs: number = POLL_INTERVAL_MS,
 ) {
   const [data, setData] = useState<SetupsResponse | null>(null)

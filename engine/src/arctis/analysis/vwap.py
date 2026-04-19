@@ -57,11 +57,8 @@ def calculate_vwap(bars: list[OHLCVBar]) -> list[VWAPData]:
 
         prev_trading_day = trading_day
 
-        # Only accumulate volume during RTH — skip pre-RTH bars entirely.
-        # No VWAP data emitted for overnight/premarket = clean line on chart.
-        if not is_rth:
-            continue
-
+        # Accumulate ALL bars (including Globex/pre-market) for continuous VWAP.
+        # This prevents gaps on the chart while maintaining daily reset at RTH open.
         tp = (bar.high + bar.low + bar.close) / 3.0
         cum_tp_vol += tp * bar.volume
         cum_vol += bar.volume

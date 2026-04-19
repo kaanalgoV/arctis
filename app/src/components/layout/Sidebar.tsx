@@ -135,9 +135,9 @@ export function Sidebar({ activeItem, defaultActive = 'chart', onNavigate }: Sid
         <span
           className="font-mono text-[8px] leading-none tracking-wider mb-1"
           style={{ color: 'var(--color-text-inactive)', writingMode: 'vertical-rl', textOrientation: 'mixed' }}
-          title="Arctis v0.1.0"
+          title={`Arctis v${__APP_VERSION__}`}
         >
-          v0.1
+          v{__APP_VERSION__.split('.').slice(0, 2).join('.')}
         </span>
       </div>
     </aside>

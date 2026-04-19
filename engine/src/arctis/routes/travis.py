@@ -41,7 +41,7 @@ def _build_travis_context(
 ) -> TravisContext:
     """Fetch live analysis data and package it into a TravisContext."""
     try:
-        bars = fetch_bars_as_models(market=market, days=5, timeframe=timeframe)
+        bars = fetch_bars_as_models(market=market, days=31, timeframe=timeframe)
     except Exception as exc:
         logger.warning("Could not fetch bars for Travis context: %s", exc)
         bars = []

@@ -11,6 +11,26 @@ import {
 function SignalChart() {
   return (
     <div className="overflow-hidden rounded-xl border border-frost-border-subtle bg-arctic-primary">
+      <style>{`
+        @keyframes signalLineDraw {
+          from { stroke-dashoffset: 440; }
+          to { stroke-dashoffset: 0; }
+        }
+        @keyframes signalTextFade {
+          from { opacity: 0; }
+          to { opacity: var(--target-opacity, 0.7); }
+        }
+        @keyframes rrPulse {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(92,184,240,0); }
+          50% { box-shadow: 0 0 10px 2px rgba(92,184,240,0.25); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          * {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+          }
+        }
+      `}</style>
       {/* Chart area */}
       <div className="relative px-4 py-5">
         <svg
@@ -24,17 +44,29 @@ function SignalChart() {
         >
           {/* Target zone */}
           <rect x="0" y="10" width="440" height="25" rx="0" fill="#34D399" opacity="0.05" />
-          <line x1="0" y1="22" x2="440" y2="22" stroke="#34D399" strokeWidth="1" strokeDasharray="4 3" opacity="0.4" />
-          <text x="430" y="18" fill="#34D399" fontSize="8" fontFamily="monospace" textAnchor="end" opacity="0.7">23,235</text>
+          <line
+            x1="0" y1="22" x2="440" y2="22"
+            stroke="#34D399" strokeWidth="1" strokeDasharray="4 3" opacity="0.4"
+            style={{ strokeDasharray: '440', animation: 'signalLineDraw 0.9s ease-out 0.3s both' }}
+          />
+          <text x="430" y="18" fill="#34D399" fontSize="8" fontFamily="monospace" textAnchor="end" opacity="0.7">26,905</text>
 
           {/* Entry zone */}
-          <line x1="0" y1="80" x2="440" y2="80" stroke="#5AAED8" strokeWidth="1" strokeDasharray="4 3" opacity="0.4" />
-          <text x="430" y="76" fill="#5AAED8" fontSize="8" fontFamily="monospace" textAnchor="end" opacity="0.7">23,180</text>
+          <line
+            x1="0" y1="80" x2="440" y2="80"
+            stroke="#5AAED8" strokeWidth="1" strokeDasharray="4 3" opacity="0.4"
+            style={{ strokeDasharray: '440', animation: 'signalLineDraw 0.9s ease-out 0.6s both' }}
+          />
+          <text x="430" y="76" fill="#5AAED8" fontSize="8" fontFamily="monospace" textAnchor="end" opacity="0.7">26,840</text>
 
           {/* Stop zone */}
           <rect x="0" y="115" width="440" height="20" rx="0" fill="#F87171" opacity="0.05" />
-          <line x1="0" y1="125" x2="440" y2="125" stroke="#F87171" strokeWidth="1" strokeDasharray="4 3" opacity="0.4" />
-          <text x="430" y="121" fill="#F87171" fontSize="8" fontFamily="monospace" textAnchor="end" opacity="0.7">23,155</text>
+          <line
+            x1="0" y1="125" x2="440" y2="125"
+            stroke="#F87171" strokeWidth="1" strokeDasharray="4 3" opacity="0.4"
+            style={{ strokeDasharray: '440', animation: 'signalLineDraw 0.9s ease-out 0.9s both' }}
+          />
+          <text x="430" y="121" fill="#F87171" fontSize="8" fontFamily="monospace" textAnchor="end" opacity="0.7">26,810</text>
 
           {/* Price action candles leading to entry */}
           {[
@@ -101,20 +133,23 @@ function SignalChart() {
           {/* Price levels */}
           <div className="flex items-center gap-2 font-mono text-[11px]">
             <span className="text-frost-muted">Entry</span>
-            <span className="text-frost-white">23,180</span>
+            <span className="text-frost-white">26,840</span>
             <span className="text-frost-muted">|</span>
             <span className="text-frost-muted">Stop</span>
-            <span className="text-loss">23,155</span>
+            <span className="text-loss">26,810</span>
             <span className="text-frost-muted">|</span>
             <span className="text-frost-muted">Target</span>
-            <span className="text-profit">23,235</span>
+            <span className="text-profit">26,905</span>
           </div>
 
           {/* Spacer */}
           <div className="flex-1" />
 
           {/* R:R badge */}
-          <span className="rounded border border-frost-border-subtle bg-arctic-secondary px-2 py-0.5 font-mono text-[10px] text-frost-secondary">
+          <span
+            className="rounded border border-frost-border-subtle bg-arctic-secondary px-2 py-0.5 font-mono text-[10px] text-frost-secondary"
+            style={{ animation: 'rrPulse 2.4s ease-in-out infinite' }}
+          >
             R:R 2.2
           </span>
 
@@ -126,6 +161,11 @@ function SignalChart() {
           {/* Bias badge */}
           <span className="rounded border border-profit/20 bg-profit/5 px-2 py-0.5 font-mono text-[10px] text-profit">
             BIAS LONG +5
+          </span>
+
+          {/* Cum Delta badge */}
+          <span className="rounded border px-2 py-0.5 font-mono text-[10px] font-semibold" style={{ borderColor: 'rgba(167,139,250,0.3)', backgroundColor: 'rgba(167,139,250,0.1)', color: '#A78BFA' }}>
+            &#916; Cum Delta
           </span>
         </div>
       </div>

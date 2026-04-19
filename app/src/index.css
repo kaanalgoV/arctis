@@ -119,13 +119,25 @@ body {
 div[class*="watermark"],
 span[class*="watermark"],
 div[class*="Watermark"],
+div[class*="Trial"],
 div[class*="trial"],
 div[class*="license"],
-[data-scichart-watermark] {
+div[class*="License"],
+[data-scichart-watermark],
+a[href*="scichart.com"],
+img[src*="scichart"],
+svg[class*="watermark"],
+div[id*="scichart"] > div:last-child > a,
+div[id*="scichart"] > div:last-child > img {
   display: none !important;
   opacity: 0 !important;
   visibility: hidden !important;
   pointer-events: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  overflow: hidden !important;
+  position: absolute !important;
+  clip: rect(0, 0, 0, 0) !important;
 }
 
 ::-webkit-scrollbar { width: 5px; height: 5px; }

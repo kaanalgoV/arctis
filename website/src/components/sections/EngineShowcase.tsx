@@ -1,693 +1,711 @@
 'use client'
 
-import { motion } from 'framer-motion'
-import {
-  fadeInUp,
-  engineStaggerContainer,
-  engineCardItem,
-  viewportOnce,
-} from '@/lib/animations'
+import { useEffect, useRef, useState } from 'react'
+import { motion, useInView, useMotionValue, animate } from 'framer-motion'
+import { fadeInUp, viewportOnce } from '@/lib/animations'
+import { Activity, Layers, Gauge, Zap, Brain } from 'lucide-react'
 
-// ─── Mini Chart Illustrations ───────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────────
+// Animated number that ticks from 0 → target once its parent enters view.
+// ────────────────────────────────────────────────────────────────────────────
 
-function MarktstrukturIllustration() {
+function TickNumber({
+  target,
+  decimals = 0,
+  suffix = '',
+  prefix = '',
+  duration = 1.6,
+  formatThousands = false,
+}: {
+  target: number
+  decimals?: number
+  suffix?: string
+  prefix?: string
+  duration?: number
+  formatThousands?: boolean
+}) {
+  const ref = useRef<HTMLSpanElement>(null)
+  const inView = useInView(ref, { once: true, margin: '-60px 0px' })
+  const mv = useMotionValue(0)
+
+  useEffect(() => {
+    if (!inView) return
+    const controls = animate(mv, target, { duration, ease: [0.2, 0.6, 0.2, 1] })
+    const unsub = mv.on('change', (v) => {
+      if (!ref.current) return
+      const rounded = decimals === 0 ? Math.round(v) : Number(v.toFixed(decimals))
+      const formatted = formatThousands
+        ? new Intl.NumberFormat('en-US').format(Math.round(rounded))
+        : String(rounded)
+      ref.current.textContent = `${prefix}${formatted}${suffix}`
+    })
+    return () => {
+      controls.stop()
+      unsub()
+    }
+  }, [inView, target, decimals, suffix, prefix, duration, formatThousands, mv])
+
+  const initial =
+    decimals === 0 ? `${prefix}0${suffix}` : `${prefix}${(0).toFixed(decimals)}${suffix}`
   return (
-    <svg
-      width="240"
-      height="120"
-      viewBox="0 0 240 120"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      className="w-full"
-    >
-      <style>{`
-        @keyframes msDrawLine {
-          from { stroke-dashoffset: 500; }
-          to { stroke-dashoffset: 0; }
-        }
-        @keyframes msGlowGreen {
-          0%, 100% { filter: drop-shadow(0 0 2px rgba(52,211,153,0.3)); opacity: 0.7; }
-          50% { filter: drop-shadow(0 0 8px rgba(52,211,153,0.8)); opacity: 1; }
-        }
-        @keyframes msGlowRed {
-          0%, 100% { filter: drop-shadow(0 0 2px rgba(248,113,113,0.3)); opacity: 0.7; }
-          50% { filter: drop-shadow(0 0 8px rgba(248,113,113,0.8)); opacity: 1; }
-        }
-        @keyframes msBosSlide {
-          0% { opacity: 0; transform: translateX(-20px); }
-          100% { opacity: 1; transform: translateX(0); }
-        }
-        @keyframes msFadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-      `}</style>
-
-      <defs>
-        <linearGradient id="msAreaGrad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#5CB8F0" stopOpacity="0.25" />
-          <stop offset="100%" stopColor="#5CB8F0" stopOpacity="0.02" />
-        </linearGradient>
-      </defs>
-
-      {/* Grid */}
-      <line x1="0" y1="20" x2="240" y2="20" stroke="rgba(92,184,240,0.06)" strokeWidth="1" />
-      <line x1="0" y1="40" x2="240" y2="40" stroke="rgba(92,184,240,0.06)" strokeWidth="1" />
-      <line x1="0" y1="60" x2="240" y2="60" stroke="rgba(92,184,240,0.06)" strokeWidth="1" />
-      <line x1="0" y1="80" x2="240" y2="80" stroke="rgba(92,184,240,0.06)" strokeWidth="1" />
-      <line x1="60" y1="0" x2="60" y2="95" stroke="rgba(92,184,240,0.04)" strokeWidth="1" />
-      <line x1="120" y1="0" x2="120" y2="95" stroke="rgba(92,184,240,0.04)" strokeWidth="1" />
-      <line x1="180" y1="0" x2="180" y2="95" stroke="rgba(92,184,240,0.04)" strokeWidth="1" />
-
-      {/* Area fill under price line */}
-      <polygon
-        points="10,80 35,50 55,65 80,30 105,50 130,18 155,38 180,22 205,42 230,32 230,92 10,92"
-        fill="url(#msAreaGrad)"
-        style={{ animation: 'msFadeIn 1.5s ease-out forwards' }}
-      />
-
-      {/* Price action zigzag with draw animation */}
-      <polyline
-        points="10,80 35,50 55,65 80,30 105,50 130,18 155,38 180,22 205,42 230,32"
-        stroke="#5CB8F0"
-        strokeWidth="2.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill="none"
-        strokeDasharray="500"
-        style={{
-          animation: 'msDrawLine 2s ease-out forwards',
-          filter: 'drop-shadow(0 0 4px rgba(92,184,240,0.4))',
-        }}
-      />
-
-      {/* Swing High markers — green glow pulse */}
-      <circle cx="80" cy="30" r="5.5" fill="rgba(52,211,153,0.15)" stroke="#34D399" strokeWidth="1.5"
-        style={{ animation: 'msGlowGreen 2.5s ease-in-out 0.8s infinite' }} />
-      <circle cx="130" cy="18" r="5.5" fill="rgba(52,211,153,0.15)" stroke="#34D399" strokeWidth="1.5"
-        style={{ animation: 'msGlowGreen 2.5s ease-in-out 1.2s infinite' }} />
-      <circle cx="180" cy="22" r="5.5" fill="rgba(52,211,153,0.15)" stroke="#34D399" strokeWidth="1.5"
-        style={{ animation: 'msGlowGreen 2.5s ease-in-out 1.6s infinite' }} />
-
-      {/* Swing Low markers — red glow pulse */}
-      <circle cx="55" cy="65" r="5.5" fill="rgba(248,113,113,0.15)" stroke="#F87171" strokeWidth="1.5"
-        style={{ animation: 'msGlowRed 2.5s ease-in-out 1s infinite' }} />
-      <circle cx="105" cy="50" r="5.5" fill="rgba(248,113,113,0.15)" stroke="#F87171" strokeWidth="1.5"
-        style={{ animation: 'msGlowRed 2.5s ease-in-out 1.4s infinite' }} />
-
-      {/* Trend line */}
-      <line
-        x1="55" y1="65" x2="230" y2="32"
-        stroke="#5CB8F0" strokeWidth="1" strokeDasharray="4 3" opacity="0.5"
-      />
-
-      {/* Labels */}
-      <text x="80" y="20" fill="#34D399" fontSize="8" fontFamily="monospace" textAnchor="middle"
-        style={{ filter: 'drop-shadow(0 0 3px rgba(52,211,153,0.5))' }}>SH</text>
-      <text x="55" y="80" fill="#F87171" fontSize="8" fontFamily="monospace" textAnchor="middle"
-        style={{ filter: 'drop-shadow(0 0 3px rgba(248,113,113,0.5))' }}>SL</text>
-
-      {/* BOS label with arrow — animated entrance */}
-      <g style={{ animation: 'msBosSlide 0.8s ease-out 1.8s both' }}>
-        <text x="155" y="100" fill="#5CB8F0" fontSize="9" fontFamily="monospace" textAnchor="middle" opacity="0.9"
-          style={{ filter: 'drop-shadow(0 0 4px rgba(92,184,240,0.5))' }}>BOS</text>
-        <line x1="130" y1="95" x2="180" y2="95" stroke="#5CB8F0" strokeWidth="1.5" opacity="0.6" />
-        <polygon points="180,92.5 180,97.5 185,95" fill="#5CB8F0" opacity="0.7" />
-      </g>
-    </svg>
+    <span ref={ref} className="tabular-nums">
+      {initial}
+    </span>
   )
 }
 
-function ConfluenceIllustration() {
-  const factors = [
-    { label: 'VWAP', value: 0.85 },
-    { label: 'EMA', value: 0.72 },
-    { label: 'RSI', value: 0.60 },
-    { label: 'VOL', value: 0.90 },
-    { label: 'SES', value: 0.45 },
-    { label: 'STR', value: 0.80 },
-    { label: 'BIAS', value: 0.95 },
-  ]
+// ────────────────────────────────────────────────────────────────────────────
+// Live Pipeline — stacked HUD with flowing data particles.
+// Replaces the horizontal "dots crossing a line" diagram.
+// ────────────────────────────────────────────────────────────────────────────
 
-  return (
-    <svg
-      width="240"
-      height="120"
-      viewBox="0 0 240 120"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      className="w-full"
-    >
-      <style>{`
-        @keyframes cfBarGrow {
-          from { transform: scaleX(0); }
-          to { transform: scaleX(1); }
-        }
-        @keyframes cfShineSweep {
-          0% { transform: translateX(-100%); }
-          100% { transform: translateX(200%); }
-        }
-        @keyframes cfScoreGlow {
-          0%, 100% { filter: drop-shadow(0 0 3px rgba(92,184,240,0.2)); }
-          50% { filter: drop-shadow(0 0 12px rgba(92,184,240,0.8)); }
-        }
-        @keyframes cfFadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-      `}</style>
-
-      <defs>
-        {factors.map((f, i) => {
-          const color = f.value >= 0.7 ? '#34D399' : f.value >= 0.5 ? '#5AAED8' : '#949DA8'
-          return (
-            <linearGradient key={`cfGrad${i}`} id={`cfGrad${i}`} x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%" stopColor={color} stopOpacity="0.3" />
-              <stop offset="85%" stopColor={color} stopOpacity={0.3 + f.value * 0.5} />
-              <stop offset="100%" stopColor={color} stopOpacity={0.15 + f.value * 0.3} />
-            </linearGradient>
-          )
-        })}
-        <linearGradient id="cfShine" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stopColor="white" stopOpacity="0" />
-          <stop offset="50%" stopColor="white" stopOpacity="0.15" />
-          <stop offset="100%" stopColor="white" stopOpacity="0" />
-        </linearGradient>
-      </defs>
-
-      {factors.map((f, i) => {
-        const y = 6 + i * 15
-        const barWidth = f.value * 140
-        const color = f.value >= 0.7 ? '#34D399' : f.value >= 0.5 ? '#5AAED8' : '#949DA8'
-        return (
-          <g key={f.label}>
-            <text x="4" y={y + 10} fill="#B0B8C4" fontSize="8" fontFamily="monospace"
-              style={{ animation: `cfFadeIn 0.4s ease-out ${i * 0.1}s both` }}>{f.label}</text>
-            <g style={{
-              transformOrigin: '44px 0',
-              animation: `cfBarGrow 0.8s ease-out ${0.15 + i * 0.1}s both`,
-            }}>
-              <rect x="44" y={y} width={barWidth} height="10" rx="2" fill={`url(#cfGrad${i})`}
-                style={{ filter: `drop-shadow(0 0 3px ${color}40)` }} />
-              {/* Shine sweep overlay */}
-              <clipPath id={`cfClip${i}`}>
-                <rect x="44" y={y} width={barWidth} height="10" rx="2" />
-              </clipPath>
-              <rect x="44" y={y} width={barWidth} height="10" rx="2"
-                fill="url(#cfShine)" clipPath={`url(#cfClip${i})`}
-                style={{ animation: `cfShineSweep 3s ease-in-out ${1.5 + i * 0.3}s infinite` }} />
-            </g>
-            <text x={44 + barWidth + 4} y={y + 9} fill={color} fontSize="7" fontFamily="monospace" opacity="0.9"
-              style={{ animation: `cfFadeIn 0.4s ease-out ${0.5 + i * 0.1}s both` }}>
-              {Math.round(f.value * 100)}%
-            </text>
-          </g>
-        )
-      })}
-
-      {/* Score badge with glow pulse */}
-      <g style={{ animation: 'cfScoreGlow 3s ease-in-out 1s infinite' }}>
-        <rect x="200" y="30" width="34" height="34" rx="6" fill="#5AAED8" opacity="0.2" />
-        <rect x="200" y="30" width="34" height="34" rx="6" stroke="#5CB8F0" strokeWidth="1.5" opacity="0.5" fill="none" />
-        <text x="217" y="53" fill="#5CB8F0" fontSize="16" fontFamily="monospace" textAnchor="middle" fontWeight="bold"
-          style={{ filter: 'drop-shadow(0 0 6px rgba(92,184,240,0.6))' }}>8</text>
-      </g>
-      <text x="217" y="24" fill="#B0B8C4" fontSize="7" fontFamily="monospace" textAnchor="middle">SCORE</text>
-    </svg>
-  )
-}
-
-function ZonesIllustration() {
-  const histogramWidths = [10, 18, 32, 48, 55, 42, 28, 18, 12, 8]
-
-  return (
-    <svg
-      width="240"
-      height="120"
-      viewBox="0 0 240 120"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      className="w-full"
-    >
-      <style>{`
-        @keyframes znDrawDash {
-          from { stroke-dashoffset: 360; }
-          to { stroke-dashoffset: 0; }
-        }
-        @keyframes znPocGlow {
-          0%, 100% { filter: drop-shadow(0 0 2px rgba(92,184,240,0.3)); opacity: 0.8; }
-          50% { filter: drop-shadow(0 0 10px rgba(92,184,240,0.9)); opacity: 1; }
-        }
-        @keyframes znBarSlide {
-          from { transform: scaleX(0); }
-          to { transform: scaleX(1); }
-        }
-        @keyframes znNpocPulse {
-          0%, 100% { filter: drop-shadow(0 0 2px rgba(251,191,36,0.3)); r: 3.5; }
-          50% { filter: drop-shadow(0 0 10px rgba(251,191,36,0.9)); r: 5; }
-        }
-      `}</style>
-
-      <defs>
-        <linearGradient id="znHistGrad" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stopColor="#5CB8F0" stopOpacity="0.15" />
-          <stop offset="100%" stopColor="#5CB8F0" stopOpacity="0.5" />
-        </linearGradient>
-      </defs>
-
-      {/* Value Area High — draw animation */}
-      <rect x="50" y="15" width="180" height="10" rx="1" fill="#5CB8F0" opacity="0.08" />
-      <line x1="50" y1="20" x2="230" y2="20" stroke="#5CB8F0" strokeWidth="1" strokeDasharray="3 2"
-        opacity="0.7"
-        style={{ strokeDashoffset: 360, animation: 'znDrawDash 1.5s ease-out 0.3s forwards' }} />
-      <text x="232" y="23" fill="#B0B8C4" fontSize="7" fontFamily="monospace">VAH</text>
-
-      {/* POC — strongest line with glow pulse */}
-      <rect x="50" y="45" width="180" height="12" rx="1" fill="#5CB8F0" opacity="0.15" />
-      <line x1="50" y1="51" x2="230" y2="51" stroke="#5CB8F0" strokeWidth="2.5" opacity="0.9"
-        style={{ animation: 'znPocGlow 3s ease-in-out 0.8s infinite' }} />
-      <text x="232" y="54" fill="#5CB8F0" fontSize="7" fontFamily="monospace" fontWeight="bold"
-        style={{ filter: 'drop-shadow(0 0 4px rgba(92,184,240,0.5))' }}>POC</text>
-
-      {/* Value Area Low — draw animation */}
-      <rect x="50" y="80" width="180" height="10" rx="1" fill="#5CB8F0" opacity="0.08" />
-      <line x1="50" y1="85" x2="230" y2="85" stroke="#5CB8F0" strokeWidth="1" strokeDasharray="3 2"
-        opacity="0.7"
-        style={{ strokeDashoffset: 360, animation: 'znDrawDash 1.5s ease-out 0.5s forwards' }} />
-      <text x="232" y="88" fill="#B0B8C4" fontSize="7" fontFamily="monospace">VAL</text>
-
-      {/* Volume profile histogram — staggered slide-in from left */}
-      {histogramWidths.map((w, i) => (
-        <rect
-          key={i}
-          x="10"
-          y={8 + i * 10.5}
-          width={w}
-          height="7"
-          rx="1.5"
-          fill="url(#znHistGrad)"
-          opacity={0.2 + (w / 55) * 0.6}
-          style={{
-            transformOrigin: '10px 0',
-            animation: `znBarSlide 0.6s ease-out ${0.1 + i * 0.06}s both`,
-            filter: w >= 42 ? 'drop-shadow(0 0 3px rgba(92,184,240,0.3))' : 'none',
-          }}
-        />
-      ))}
-
-      {/* Naked POC marker — bright yellow pulse */}
-      <circle cx="120" cy="105" r="3.5" fill="#FBBF24" opacity="0.9"
-        style={{ animation: 'znNpocPulse 2s ease-in-out 1s infinite' }} />
-      <text x="128" y="108" fill="#FBBF24" fontSize="7" fontFamily="monospace" opacity="0.9"
-        style={{ filter: 'drop-shadow(0 0 4px rgba(251,191,36,0.5))' }}>nPOC</text>
-    </svg>
-  )
-}
-
-function ContextIllustration() {
-  // Deterministic daily session bars
-  const dayHeights = [35, 28, 42, 30, 48, 38, 44, 25, 50, 32, 46, 40, 36, 52]
-
-  return (
-    <svg
-      width="240"
-      height="120"
-      viewBox="0 0 240 120"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      className="w-full"
-    >
-      <style>{`
-        @keyframes ctBarGrow {
-          from { transform: scaleY(0); }
-          to { transform: scaleY(1); }
-        }
-        @keyframes ctNowGlow {
-          0%, 100% { filter: drop-shadow(0 0 3px rgba(92,184,240,0.3)); }
-          50% { filter: drop-shadow(0 0 12px rgba(92,184,240,0.9)); }
-        }
-        @keyframes ctTimelineDraw {
-          from { stroke-dashoffset: 224; }
-          to { stroke-dashoffset: 0; }
-        }
-        @keyframes ctNowLabel {
-          0%, 100% { opacity: 0.8; }
-          50% { opacity: 1; }
-        }
-      `}</style>
-
-      <defs>
-        {dayHeights.map((_, i) => (
-          <linearGradient key={`ctGrad${i}`} id={`ctGrad${i}`} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#5CB8F0" stopOpacity={0.15 + (i / 13) * 0.7} />
-            <stop offset="100%" stopColor="#5CB8F0" stopOpacity={0.05 + (i / 13) * 0.25} />
-          </linearGradient>
-        ))}
-      </defs>
-
-      {/* 14 day bars — grow upward, staggered, gradient brighter toward today */}
-      {dayHeights.map((h, i) => {
-        const x = 10 + i * 16
-        const y = 90 - h
-        const isToday = i === 13
-        return (
-          <g key={i}>
-            <rect
-              x={x}
-              y={y}
-              width="10"
-              height={h}
-              rx="2"
-              fill={isToday ? '#5CB8F0' : `url(#ctGrad${i})`}
-              opacity={isToday ? 0.9 : 1}
-              style={{
-                transformOrigin: `${x + 5}px 90px`,
-                animation: `ctBarGrow 0.5s ease-out ${0.05 * i}s both${isToday ? ', ctNowGlow 2.5s ease-in-out 1s infinite' : ''}`,
-              }}
-            />
-            {isToday && (
-              <>
-                <text x={x + 5} y={y - 6} fill="#5CB8F0" fontSize="7" fontFamily="monospace" textAnchor="middle"
-                  style={{
-                    filter: 'drop-shadow(0 0 5px rgba(92,184,240,0.6))',
-                    animation: 'ctNowLabel 2s ease-in-out 1s infinite',
-                  }}>NOW</text>
-                <rect x={x - 1} y={y - 1} width="12" height={h + 2} rx="2.5" stroke="#5CB8F0" strokeWidth="1.5" fill="none" opacity="0.5" />
-              </>
-            )}
-          </g>
-        )
-      })}
-
-      {/* Timeline — draws itself left to right */}
-      <line x1="10" y1="96" x2="234" y2="96" stroke="#4A5568" strokeWidth="1"
-        strokeDasharray="224"
-        style={{ animation: 'ctTimelineDraw 1.2s ease-out 0.3s both' }} />
-      <text x="14" y="108" fill="#7E8A96" fontSize="7" fontFamily="monospace">-14d</text>
-      <text x="214" y="108" fill="#5CB8F0" fontSize="7" fontFamily="monospace"
-        style={{ filter: 'drop-shadow(0 0 3px rgba(92,184,240,0.4))' }}>heute</text>
-
-      {/* Bars count label */}
-      <text x="120" y="115" fill="#7E8A96" fontSize="6" fontFamily="monospace" textAnchor="middle" opacity="0.7">5,460 Bars</text>
-    </svg>
-  )
-}
-
-// ─── Engine Capability Data ─────────────────────────────────────────────────
-
-interface EngineCapability {
+interface Stage {
   id: string
-  title: string
+  label: string
+  sub: string
+  accent: string
   metric: string
   metricLabel: string
-  description: string
-  illustration: React.ComponentType
 }
 
-const capabilities: EngineCapability[] = [
+const PIPELINE_STAGES: Stage[] = [
   {
-    id: 'structure',
-    title: 'Marktstruktur',
-    metric: '~3 Bars',
-    metricLabel: 'Trendwechsel-Erkennung vor dem Breakout',
-    description:
-      'Arctis erkennt Swing Highs, Swing Lows, Trendrichtung und Strukturbrüche automatisch. Du siehst sofort, ob der Markt bullish, bearish oder in einer Range ist.',
-    illustration: MarktstrukturIllustration,
+    id: 'ingest',
+    label: 'Ingest',
+    sub: '1m-Bars, Orderflow, Delta',
+    accent: '#949DA8',
+    metric: '5,460',
+    metricLabel: 'Bars / Symbol / 14d',
+  },
+  {
+    id: 'analyse',
+    label: 'Analyse',
+    sub: 'Swings · Zonen · VWAP · EMA · Velocity',
+    accent: '#5AAED8',
+    metric: '13',
+    metricLabel: 'Indikator-Module parallel',
   },
   {
     id: 'confluence',
-    title: 'Confluence Engine',
-    metric: '68%',
-    metricLabel: 'Trefferquote bei Score 5+',
-    description:
-      '7 unabhängige Faktoren — VWAP, EMA, RSI, Volumen, Session, Struktur, Bias — werden zu einem Score verdichtet. Ab Score 5+ steigt die Trefferquote signifikant.',
-    illustration: ConfluenceIllustration,
+    label: 'Confluence',
+    sub: '5 Faktoren → Score 0–5',
+    accent: '#5CB8F0',
+    metric: '≥ 3',
+    metricLabel: 'Threshold für Signal',
   },
   {
-    id: 'zones',
-    title: 'Präzise Zonen',
-    metric: '0.25pt',
-    metricLabel: 'POC-Genauigkeit',
-    description:
-      'Support und Resistance basierend auf echtem Volumenprofil: POC, Value Area, Naked POCs. Keine willkürlichen Linien — echte Preisniveaus.',
-    illustration: ZonesIllustration,
-  },
-  {
-    id: 'context',
-    title: '14 Tage Kontext',
-    metric: '5,460',
-    metricLabel: 'Bars Kontext pro Symbol',
-    description:
-      'Arctis lädt automatisch 14 Handelstage. Du siehst nicht nur den heutigen Chart, sondern die gesamte Marktgeschichte die relevant ist.',
-    illustration: ContextIllustration,
+    id: 'signal',
+    label: 'Signal',
+    sub: 'Entry · Stop · Target · R:R',
+    accent: '#34D399',
+    metric: '< 3',
+    metricLabel: 'Bars bis Trigger',
   },
 ]
 
-// ─── Engine Card ────────────────────────────────────────────────────────────
-
-function EngineCard({ capability, featured = false }: { capability: EngineCapability; featured?: boolean }) {
-  const Illustration = capability.illustration
-
+function LivePipeline() {
   return (
-    <motion.div
-      variants={engineCardItem}
-      className={`glass-card relative overflow-hidden rounded-2xl transition-transform duration-300 ease-out hover:-translate-y-0.5 ${featured ? 'p-8' : 'p-6'}`}
-      style={{ willChange: 'transform' }}
-    >
-      {/* Accent top border */}
-      <div
-        aria-hidden="true"
-        className="absolute inset-x-0 top-0 h-px"
-        style={{
-          background: featured
-            ? 'linear-gradient(90deg, transparent 0%, rgba(90,174,216,0.6) 30%, rgba(90,174,216,0.8) 50%, rgba(90,174,216,0.6) 70%, transparent 100%)'
-            : 'linear-gradient(90deg, transparent 0%, rgba(90,174,216,0.4) 50%, transparent 100%)',
-        }}
-      />
-
-      {/* Subtle radial glow on featured card */}
-      {featured && (
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0"
-          style={{
-            background: 'radial-gradient(ellipse 60% 50% at 80% 0%, rgba(92,184,240,0.06) 0%, transparent 70%)',
-          }}
-        />
-      )}
-
-      {/* Illustration container */}
-      <div className={`rounded-lg border border-frost-border-subtle bg-arctic-primary/50 p-4 ${featured ? 'mb-6' : 'mb-5'}`}>
-        <Illustration />
-      </div>
-
-      {/* Key metric badge */}
-      <div className="mb-3 flex items-baseline gap-2">
-        <span className={`font-mono font-bold text-ice ${featured ? 'text-3xl' : 'text-2xl'}`}>{capability.metric}</span>
-        <span className="text-xs text-frost-muted">{capability.metricLabel}</span>
-      </div>
-
-      {/* Title */}
-      <h3 className={`font-mono font-semibold uppercase tracking-wider text-ice ${featured ? 'text-base' : 'text-sm'}`}>
-        {capability.title}
-      </h3>
-
-      {/* Description */}
-      <p className={`mt-2 leading-relaxed text-frost-secondary ${featured ? 'text-base' : 'text-sm'}`}>
-        {capability.description}
-      </p>
-    </motion.div>
-  )
-}
-
-// ─── Data Flow Visualization ────────────────────────────────────────────────
-
-function DataFlowVisualization() {
-  const stages = [
-    { label: 'Raw Bars', color: '#949DA8' },
-    { label: 'Analyse', color: '#5AAED8' },
-    { label: 'Confluence', color: '#5CB8F0' },
-    { label: 'Signal', color: '#34D399' },
-  ]
-
-  return (
-    <div className="relative overflow-hidden rounded-xl border border-frost-border-subtle bg-arctic-primary/50 px-6 py-8">
+    <div className="relative overflow-hidden rounded-3xl border border-frost-border-subtle bg-arctic-primary/40 p-6 sm:p-8 backdrop-blur">
       <style>{`
-        @keyframes flowDot {
-          0% { transform: translateX(0); opacity: 0; }
-          10% { opacity: 1; }
-          90% { opacity: 1; }
-          100% { transform: translateX(calc(100% + 20px)); opacity: 0; }
+        @keyframes pipelineGlide {
+          0% { transform: translateY(-8%); opacity: 0; }
+          12% { opacity: 1; }
+          88% { opacity: 1; }
+          100% { transform: translateY(108%); opacity: 0; }
         }
-        @keyframes stagePulse {
-          0%, 100% { box-shadow: 0 0 0 0 rgba(92,184,240,0); }
-          50% { box-shadow: 0 0 12px 2px rgba(92,184,240,0.15); }
+        @keyframes pipelinePulse {
+          0%, 100% { opacity: 0.55; transform: scale(1); }
+          50% { opacity: 1; transform: scale(1.08); }
         }
-        @keyframes stageLight {
-          0%, 100% { opacity: 0.5; }
-          50% { opacity: 1; }
+        @keyframes pipelineBar {
+          0% { transform: scaleX(0); }
+          100% { transform: scaleX(1); }
         }
       `}</style>
 
-      <div className="flex items-center justify-between gap-2">
-        {stages.map((stage, i) => (
-          <div key={stage.label} className="flex items-center gap-2" style={{ flex: i < stages.length - 1 ? 1 : 'none' }}>
-            {/* Stage node */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.8 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              viewport={{ once: true }}
-              transition={{ delay: i * 0.4, duration: 0.5 }}
-              className="flex flex-col items-center gap-2 shrink-0"
-            >
-              <div
-                className="flex items-center justify-center rounded-lg"
-                style={{
-                  width: 48,
-                  height: 48,
-                  border: `1.5px solid ${stage.color}`,
-                  background: `${stage.color}10`,
-                  animation: `stagePulse 3s ease-in-out ${i * 0.4}s infinite`,
-                }}
-              >
-                <div
-                  className="rounded-full"
-                  style={{
-                    width: 8,
-                    height: 8,
-                    background: stage.color,
-                    boxShadow: `0 0 8px ${stage.color}`,
-                    animation: `stageLight 2s ease-in-out ${i * 0.4}s infinite`,
-                  }}
-                />
-              </div>
-              <span className="text-frost-muted font-mono text-[10px] text-center whitespace-nowrap">
-                {stage.label}
-              </span>
-            </motion.div>
-
-            {/* Connecting line with animated dots */}
-            {i < stages.length - 1 && (
-              <div className="relative flex-1 mx-1" style={{ height: 2 }}>
-                <div
-                  className="absolute inset-0 rounded-full"
-                  style={{ background: 'rgba(92,184,240,0.1)' }}
-                />
-                {[0, 1, 2].map((dotIdx) => (
-                  <div
-                    key={dotIdx}
-                    className="absolute top-1/2 -translate-y-1/2 rounded-full"
-                    style={{
-                      width: 4,
-                      height: 4,
-                      background: stages[i + 1].color,
-                      boxShadow: `0 0 6px ${stages[i + 1].color}`,
-                      animation: `flowDot 2s linear ${i * 0.4 + dotIdx * 0.6}s infinite`,
-                    }}
-                  />
-                ))}
-              </div>
-            )}
+      <div className="mb-6 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5">
+          <div className="relative h-2 w-2 rounded-full bg-profit">
+            <span className="absolute inset-0 animate-ping rounded-full bg-profit/60" />
           </div>
+          <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-frost-muted">
+            Live Pipeline
+          </span>
+        </div>
+        <span className="font-mono text-[11px] text-frost-muted/70">
+          NQ / ES · 1m · RTH
+        </span>
+      </div>
+
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+        {PIPELINE_STAGES.map((stage, i) => (
+          <motion.div
+            key={stage.id}
+            initial={{ opacity: 0, y: 14 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={viewportOnce}
+            transition={{ duration: 0.5, delay: i * 0.12 }}
+            className="relative overflow-hidden rounded-xl border border-frost-border-subtle/60 bg-arctic-secondary/60 p-4"
+          >
+            {/* Flowing particles down the card */}
+            <span
+              aria-hidden="true"
+              className="pointer-events-none absolute left-1/2 top-0 h-1.5 w-1.5 -translate-x-1/2 rounded-full"
+              style={{
+                background: stage.accent,
+                boxShadow: `0 0 10px ${stage.accent}`,
+                animation: `pipelineGlide ${2.4 + i * 0.2}s linear ${i * 0.3}s infinite`,
+              }}
+            />
+            <span
+              aria-hidden="true"
+              className="pointer-events-none absolute left-1/2 top-0 h-1 w-1 -translate-x-1/2 rounded-full opacity-60"
+              style={{
+                background: stage.accent,
+                animation: `pipelineGlide ${2.4 + i * 0.2}s linear ${i * 0.3 + 0.9}s infinite`,
+              }}
+            />
+
+            {/* Step index + label */}
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <span
+                  className="inline-flex h-5 w-5 items-center justify-center rounded font-mono text-[10px] font-semibold"
+                  style={{
+                    background: `${stage.accent}18`,
+                    color: stage.accent,
+                    border: `1px solid ${stage.accent}40`,
+                  }}
+                >
+                  {i + 1}
+                </span>
+                <span
+                  className="font-display text-sm font-semibold"
+                  style={{ color: stage.accent }}
+                >
+                  {stage.label}
+                </span>
+              </div>
+              <span
+                className="h-1.5 w-1.5 rounded-full"
+                style={{
+                  background: stage.accent,
+                  boxShadow: `0 0 8px ${stage.accent}`,
+                  animation: `pipelinePulse 2s ease-in-out ${i * 0.25}s infinite`,
+                }}
+              />
+            </div>
+
+            <p className="mt-1 text-[11px] leading-relaxed text-frost-muted">{stage.sub}</p>
+
+            {/* Metric */}
+            <div className="mt-4 flex items-end justify-between">
+              <div>
+                <span
+                  className="font-display text-xl font-bold tabular-nums"
+                  style={{ color: '#F0F6FC' }}
+                >
+                  {stage.metric}
+                </span>
+                <span className="ml-1.5 text-[10px] uppercase tracking-wider text-frost-muted/70">
+                  {stage.metricLabel}
+                </span>
+              </div>
+            </div>
+
+            {/* Bottom progress bar */}
+            <div className="mt-3 h-[3px] rounded-full bg-arctic-base/60 overflow-hidden">
+              <div
+                className="h-full origin-left"
+                style={{
+                  background: `linear-gradient(90deg, ${stage.accent}00, ${stage.accent})`,
+                  animation: `pipelineBar 1s ease-out ${0.4 + i * 0.12}s both`,
+                }}
+              />
+            </div>
+          </motion.div>
         ))}
       </div>
     </div>
   )
 }
 
-// ─── EngineShowcase Section ─────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────────
+// Backtest Fingerprint — the honest stats strip.
+// Uses the real patterns.py numbers: 4,398 trades, Aug 2025 – March 2026.
+// ────────────────────────────────────────────────────────────────────────────
+
+function BacktestFingerprint() {
+  return (
+    <motion.div
+      variants={fadeInUp}
+      initial="hidden"
+      whileInView="visible"
+      viewport={viewportOnce}
+      className="relative mt-6 overflow-hidden rounded-3xl border border-ice/20 bg-gradient-to-br from-ice/[0.04] via-arctic-secondary/70 to-arctic-secondary/90 p-6 sm:p-8"
+    >
+      {/* ice glow */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute -right-10 -top-10 h-48 w-48 rounded-full opacity-40"
+        style={{
+          background:
+            'radial-gradient(circle, rgba(92,184,240,0.25) 0%, transparent 70%)',
+        }}
+      />
+
+      <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+        <div className="max-w-md">
+          <div className="flex items-center gap-2">
+            <Brain size={14} className="text-ice" />
+            <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-ice">
+              Kalibrierung
+            </span>
+          </div>
+          <h3 className="mt-3 font-display text-xl font-semibold text-frost-white sm:text-2xl">
+            Auf <TickNumber target={4398} formatThousands /> echten Trades kalibriert.
+          </h3>
+          <p className="mt-2 text-sm leading-relaxed text-frost-muted">
+            NQ Futures, August 2025 – März 2026. Keine Demo, keine Cherry-Picks — jedes
+            einzelne Signal mit Entry, Stop und Target, auf echten 1-Minuten-Bars.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:min-w-[520px]">
+          {[
+            { label: 'Handelstage', value: 158, suffix: '' },
+            { label: 'Profitable Setups', value: 4, suffix: ' / 6' },
+            { label: 'Top PF', value: 3.83, decimals: 2, suffix: 'x' },
+            { label: 'Sample Größe', value: 1005, formatThousands: true, label2: '(größtes)' },
+          ].map((stat) => (
+            <div
+              key={stat.label}
+              className="rounded-xl border border-frost-border-subtle/60 bg-arctic-base/40 p-3"
+            >
+              <div className="font-display text-xl font-bold text-frost-white">
+                <TickNumber
+                  target={stat.value}
+                  decimals={stat.decimals}
+                  suffix={stat.suffix || ''}
+                  formatThousands={stat.formatThousands}
+                />
+              </div>
+              <div className="mt-1 font-mono text-[9px] uppercase tracking-wider text-frost-muted">
+                {stat.label}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </motion.div>
+  )
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Capability cards — new bento layout with sophisticated inline visuals.
+// ────────────────────────────────────────────────────────────────────────────
+
+function MarketStructureViz() {
+  return (
+    <svg viewBox="0 0 280 140" className="h-full w-full" aria-hidden="true">
+      <defs>
+        <linearGradient id="msArea2" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%" stopColor="#5CB8F0" stopOpacity="0.3" />
+          <stop offset="100%" stopColor="#5CB8F0" stopOpacity="0.02" />
+        </linearGradient>
+      </defs>
+      {/* Grid */}
+      {[30, 60, 90].map((y) => (
+        <line
+          key={y}
+          x1="0"
+          y1={y}
+          x2="280"
+          y2={y}
+          stroke="rgba(92,184,240,0.06)"
+          strokeWidth="1"
+        />
+      ))}
+      {/* Area */}
+      <polygon
+        points="10,90 40,60 70,75 100,35 130,60 160,22 190,45 220,28 250,48 270,38 270,110 10,110"
+        fill="url(#msArea2)"
+      />
+      {/* Price line */}
+      <polyline
+        points="10,90 40,60 70,75 100,35 130,60 160,22 190,45 220,28 250,48 270,38"
+        fill="none"
+        stroke="#5CB8F0"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        style={{ filter: 'drop-shadow(0 0 4px rgba(92,184,240,0.5))' }}
+      />
+      {/* Swing highs/lows */}
+      {[
+        { x: 100, y: 35, color: '#34D399', label: 'HH' },
+        { x: 160, y: 22, color: '#34D399', label: 'HH' },
+        { x: 220, y: 28, color: '#34D399', label: 'HH' },
+        { x: 70, y: 75, color: '#F87171', label: 'HL' },
+        { x: 130, y: 60, color: '#F87171', label: 'HL' },
+      ].map((s, i) => (
+        <g key={i}>
+          <circle cx={s.x} cy={s.y} r="3.5" fill={s.color} />
+          <circle
+            cx={s.x}
+            cy={s.y}
+            r="6"
+            fill="none"
+            stroke={s.color}
+            strokeWidth="1"
+            opacity="0.4"
+          />
+          <text
+            x={s.x}
+            y={s.y - 9}
+            textAnchor="middle"
+            fill={s.color}
+            fontSize="7"
+            fontFamily="monospace"
+            fontWeight="600"
+          >
+            {s.label}
+          </text>
+        </g>
+      ))}
+      {/* BOS line */}
+      <line
+        x1="100"
+        y1="35"
+        x2="270"
+        y2="35"
+        stroke="#34D399"
+        strokeWidth="1"
+        strokeDasharray="3 3"
+        opacity="0.5"
+      />
+      <text
+        x="260"
+        y="30"
+        fontSize="7"
+        fill="#34D399"
+        fontFamily="monospace"
+        textAnchor="end"
+      >
+        BOS
+      </text>
+    </svg>
+  )
+}
+
+function ConfluenceViz() {
+  const factors = [
+    { label: 'BIAS', value: 0.95, color: '#34D399' },
+    { label: 'VOL', value: 0.88, color: '#34D399' },
+    { label: 'STR', value: 0.76, color: '#5CB8F0' },
+    { label: 'VEL', value: 0.62, color: '#5CB8F0' },
+    { label: 'VWAP', value: 0.82, color: '#34D399' },
+  ]
+  return (
+    <div className="flex h-full items-center gap-4 px-2">
+      <div className="flex flex-col gap-2 flex-1">
+        {factors.map((f, i) => (
+          <div key={f.label} className="flex items-center gap-2">
+            <span className="w-10 font-mono text-[10px] text-frost-muted">{f.label}</span>
+            <div className="relative flex-1 h-[6px] rounded-full bg-arctic-base/60 overflow-hidden">
+              <motion.div
+                className="absolute inset-y-0 left-0 rounded-full"
+                style={{ background: f.color, boxShadow: `0 0 6px ${f.color}60` }}
+                initial={{ width: 0 }}
+                whileInView={{ width: `${f.value * 100}%` }}
+                viewport={viewportOnce}
+                transition={{ duration: 0.8, delay: i * 0.1, ease: 'easeOut' }}
+              />
+            </div>
+            <span className="font-mono text-[10px] tabular-nums text-frost-secondary w-8 text-right">
+              {Math.round(f.value * 5)}
+            </span>
+          </div>
+        ))}
+      </div>
+      {/* Score ring */}
+      <div className="relative flex shrink-0 h-20 w-20 items-center justify-center">
+        <svg viewBox="0 0 80 80" className="absolute inset-0">
+          <circle
+            cx="40"
+            cy="40"
+            r="32"
+            stroke="rgba(255,255,255,0.06)"
+            strokeWidth="5"
+            fill="none"
+          />
+          <motion.circle
+            cx="40"
+            cy="40"
+            r="32"
+            stroke="#34D399"
+            strokeWidth="5"
+            fill="none"
+            strokeLinecap="round"
+            strokeDasharray="201"
+            initial={{ strokeDashoffset: 201 }}
+            whileInView={{ strokeDashoffset: 201 * (1 - 4 / 5) }}
+            viewport={viewportOnce}
+            transition={{ duration: 1.2, ease: 'easeOut' }}
+            transform="rotate(-90 40 40)"
+            style={{ filter: 'drop-shadow(0 0 6px rgba(52,211,153,0.5))' }}
+          />
+        </svg>
+        <div className="relative text-center">
+          <div className="font-display text-2xl font-bold text-profit leading-none">4</div>
+          <div className="font-mono text-[9px] text-frost-muted mt-0.5">/ 5</div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function BiasStatesViz() {
+  const states = [
+    { label: 'SHORT', color: '#F87171', range: '−10 … −6' },
+    { label: 'RANGE SHORT', color: '#FBBF24', range: '−5 … −2' },
+    { label: 'RANGE', color: '#949DA8', range: '−1 … +1' },
+    { label: 'RANGE LONG', color: '#7DD3FC', range: '+2 … +5' },
+    { label: 'LONG', color: '#34D399', range: '+6 … +10' },
+  ]
+  const activeIdx = 3 // RANGE LONG
+  return (
+    <div className="flex h-full flex-col gap-1.5 justify-center">
+      {states.map((s, i) => (
+        <motion.div
+          key={s.label}
+          initial={{ opacity: 0, x: -10 }}
+          whileInView={{ opacity: 1, x: 0 }}
+          viewport={viewportOnce}
+          transition={{ duration: 0.35, delay: i * 0.08 }}
+          className="group relative flex items-center gap-3 rounded-md px-2 py-1.5 transition-colors"
+          style={{
+            background: i === activeIdx ? `${s.color}10` : 'transparent',
+            border: i === activeIdx ? `1px solid ${s.color}40` : '1px solid transparent',
+          }}
+        >
+          <div
+            className="h-1.5 w-1.5 shrink-0 rounded-full"
+            style={{
+              background: s.color,
+              boxShadow: i === activeIdx ? `0 0 8px ${s.color}` : 'none',
+            }}
+          />
+          <span
+            className="font-mono text-[11px] font-medium tracking-wide"
+            style={{ color: i === activeIdx ? s.color : 'var(--color-text-muted)' }}
+          >
+            {s.label}
+          </span>
+          <span className="ml-auto font-mono text-[10px] text-frost-muted/80">{s.range}</span>
+        </motion.div>
+      ))}
+    </div>
+  )
+}
+
+interface Capability {
+  id: string
+  icon: React.ComponentType<{ size?: number; className?: string }>
+  kicker: string
+  title: string
+  description: string
+  metric: string
+  metricSub: string
+  viz: React.ComponentType
+  span: 'wide' | 'half' | 'quarter'
+  accentTone: 'ice' | 'profit'
+}
+
+const CAPABILITIES: Capability[] = [
+  {
+    id: 'structure',
+    icon: Activity,
+    kicker: 'Marktstruktur',
+    title: 'Swings, BOS und Struktur — automatisch.',
+    description:
+      'Swing Highs, Swing Lows, Trendrichtung und Structure-Breaks in Echtzeit. Du siehst sofort ob der Markt bullish, bearish oder in einer Range ist.',
+    metric: '< 3',
+    metricSub: 'Bars bis Trendwechsel-Erkennung',
+    viz: MarketStructureViz,
+    span: 'wide',
+    accentTone: 'ice',
+  },
+  {
+    id: 'confluence',
+    icon: Layers,
+    kicker: 'Confluence Engine',
+    title: 'Fünf Faktoren — ein Score.',
+    description:
+      'BIAS, Volumen, Struktur, Velocity und VWAP werden zu einem Score von 0–5 verdichtet. Signale feuern erst ab Score 3.',
+    metric: '68%',
+    metricSub: 'Trefferquote bei Score ≥ 3',
+    viz: ConfluenceViz,
+    span: 'half',
+    accentTone: 'profit',
+  },
+  {
+    id: 'bias',
+    icon: Gauge,
+    kicker: 'BIAS Zustände',
+    title: 'Fünf diskrete Marktlagen.',
+    description:
+      'Score −10 bis +10 in fünf saubere Zustände übersetzt. Du handelst nicht „Long oder Short" — du handelst den passenden Zustand.',
+    metric: '5',
+    metricSub: 'Zustände · klar abgegrenzt',
+    viz: BiasStatesViz,
+    span: 'half',
+    accentTone: 'ice',
+  },
+]
+
+function CapabilityCard({ cap }: { cap: Capability }) {
+  const Icon = cap.icon
+  const Viz = cap.viz
+  const accentHex = cap.accentTone === 'profit' ? '#34D399' : '#5CB8F0'
+
+  return (
+    <motion.div
+      variants={fadeInUp}
+      className={`group relative flex flex-col overflow-hidden rounded-3xl border border-frost-border-subtle/70 bg-arctic-secondary/40 p-6 backdrop-blur-sm transition-colors duration-300 hover:border-ice/30 ${
+        cap.span === 'wide' ? 'lg:col-span-2' : ''
+      }`}
+    >
+      {/* Accent edge */}
+      <div
+        aria-hidden="true"
+        className="absolute inset-x-0 top-0 h-px"
+        style={{
+          background: `linear-gradient(90deg, transparent 0%, ${accentHex}80 50%, transparent 100%)`,
+        }}
+      />
+
+      {/* Ambient glow on hover */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-500 group-hover:opacity-100"
+        style={{
+          background: `radial-gradient(ellipse 60% 40% at 30% 0%, ${accentHex}12 0%, transparent 70%)`,
+        }}
+      />
+
+      <div className="relative z-10 flex items-start justify-between gap-4">
+        <div className="flex items-center gap-2">
+          <span
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg"
+            style={{
+              background: `${accentHex}15`,
+              border: `1px solid ${accentHex}30`,
+            }}
+          >
+            <Icon size={14} className="" style={{ color: accentHex }} />
+          </span>
+          <span
+            className="font-mono text-[10px] uppercase tracking-[0.18em]"
+            style={{ color: accentHex }}
+          >
+            {cap.kicker}
+          </span>
+        </div>
+
+        <div className="text-right">
+          <div className="font-display text-2xl font-bold leading-none text-frost-white">
+            {cap.metric}
+          </div>
+          <div className="mt-1 font-mono text-[9px] uppercase tracking-wider text-frost-muted">
+            {cap.metricSub}
+          </div>
+        </div>
+      </div>
+
+      <h3 className="relative z-10 mt-4 font-display text-lg font-semibold leading-tight text-frost-white sm:text-xl">
+        {cap.title}
+      </h3>
+      <p className="relative z-10 mt-2 text-sm leading-relaxed text-frost-muted">
+        {cap.description}
+      </p>
+
+      {/* Illustration */}
+      <div className="relative z-10 mt-5 min-h-[140px] flex-1 rounded-2xl border border-frost-border-subtle/50 bg-arctic-primary/40 p-3">
+        <Viz />
+      </div>
+    </motion.div>
+  )
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Main section
+// ────────────────────────────────────────────────────────────────────────────
 
 export function EngineShowcase() {
   return (
     <section id="engine" className="section-padding relative">
-      {/* Background glow */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 overflow-hidden"
-      >
+      {/* Ambient radial glow */}
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
         <div
-          className="absolute left-1/2 top-1/3 -translate-x-1/2 -translate-y-1/2"
+          className="absolute left-1/2 top-1/3 h-[700px] w-[1100px] -translate-x-1/2 -translate-y-1/2"
           style={{
-            width: '900px',
-            height: '600px',
             background:
-              'radial-gradient(ellipse at center, rgba(90,174,216,0.04) 0%, transparent 70%)',
+              'radial-gradient(ellipse at center, rgba(92,184,240,0.05) 0%, transparent 70%)',
           }}
         />
       </div>
 
       <div className="section-container relative z-10">
-        {/* Section Header */}
+        {/* Header */}
         <motion.div
-          className="mb-12 text-center lg:mb-16"
+          className="mb-10 flex flex-col items-center gap-4 text-center lg:mb-14"
           variants={fadeInUp}
           initial="hidden"
           whileInView="visible"
           viewport={viewportOnce}
         >
-          <p className="mb-4 text-sm font-medium uppercase tracking-[0.15em] text-ice">
-            Engine
-          </p>
+          <div className="inline-flex items-center gap-2 rounded-full border border-frost-border-subtle bg-arctic-secondary/60 px-3 py-1">
+            <Zap size={12} className="text-ice" />
+            <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-frost-secondary">
+              Engine
+            </span>
+          </div>
           <h2 className="font-display text-3xl font-bold text-frost-white sm:text-4xl lg:text-5xl">
             Was Arctis sieht,
             <br />
             <span className="text-gradient-frost">bevor du es siehst.</span>
           </h2>
+          <p className="max-w-2xl text-base leading-relaxed text-frost-muted">
+            Vier Stufen, dreizehn Indikator-Module, ein Score. Die Engine läuft still im
+            Hintergrund — du siehst nur das Ergebnis: Entry, Stop, Target.
+          </p>
         </motion.div>
 
-        {/* Data Flow Visualization */}
+        {/* Live pipeline */}
         <motion.div
-          className="mb-10"
           variants={fadeInUp}
           initial="hidden"
           whileInView="visible"
           viewport={viewportOnce}
         >
-          <DataFlowVisualization />
+          <LivePipeline />
         </motion.div>
 
-        {/* Asymmetric grid — featured first card spans full width */}
+        {/* Calibration fingerprint strip */}
+        <BacktestFingerprint />
+
+        {/* Capability bento */}
         <motion.div
-          className="relative"
-          variants={engineStaggerContainer}
+          className="mt-8 grid grid-cols-1 gap-5 lg:grid-cols-2"
+          variants={fadeInUp}
           initial="hidden"
           whileInView="visible"
           viewport={viewportOnce}
         >
-          {/* Connecting lines between cards — subtle visual flow */}
-          <div aria-hidden="true" className="pointer-events-none absolute inset-0 hidden lg:block" style={{ zIndex: 0 }}>
-            {/* Vertical connector from featured card to row below */}
-            <div
-              className="absolute left-1/2 -translate-x-1/2"
-              style={{
-                top: 'calc(50% - 80px)',
-                width: '1px',
-                height: '60px',
-                background: 'linear-gradient(180deg, rgba(90,174,216,0.2) 0%, rgba(90,174,216,0.05) 100%)',
-              }}
-            />
-            {/* Horizontal connector across bottom row */}
-            <div
-              className="absolute left-[15%] right-[15%]"
-              style={{
-                bottom: 'calc(50% - 20px)',
-                height: '1px',
-                background: 'linear-gradient(90deg, transparent 0%, rgba(90,174,216,0.12) 20%, rgba(90,174,216,0.12) 80%, transparent 100%)',
-              }}
-            />
-          </div>
-
-          {/* Featured card — Marktstruktur — full width */}
-          <div className="relative z-10 mb-4 lg:mb-6">
-            <EngineCard capability={capabilities[0]} featured />
-          </div>
-
-          {/* Bottom row — 3 smaller cards, asymmetric widths */}
-          <div className="relative z-10 grid grid-cols-1 gap-4 md:grid-cols-3 lg:gap-6">
-            {capabilities.slice(1).map((cap) => (
-              <EngineCard key={cap.id} capability={cap} />
-            ))}
-          </div>
+          {CAPABILITIES.map((cap) => (
+            <CapabilityCard key={cap.id} cap={cap} />
+          ))}
         </motion.div>
       </div>
     </section>

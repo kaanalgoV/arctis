@@ -1,6 +1,8 @@
 'use client'
 
+import { useState, useRef } from 'react'
 import { cn } from '@/lib/utils'
+import { LOGIN_URL } from '@/lib/app-urls'
 
 // ─── Logo ─────────────────────────────────────────────────────────────────────
 
@@ -112,7 +114,7 @@ const FOOTER_COLUMNS: FooterColumn[] = [
   {
     heading: 'Resources',
     links: [
-      { label: 'Anmelden', href: 'http://localhost:5174/login' },
+      { label: 'Login', href: LOGIN_URL },
       { label: 'Changelog', href: '/changelog' },
       { label: 'Support', href: 'mailto:support@arctis.app' },
     ],
@@ -152,25 +154,25 @@ function FooterColumnGroup() {
           Analyse-Infrastruktur für Futures-Märkte.
         </p>
         {/* Social row */}
-        <div className="mt-3 flex items-center gap-3">
+        <div className="mt-3 flex items-center gap-2">
           <button
             type="button"
             aria-label="Arctis on GitHub"
-            className="cursor-pointer text-frost-muted transition-colors duration-200 hover:text-ice"
+            className="cursor-pointer text-frost-muted transition-colors duration-200 hover:text-ice rounded-md p-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ice/60 focus-visible:ring-offset-2 focus-visible:ring-offset-arctic-base"
           >
             <GithubIcon size={15} />
           </button>
           <button
             type="button"
             aria-label="Arctis on X / Twitter"
-            className="cursor-pointer text-frost-muted transition-colors duration-200 hover:text-ice"
+            className="cursor-pointer text-frost-muted transition-colors duration-200 hover:text-ice rounded-md p-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ice/60 focus-visible:ring-offset-2 focus-visible:ring-offset-arctic-base"
           >
             <TwitterIcon size={15} />
           </button>
           <button
             type="button"
             aria-label="Arctis Discord community"
-            className="cursor-pointer text-frost-muted transition-colors duration-200 hover:text-ice"
+            className="cursor-pointer text-frost-muted transition-colors duration-200 hover:text-ice rounded-md p-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ice/60 focus-visible:ring-offset-2 focus-visible:ring-offset-arctic-base"
           >
             <DiscordIcon size={15} />
           </button>
@@ -188,7 +190,7 @@ function FooterColumnGroup() {
               <li key={link.label}>
                 <a
                   href={link.href}
-                  className="text-[13px] font-light text-frost-secondary/70 transition-colors duration-200 hover:text-ice"
+                  className="text-[13px] font-light text-frost-secondary/70 transition-colors duration-200 hover:text-ice cursor-pointer rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ice/60 focus-visible:ring-offset-2 focus-visible:ring-offset-arctic-base"
                 >
                   {link.label}
                 </a>
@@ -202,46 +204,89 @@ function FooterColumnGroup() {
 }
 
 function Newsletter() {
+  const [isInvalid, setIsInvalid] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    const input = inputRef.current
+    if (!input) return
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(input.value.trim())) {
+      setIsInvalid(true)
+      window.setTimeout(() => setIsInvalid(false), 600)
+      return
+    }
+    // Valid — clear any error state; real submission handled elsewhere
+    setIsInvalid(false)
+  }
+
   return (
     <div>
+      <style>{`
+        @keyframes newsletterShake {
+          0%, 100% { transform: translateX(0); }
+          20% { transform: translateX(-6px); }
+          40% { transform: translateX(6px); }
+          60% { transform: translateX(-4px); }
+          80% { transform: translateX(4px); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          [data-newsletter-form] { animation: none !important; }
+        }
+      `}</style>
       <Divider />
-      <div className="my-6 flex flex-wrap items-center justify-between gap-4">
+      <div className="my-8 flex flex-col items-start gap-6 md:flex-row md:items-center md:justify-between">
         {/* Left copy */}
-        <div>
-          <p className="font-sans text-sm font-medium text-frost-white">
+        <div className="max-w-md">
+          <p className="font-sans text-sm font-semibold text-frost-white">
             Platform Updates
           </p>
-          <p className="mt-0.5 text-xs text-frost-muted">
+          <p className="mt-1 text-xs leading-relaxed text-frost-muted">
             Release Notes und Plattform-Neuigkeiten. Kein Marketing-Spam.
           </p>
         </div>
 
-        {/* Right — email form */}
+        {/* Right — email form with unified, polished surface */}
         <form
-          onSubmit={(e) => e.preventDefault()}
-          className="flex items-center"
+          data-newsletter-form
+          onSubmit={handleSubmit}
+          className={cn(
+            'group flex w-full max-w-md items-stretch overflow-hidden rounded-xl',
+            'border bg-arctic-secondary/60 backdrop-blur-sm',
+            'transition-colors duration-200',
+            'focus-within:border-ice/50 focus-within:bg-arctic-secondary',
+            'focus-within:shadow-[0_0_0_3px_rgba(92,184,240,0.08)]',
+            isInvalid ? 'border-loss' : 'border-frost-border-subtle',
+          )}
+          style={isInvalid ? { animation: 'newsletterShake 0.45s ease-in-out' } : undefined}
           aria-label="Newsletter signup"
+          noValidate
         >
           <label htmlFor="footer-email" className="sr-only">
             Email address
           </label>
           <input
             id="footer-email"
+            ref={inputRef}
             type="email"
             autoComplete="email"
             placeholder="trader@example.com"
+            aria-invalid={isInvalid}
+            onChange={() => isInvalid && setIsInvalid(false)}
             className={cn(
-              'w-56 rounded-md border border-frost-border-subtle bg-arctic-secondary',
-              'px-3 py-2 text-xs text-frost-white placeholder:text-frost-muted',
-              'outline-none transition-colors duration-200 focus:border-[rgba(92,184,240,0.5)]',
+              'flex-1 bg-transparent px-4 py-2.5 text-sm text-frost-white placeholder:text-frost-muted',
+              'outline-none border-0 min-h-[44px]',
             )}
           />
           <button
             type="submit"
             className={cn(
-              'font-sans ml-2 cursor-pointer rounded-md bg-ice',
-              'px-4 py-2 text-xs font-medium text-arctic-base',
+              'font-display cursor-pointer bg-ice',
+              'px-5 py-2.5 text-sm font-semibold text-arctic-base min-h-[44px]',
               'transition-colors duration-200 hover:bg-ice-light',
+              'border-l border-ice/30',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ice/60 focus-visible:ring-offset-2 focus-visible:ring-offset-arctic-base',
             )}
           >
             Abonnieren
@@ -270,7 +315,7 @@ function BottomBar() {
               <li key={item.label}>
                 <a
                   href={item.href}
-                  className="text-xs text-frost-muted transition-colors duration-200 hover:text-frost-secondary"
+                  className="text-xs text-frost-muted transition-colors duration-200 hover:text-frost-secondary cursor-pointer rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ice/60 focus-visible:ring-offset-2 focus-visible:ring-offset-arctic-base"
                 >
                   {item.label}
                 </a>

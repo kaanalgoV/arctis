@@ -1,9 +1,25 @@
-import { useState, useEffect, useMemo, useCallback, type FormEvent } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Loader2, AlertCircle, Eye, EyeOff, ArrowRight } from 'lucide-react'
+import { Loader2, AlertCircle, Eye, EyeOff, ArrowRight, Shield, CheckCircle2 } from 'lucide-react'
 import { useAuthStore } from '@/store/auth'
 import { cn } from '@/lib/utils'
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+type PwStrength = 'none' | 'weak' | 'ok' | 'strong'
+
+function evaluatePwStrength(pw: string): PwStrength {
+  if (pw.length === 0) return 'none'
+  const hasLower = /[a-z]/.test(pw)
+  const hasUpper = /[A-Z]/.test(pw)
+  const hasDigit = /\d/.test(pw)
+  const mixedCase = hasLower && hasUpper
+  if (pw.length >= 10 && mixedCase && hasDigit) return 'strong'
+  if (pw.length >= 8 && mixedCase) return 'ok'
+  if (pw.length >= 6) return 'weak'
+  return 'none'
+}
 
 // ---------------------------------------------------------------------------
 // Auth Page — Full-screen immersive OLED login
@@ -22,7 +38,6 @@ function createParticles(count: number) {
     opacity: number
     drift: number
   }[] = []
-  // Use golden ratio for organic, non-repeating distribution
   const phi = 1.618033988749895
   for (let i = 0; i < count; i++) {
     const seed = ((i * phi) % 1)
@@ -92,25 +107,44 @@ const KEYFRAMES = `
     33% { transform: translate(-25px, 20px) scale(1.15); }
     66% { transform: translate(20px, -15px) scale(0.95); }
   }
-  @keyframes authInputGlow {
-    0%, 100% { box-shadow: 0 0 0 2px rgba(92,184,240,0.20); }
-    50% { box-shadow: 0 0 8px 2px rgba(92,184,240,0.15), 0 0 0 2px rgba(92,184,240,0.25); }
-  }
   @keyframes authShimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+  }
+  @keyframes authFocusGlow {
+    0%, 100% { box-shadow: 0 0 0 2px rgba(92,184,240,0.20); }
+    50% { box-shadow: 0 0 8px 2px rgba(92,184,240,0.12), 0 0 0 2px rgba(92,184,240,0.25); }
+  }
+  @keyframes authErrorShake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-3px); }
+    75% { transform: translateX(3px); }
+  }
+  @keyframes authFadeIn200 {
+    0% { opacity: 0; transform: translateY(-50%) scale(0.85); }
+    100% { opacity: 1; transform: translateY(-50%) scale(1); }
+  }
+  @keyframes authSuccessPop {
+    0% { opacity: 0; transform: translate(-50%, -50%) scale(0.4); }
+    50% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
+    100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  }
+  @keyframes authLoadingShimmer {
     0% { transform: translateX(-100%); }
     100% { transform: translateX(100%); }
   }
 
   /* Placeholder */
   [data-auth-root] input::placeholder {
-    color: #3D444D !important;
+    color: rgba(110, 118, 129, 0.5) !important;
   }
 
-  /* Focus ring utility */
+  /* Focus ring */
   [data-auth-root] input:focus {
-    border-color: #5CB8F0 !important;
-    box-shadow: 0 0 0 2px rgba(92,184,240,0.20) !important;
+    border-color: rgba(92,184,240,0.35) !important;
+    box-shadow: 0 0 0 3px rgba(92,184,240,0.10), 0 0 20px rgba(92,184,240,0.06) !important;
     outline: none;
+    background: rgba(22, 28, 38, 1) !important;
   }
 
   /* Reduced motion */
@@ -137,6 +171,9 @@ export function AuthPage() {
   const [showPw, setShowPw] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
+  const [success, setSuccess] = useState(false)
+
+  const emailInputRef = useRef<HTMLInputElement | null>(null)
 
   useEffect(() => {
     setMounted(true)
@@ -146,6 +183,16 @@ export function AuthPage() {
     mq.addEventListener('change', handler)
     return () => mq.removeEventListener('change', handler)
   }, [])
+
+  // Auto-focus email input on error for accessibility
+  useEffect(() => {
+    if (error) {
+      emailInputRef.current?.focus()
+    }
+  }, [error])
+
+  const emailValid = useMemo(() => EMAIL_REGEX.test(email), [email])
+  const pwStrength = useMemo(() => evaluatePwStrength(password), [password])
 
   const particles = useMemo(
     () => (isMobile ? PARTICLES_MOBILE : PARTICLES_DESKTOP),
@@ -158,6 +205,9 @@ export function AuthPage() {
       clearError()
       try {
         await login(email, password)
+        // Micro-delight: briefly flash a green checkmark before navigating
+        setSuccess(true)
+        await new Promise((resolve) => setTimeout(resolve, 400))
         navigate('/chart')
       } catch {
         // Error is surfaced via store
@@ -177,7 +227,7 @@ export function AuthPage() {
       {/* Injected keyframes */}
       <style>{KEYFRAMES}</style>
 
-      {/* ── BG LAYER 1a: Radial glow — center-top, 600x600, pulsing 8s ── */}
+      {/* ── BG LAYER 1a: Radial glow — center-top ── */}
       <div
         className="absolute pointer-events-none"
         aria-hidden="true"
@@ -210,7 +260,7 @@ export function AuthPage() {
         }}
       />
 
-      {/* ── BG LAYER 1c: Third ambient glow — left-center, slower pulse ── */}
+      {/* ── BG LAYER 1c: Third ambient glow ── */}
       <div
         className="absolute pointer-events-none"
         aria-hidden="true"
@@ -226,7 +276,7 @@ export function AuthPage() {
         }}
       />
 
-      {/* ── BG LAYER: Vignette — edges darker than center ── */}
+      {/* ── BG: Vignette ── */}
       <div
         className="absolute inset-0 pointer-events-none"
         aria-hidden="true"
@@ -236,7 +286,7 @@ export function AuthPage() {
         }}
       />
 
-      {/* ── BG LAYER 2: Perspective grid fading to edges ── */}
+      {/* ── BG: Perspective grid ── */}
       <div
         className="absolute inset-0 pointer-events-none"
         aria-hidden="true"
@@ -255,7 +305,7 @@ export function AuthPage() {
         }}
       />
 
-      {/* ── BG LAYER 3: Floating particles — 15 desktop / 8 mobile ── */}
+      {/* ── BG: Floating particles ── */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden="true">
         {particles.map((p, i) => (
           <div
@@ -276,7 +326,7 @@ export function AuthPage() {
         ))}
       </div>
 
-      {/* ── BG LAYER: Morphing gradient blobs — organic alive feeling ── */}
+      {/* ── BG: Morphing blobs ── */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden="true">
         <div
           className="absolute rounded-full"
@@ -300,20 +350,9 @@ export function AuthPage() {
             animation: 'authMorphBlob2 25s ease-in-out infinite',
           }}
         />
-        <div
-          className="absolute rounded-full"
-          style={{
-            top: '50%',
-            left: '60%',
-            width: '300px',
-            height: '300px',
-            background: 'radial-gradient(ellipse, rgba(52,211,153,0.02) 0%, transparent 70%)',
-            animation: 'authMorphBlob1 30s ease-in-out 5s infinite',
-          }}
-        />
       </div>
 
-      {/* ── BG LAYER 4: Horizontal scan line — 15s sweep ── */}
+      {/* ── BG: Scan line ── */}
       <div
         className="absolute left-0 right-0 pointer-events-none"
         aria-hidden="true"
@@ -328,72 +367,72 @@ export function AuthPage() {
 
       {/* ── GLASS CARD ── */}
       <motion.div
-        initial={{ opacity: 0, scale: 0.97 }}
-        animate={mounted ? { opacity: 1, scale: 1 } : {}}
-        transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
+        initial={{ opacity: 0, y: 24 }}
+        animate={mounted ? { opacity: 1, y: 0 } : {}}
+        transition={{ duration: 0.6, ease: [0.25, 0.46, 0.45, 0.94] }}
         className={cn(
-          'relative z-10 w-full max-w-[420px]',
+          'relative z-10 w-full max-w-[440px]',
           'mx-4 lg:mx-0',
         )}
         style={{
-          background: 'rgba(8, 11, 16, 0.88)',
-          backdropFilter: 'blur(24px)',
-          WebkitBackdropFilter: 'blur(24px)',
-          border: '1px solid rgba(92,184,240,0.12)',
+          background: 'rgba(8, 11, 16, 0.85)',
+          backdropFilter: 'blur(32px)',
+          WebkitBackdropFilter: 'blur(32px)',
+          border: '1px solid rgba(92,184,240,0.10)',
           boxShadow:
-            '0 0 80px rgba(92,184,240,0.06), 0 24px 64px rgba(0,0,0,0.5), inset 0 1px 0 rgba(92,184,240,0.08), inset 0 -1px 2px rgba(0,0,0,0.3)',
-          borderRadius: '20px',
-          padding: isMobile ? '32px 24px' : '48px 40px',
+            '0 0 80px rgba(92,184,240,0.05), 0 32px 80px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.03)',
+          borderRadius: '24px',
+          padding: isMobile ? '36px 24px 32px' : '52px 44px 44px',
           transition: 'box-shadow 0.4s ease-out, border-color 0.4s ease-out',
         }}
         onMouseEnter={(e) => {
           e.currentTarget.style.boxShadow =
-            '0 0 100px rgba(92,184,240,0.10), 0 24px 64px rgba(0,0,0,0.5), inset 0 1px 0 rgba(92,184,240,0.12), inset 0 -1px 2px rgba(0,0,0,0.3)'
-          e.currentTarget.style.borderColor = 'rgba(92,184,240,0.18)'
+            '0 0 100px rgba(92,184,240,0.08), 0 32px 80px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.05)'
+          e.currentTarget.style.borderColor = 'rgba(92,184,240,0.16)'
         }}
         onMouseLeave={(e) => {
           e.currentTarget.style.boxShadow =
-            '0 0 80px rgba(92,184,240,0.06), 0 24px 64px rgba(0,0,0,0.5), inset 0 1px 0 rgba(92,184,240,0.08), inset 0 -1px 2px rgba(0,0,0,0.3)'
-          e.currentTarget.style.borderColor = 'rgba(92,184,240,0.12)'
+            '0 0 80px rgba(92,184,240,0.05), 0 32px 80px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.03)'
+          e.currentTarget.style.borderColor = 'rgba(92,184,240,0.10)'
         }}
       >
-        {/* Horizontal gradient line above form — ice-blue to transparent */}
+        {/* Top accent line */}
         <div
           aria-hidden="true"
-          className="absolute inset-x-0 top-0"
+          className="absolute inset-x-6 top-0"
           style={{
             height: '1px',
-            borderRadius: '20px 20px 0 0',
-            background: 'linear-gradient(90deg, transparent 0%, rgba(92,184,240,0.5) 30%, rgba(92,184,240,0.7) 50%, rgba(92,184,240,0.5) 70%, transparent 100%)',
+            background: 'linear-gradient(90deg, transparent 0%, rgba(92,184,240,0.4) 30%, rgba(92,184,240,0.6) 50%, rgba(92,184,240,0.4) 70%, transparent 100%)',
           }}
         />
+
         {/* ── Logo + Brand ── */}
-        <div className="flex flex-col items-center" style={{ paddingTop: '8px' }}>
-          {/* Multi-layered crystal — 80px with rotation, pulse, sparkle */}
-          <div className="relative" style={{ width: 80, height: 80 }}>
-            {/* Layer 1: Outer ring — slow rotation 40s */}
+        <div className="flex flex-col items-center" style={{ paddingTop: '4px' }}>
+          {/* Multi-layered crystal */}
+          <div className="relative" style={{ width: 72, height: 72 }}>
+            {/* Outer ring */}
             <svg
-              width="80"
-              height="80"
-              viewBox="0 0 80 80"
+              width="72"
+              height="72"
+              viewBox="0 0 72 72"
               fill="none"
               xmlns="http://www.w3.org/2000/svg"
               aria-hidden="true"
               className="absolute inset-0"
               style={{ animation: 'authCrystalOuterRotate 40s linear infinite' }}
             >
-              <circle cx="40" cy="40" r="38" stroke="#5CB8F0" strokeWidth="0.4" fill="none" opacity="0.12" />
-              <circle cx="40" cy="40" r="35" stroke="#5CB8F0" strokeWidth="0.3" fill="none" opacity="0.08" strokeDasharray="4 6" />
+              <circle cx="36" cy="36" r="34" stroke="#5CB8F0" strokeWidth="0.4" fill="none" opacity="0.12" />
+              <circle cx="36" cy="36" r="31" stroke="#5CB8F0" strokeWidth="0.3" fill="none" opacity="0.08" strokeDasharray="4 6" />
             </svg>
 
-            {/* Layer 2: Inner crystal body — glow + breathe */}
+            {/* Inner crystal */}
             <div
               className="absolute inset-0 flex items-center justify-center"
               style={{ animation: 'authLogoPulse 5s ease-in-out infinite' }}
             >
               <svg
-                width="56"
-                height="56"
+                width="48"
+                height="48"
                 viewBox="0 0 48 48"
                 fill="none"
                 xmlns="http://www.w3.org/2000/svg"
@@ -402,31 +441,25 @@ export function AuthPage() {
                   filter: 'drop-shadow(0 0 12px rgba(92,184,240,0.3))',
                 }}
               >
-                {/* Inner rings — pulsing */}
                 <circle cx="24" cy="24" r="20" stroke="#5CB8F0" strokeWidth="0.5" fill="none" opacity="0.15" style={{ animation: 'authCrystalBreathe 4s ease-in-out infinite' }} />
                 <circle cx="24" cy="24" r="16" stroke="#5CB8F0" strokeWidth="0.8" fill="none" opacity="0.2" style={{ animation: 'authCrystalBreathe 4s ease-in-out 0.5s infinite' }} />
-                {/* Main axes */}
                 <line x1="24" y1="4" x2="24" y2="44" stroke="#5CB8F0" strokeWidth="1.5" strokeLinecap="round" opacity="0.8" />
                 <line x1="4" y1="24" x2="44" y2="24" stroke="#5CB8F0" strokeWidth="1.5" strokeLinecap="round" opacity="0.8" />
-                {/* Diagonals */}
                 <line x1="9.9" y1="9.9" x2="38.1" y2="38.1" stroke="#5CB8F0" strokeWidth="1.2" strokeLinecap="round" opacity="0.55" />
                 <line x1="38.1" y1="9.9" x2="9.9" y2="38.1" stroke="#5CB8F0" strokeWidth="1.2" strokeLinecap="round" opacity="0.55" />
-                {/* Inner ring */}
                 <circle cx="24" cy="24" r="6" stroke="#5CB8F0" strokeWidth="0.8" fill="none" opacity="0.3" />
-                {/* Center core — pulsing glow */}
                 <circle cx="24" cy="24" r="3" fill="#5CB8F0" opacity="0.9" style={{ animation: 'authCrystalInnerPulse 3s ease-in-out infinite' }} />
                 <circle cx="24" cy="24" r="1.2" fill="#fff" opacity="0.6" />
               </svg>
             </div>
 
-            {/* Layer 3: Sparkle dots — fade in/out randomly */}
+            {/* Sparkles */}
             {[
               { x: 4, y: 10, delay: 0 },
-              { x: 72, y: 16, delay: 1.8 },
-              { x: 8, y: 66, delay: 3.2 },
-              { x: 68, y: 62, delay: 4.6 },
-              { x: 38, y: 2, delay: 2.4 },
-              { x: 40, y: 76, delay: 5.2 },
+              { x: 64, y: 14, delay: 1.8 },
+              { x: 6, y: 58, delay: 3.2 },
+              { x: 62, y: 56, delay: 4.6 },
+              { x: 34, y: 2, delay: 2.4 },
             ].map((spark, i) => (
               <div
                 key={i}
@@ -444,45 +477,48 @@ export function AuthPage() {
             ))}
           </div>
 
-          {/* Wordmark — 4px below logo */}
+          {/* Wordmark */}
           <span
             className="font-semibold"
             style={{
-              marginTop: '4px',
-              fontSize: '14px',
+              marginTop: '8px',
+              fontSize: '13px',
               color: '#5CB8F0',
-              letterSpacing: '0.25em',
+              letterSpacing: '0.3em',
             }}
           >
             ARCTIS
           </span>
 
-          {/* Tagline — 2px below wordmark */}
+          {/* Tagline */}
           <span
             style={{
-              marginTop: '2px',
+              marginTop: '3px',
               fontSize: '10px',
-              color: '#3D444D',
-              letterSpacing: '0.1em',
+              color: 'rgba(110, 118, 129, 0.6)',
+              letterSpacing: '0.12em',
             }}
           >
-            Trading Decision Support
+            Precision Trading Analysis
           </span>
         </div>
 
-        {/* 36px spacer */}
-        <div style={{ height: '36px' }} />
+        {/* Spacer */}
+        <div style={{ height: '40px' }} />
 
         {/* ── Heading ── */}
-        <h1 className="font-bold" style={{ fontSize: '22px', color: '#F0F6FC' }}>
-          Willkommen zurueck.
+        <h1
+          className="font-bold"
+          style={{ fontSize: '24px', color: '#F0F6FC', letterSpacing: '-0.01em' }}
+        >
+          Willkommen zur&uuml;ck.
         </h1>
-        <p style={{ marginTop: '8px', fontSize: '13px', color: '#6E7681' }}>
-          Melde dich an um dein Dashboard zu oeffnen.
+        <p style={{ marginTop: '8px', fontSize: '13.5px', color: '#6E7681', lineHeight: '1.5' }}>
+          Melde dich an, um dein Dashboard zu &ouml;ffnen.
         </p>
 
-        {/* 28px spacer */}
-        <div style={{ height: '28px' }} />
+        {/* Spacer */}
+        <div style={{ height: '32px' }} />
 
         {/* ── Form ── */}
         <form onSubmit={handleSubmit} noValidate>
@@ -495,10 +531,12 @@ export function AuthPage() {
                 exit={{ opacity: 0, y: -8 }}
                 transition={{ duration: 0.2 }}
                 role="alert"
+                id="auth-error"
                 className="mb-5"
+                style={{ animation: 'authErrorShake 0.35s ease-in-out' }}
               >
                 <div
-                  className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs"
+                  className="flex items-center gap-2.5 px-4 py-3 rounded-xl text-xs"
                   style={{
                     color: '#F87171',
                     background: 'rgba(248, 113, 113, 0.06)',
@@ -520,32 +558,48 @@ export function AuthPage() {
               style={{
                 fontSize: '10px',
                 textTransform: 'uppercase',
-                letterSpacing: '0.08em',
+                letterSpacing: '0.1em',
                 color: '#6E7681',
-                marginBottom: '6px',
+                marginBottom: '8px',
               }}
             >
               E-Mail
             </label>
-            <input
-              id="auth-email"
-              type="email"
-              className="w-full h-12 px-3.5 rounded-xl text-[13px] transition-all duration-200"
-              style={{
-                background: 'rgba(22, 28, 38, 0.8)',
-                border: '1px solid rgba(92,184,240,0.08)',
-                color: '#F0F6FC',
-              }}
-              placeholder="name@beispiel.de"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              autoFocus
-              autoComplete="email"
-            />
+            <div className="relative">
+              <input
+                ref={emailInputRef}
+                id="auth-email"
+                type="email"
+                className="w-full h-[48px] px-4 pr-11 rounded-xl text-[13px] transition-all duration-200"
+                style={{
+                  background: 'rgba(22, 28, 38, 0.7)',
+                  border: '1px solid rgba(92,184,240,0.08)',
+                  color: '#F0F6FC',
+                }}
+                placeholder="name@beispiel.de"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                autoFocus
+                autoComplete="email"
+                aria-describedby={error ? 'auth-error' : undefined}
+                aria-invalid={error ? true : undefined}
+              />
+              {emailValid && (
+                <CheckCircle2
+                  size={16}
+                  aria-hidden="true"
+                  className="absolute right-4 top-1/2 pointer-events-none"
+                  style={{
+                    color: '#34D399',
+                    animation: 'authFadeIn200 200ms ease-out forwards',
+                  }}
+                />
+              )}
+            </div>
           </div>
 
-          {/* 20px spacer */}
+          {/* Spacer */}
           <div style={{ height: '20px' }} />
 
           {/* Password field */}
@@ -556,9 +610,9 @@ export function AuthPage() {
               style={{
                 fontSize: '10px',
                 textTransform: 'uppercase',
-                letterSpacing: '0.08em',
+                letterSpacing: '0.1em',
                 color: '#6E7681',
-                marginBottom: '6px',
+                marginBottom: '8px',
               }}
             >
               Passwort
@@ -567,71 +621,148 @@ export function AuthPage() {
               <input
                 id="auth-password"
                 type={showPw ? 'text' : 'password'}
-                className="w-full h-12 px-3.5 pr-10 rounded-xl text-[13px] transition-all duration-200"
+                className="w-full h-[48px] px-4 pr-11 rounded-xl text-[13px] transition-all duration-200"
                 style={{
-                  background: 'rgba(22, 28, 38, 0.8)',
+                  background: 'rgba(22, 28, 38, 0.7)',
                   border: '1px solid rgba(92,184,240,0.08)',
                   color: '#F0F6FC',
                 }}
-                placeholder="Min. 6 Zeichen"
+                placeholder="Mindestens 6 Zeichen"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 minLength={6}
                 autoComplete="current-password"
+                aria-describedby={error ? 'auth-error' : undefined}
+                aria-invalid={error ? true : undefined}
               />
               <button
                 type="button"
                 onClick={() => setShowPw((v) => !v)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 transition-colors duration-150 cursor-pointer hover:text-[#6E7681]"
-                style={{ color: '#3D444D' }}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 transition-colors duration-150 cursor-pointer"
+                style={{ color: 'rgba(110, 118, 129, 0.5)' }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = '#5CB8F0' }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(110, 118, 129, 0.5)' }}
                 aria-label={showPw ? 'Passwort verbergen' : 'Passwort anzeigen'}
+                aria-pressed={showPw}
               >
-                {showPw ? <EyeOff size={15} /> : <Eye size={15} />}
+                {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
             </div>
+
+            {/* Password strength indicator */}
+            {pwStrength !== 'none' && (() => {
+              const strengthMap = {
+                weak:   { label: 'Schwach', color: 'rgba(248, 113, 113, 0.75)', segments: 1 },
+                ok:     { label: 'Okay',    color: 'rgba(251, 191, 36, 0.85)',  segments: 2 },
+                strong: { label: 'Stark',   color: '#34D399',                   segments: 3 },
+              } as const
+              const info = strengthMap[pwStrength]
+              const mutedColor = 'rgba(110, 118, 129, 0.18)'
+              return (
+                <div style={{ marginTop: '10px' }} aria-live="polite">
+                  <div
+                    style={{
+                      fontSize: '10px',
+                      color: info.color,
+                      letterSpacing: '0.08em',
+                      textTransform: 'uppercase',
+                      fontWeight: 500,
+                      marginBottom: '6px',
+                      transition: 'color 200ms ease-out',
+                    }}
+                  >
+                    {info.label}
+                  </div>
+                  <div className="flex gap-1" role="progressbar" aria-valuenow={info.segments} aria-valuemin={0} aria-valuemax={3} aria-label="Passwort-Stärke">
+                    {[0, 1, 2].map((i) => (
+                      <div
+                        key={i}
+                        className="w-full rounded-full"
+                        style={{
+                          height: '3px',
+                          background: i < info.segments ? info.color : mutedColor,
+                          transition: 'background 250ms ease-out',
+                        }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )
+            })()}
           </div>
 
-          {/* 28px spacer */}
-          <div style={{ height: '28px' }} />
+          {/* Spacer */}
+          <div style={{ height: '32px' }} />
 
           {/* Submit */}
           <button
             type="submit"
-            disabled={isLoading || !canSubmit}
+            disabled={isLoading || !canSubmit || success}
+            aria-busy={isLoading}
             className={cn(
-              'w-full h-12 rounded-xl text-sm font-semibold relative overflow-hidden',
-              'transition-all duration-200 flex items-center justify-center gap-2',
-              'disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer',
+              'w-full h-[50px] rounded-xl text-[13.5px] font-semibold relative overflow-hidden',
+              'transition-all duration-250 flex items-center justify-center gap-2',
+              'disabled:opacity-35 disabled:cursor-not-allowed cursor-pointer',
               'group',
-              'hover:brightness-105 hover:-translate-y-px',
             )}
             style={{
-              background: '#5CB8F0',
-              color: '#0A0D12',
-              boxShadow:
-                '0 0 24px rgba(92,184,240,0.15), 0 4px 12px rgba(0,0,0,0.3)',
+              background: canSubmit
+                ? 'linear-gradient(135deg, #5CB8F0 0%, #4AA3DB 100%)'
+                : '#5CB8F0',
+              color: '#050709',
+              boxShadow: canSubmit
+                ? '0 0 28px rgba(92,184,240,0.18), 0 4px 16px rgba(0,0,0,0.4)'
+                : 'none',
+              letterSpacing: '0.02em',
             }}
             onMouseEnter={(e) => {
               if (!isLoading && canSubmit) {
                 e.currentTarget.style.boxShadow =
-                  '0 0 40px rgba(92,184,240,0.30), 0 6px 20px rgba(0,0,0,0.4)'
+                  '0 0 48px rgba(92,184,240,0.28), 0 8px 24px rgba(0,0,0,0.5)'
+                e.currentTarget.style.transform = 'translateY(-1px)'
               }
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.boxShadow =
-                '0 0 24px rgba(92,184,240,0.15), 0 4px 12px rgba(0,0,0,0.3)'
+              e.currentTarget.style.boxShadow = canSubmit
+                ? '0 0 28px rgba(92,184,240,0.18), 0 4px 16px rgba(0,0,0,0.4)'
+                : 'none'
+              e.currentTarget.style.transform = 'translateY(0)'
             }}
           >
-            {/* Shimmer overlay on hover */}
+            {/* Shimmer — hover trigger */}
             <span
               aria-hidden="true"
-              className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/10 to-transparent transition-transform duration-700 group-hover:translate-x-full"
+              className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/15 to-transparent transition-transform duration-700 group-hover:translate-x-full"
             />
-            {isLoading ? (
+
+            {/* Shimmer — continuous loading sweep */}
+            {isLoading && (
+              <span
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-0"
+                style={{
+                  background:
+                    'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.25) 50%, transparent 100%)',
+                  animation: 'authLoadingShimmer 1.2s linear infinite',
+                }}
+              />
+            )}
+
+            {success ? (
+              <CheckCircle2
+                size={20}
+                aria-hidden="true"
+                className="absolute left-1/2 top-1/2"
+                style={{
+                  color: '#34D399',
+                  animation: 'authSuccessPop 250ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
+                }}
+              />
+            ) : isLoading ? (
               <>
-                <Loader2 size={16} className="animate-spin" style={{ color: '#5CB8F0' }} />
-                <span style={{ opacity: 0.5 }}>Anmelden...</span>
+                <Loader2 size={16} className="animate-spin relative z-10" />
+                <span style={{ opacity: 0.75 }} className="relative z-10">Anmelden...</span>
               </>
             ) : (
               <>
@@ -644,40 +775,76 @@ export function AuthPage() {
             )}
           </button>
 
-          {/* 12px spacer */}
-          <div style={{ height: '12px' }} />
+          {/* Spacer */}
+          <div style={{ height: '16px' }} />
 
-          {/* Forgot password */}
-          <p className="text-center">
+          {/* Auxiliary links — forgot password & signup */}
+          <div className="flex items-center justify-between gap-4">
             <button
               type="button"
-              className="transition-colors duration-150 cursor-pointer hover:text-[#5CB8F0]"
-              style={{ fontSize: '11px', color: '#3D444D' }}
+              className="transition-colors duration-200 cursor-pointer"
+              style={{ fontSize: '12px', color: 'rgba(110, 118, 129, 0.6)' }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = '#5CB8F0' }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(110, 118, 129, 0.6)' }}
             >
               Passwort vergessen?
             </button>
-          </p>
+            <a
+              href="/checkout"
+              className="transition-colors duration-200 cursor-pointer inline-flex items-center"
+              style={{ fontSize: '12px', color: 'rgba(92,184,240,0.7)' }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = '#5CB8F0' }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(92,184,240,0.7)' }}
+            >
+              Noch kein Account?{' '}
+              <span
+                className="relative ml-1 after:absolute after:bottom-0 after:left-0 after:h-px after:w-0 after:bg-[#5CB8F0] after:transition-all after:duration-300 hover:after:w-full"
+              >
+                Jetzt starten
+              </span>
+            </a>
+          </div>
         </form>
 
-        {/* 28px spacer */}
-        <div style={{ height: '28px' }} />
+        {/* Spacer */}
+        <div style={{ height: '32px' }} />
 
-        {/* ── Divider ── */}
+        {/* ── Trust section ── */}
         <div
           aria-hidden="true"
-          style={{ height: '1px', background: 'rgba(92,184,240,0.06)' }}
+          style={{ height: '1px', background: 'rgba(255,255,255,0.04)' }}
         />
+        <div style={{ height: '20px' }} />
 
-        {/* 16px spacer */}
-        <div style={{ height: '16px' }} />
+        <div className="flex items-center justify-center gap-2">
+          <Shield size={12} style={{ color: 'rgba(92,184,240,0.35)' }} />
+          <p style={{ fontSize: '11px', color: 'rgba(110, 118, 129, 0.45)', letterSpacing: '0.01em' }}>
+            Deine Daten bleiben lokal. Keine Handelsdaten auf externen Servern.
+          </p>
+        </div>
 
-        {/* ── Trust line ── */}
-        <p
-          className="text-center"
-          style={{ fontSize: '10px', color: '#3D444D' }}
-        >
-          Deine Daten bleiben lokal. Keine Trading-Daten auf externen Servern.
-        </p>
+        {/* Trust badges */}
+        <div style={{ height: '12px' }} />
+        <div className="flex items-center justify-center gap-2 flex-wrap">
+          {['256-bit SSL', 'Lokale Daten', 'Keine Tracker'].map((label) => (
+            <span
+              key={label}
+              className="font-mono"
+              style={{
+                fontSize: '9.5px',
+                letterSpacing: '0.08em',
+                color: 'rgba(110, 118, 129, 0.55)',
+                padding: '3px 8px',
+                borderRadius: '6px',
+                border: '1px solid rgba(92,184,240,0.08)',
+                background: 'rgba(22, 28, 38, 0.35)',
+                textTransform: 'uppercase',
+              }}
+            >
+              {label}
+            </span>
+          ))}
+        </div>
       </motion.div>
     </div>
   )

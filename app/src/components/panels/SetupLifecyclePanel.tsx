@@ -653,33 +653,65 @@ function SetupSkeleton() {
 // ── Empty state ───────────────────────────────────────────────────────────────
 
 function EmptyState({ message, showIcon = false }: { message: string; showIcon?: boolean }) {
+  const isNoSetups = /no setups/i.test(message)
   return (
-    <div className="flex flex-col items-center justify-center gap-2 py-6">
+    <div className="flex flex-col items-center justify-center gap-3 py-8 px-4">
       {showIcon && (
-        <svg
-          width="18"
-          height="18"
-          viewBox="0 0 18 18"
-          fill="none"
-          style={{ opacity: 0.3 }}
+        <div
+          className="relative flex items-center justify-center"
+          style={{ width: 44, height: 44 }}
         >
-          {/* Grid icon suggesting empty table */}
-          <rect x="1" y="1" width="6" height="6" rx="1" stroke="currentColor" strokeWidth="1.2" />
-          <rect x="11" y="1" width="6" height="6" rx="1" stroke="currentColor" strokeWidth="1.2" />
-          <rect x="1" y="11" width="6" height="6" rx="1" stroke="currentColor" strokeWidth="1.2" />
-          <rect x="11" y="11" width="6" height="6" rx="1" stroke="currentColor" strokeWidth="1.2" />
-        </svg>
+          {/* Soft radial glow behind the icon */}
+          <div
+            className="absolute inset-0 rounded-full"
+            style={{
+              background:
+                'radial-gradient(circle, rgba(92,184,240,0.10) 0%, transparent 70%)',
+            }}
+          />
+          <svg
+            width="22"
+            height="22"
+            viewBox="0 0 22 22"
+            fill="none"
+            className="relative"
+            style={{ opacity: 0.55 }}
+          >
+            {/* Scanner / radar icon — matches brand: engine is watching */}
+            <circle cx="11" cy="11" r="8" stroke="var(--color-accent, #5CB8F0)" strokeWidth="1" opacity="0.45" />
+            <circle cx="11" cy="11" r="5" stroke="var(--color-accent, #5CB8F0)" strokeWidth="0.8" opacity="0.35" />
+            <circle cx="11" cy="11" r="1.5" fill="var(--color-accent, #5CB8F0)" opacity="0.9" />
+            <line x1="11" y1="1" x2="11" y2="21" stroke="var(--color-accent, #5CB8F0)" strokeWidth="0.5" opacity="0.2" />
+            <line x1="1" y1="11" x2="21" y2="11" stroke="var(--color-accent, #5CB8F0)" strokeWidth="0.5" opacity="0.2" />
+          </svg>
+        </div>
       )}
-      <span
-        style={{
-          fontSize: 10,
-          color: 'var(--color-text-muted)',
-          fontFamily: 'var(--font-mono)',
-          letterSpacing: '0.05em',
-        }}
-      >
-        {message}
-      </span>
+      <div className="flex flex-col items-center gap-1 text-center">
+        <span
+          style={{
+            fontSize: 11,
+            color: 'var(--color-text-secondary)',
+            fontFamily: 'var(--font-sans)',
+            fontWeight: 500,
+            letterSpacing: '0.01em',
+          }}
+        >
+          {isNoSetups ? 'Keine Setups aktiv' : message}
+        </span>
+        {isNoSetups && (
+          <span
+            style={{
+              fontSize: 10,
+              color: 'var(--color-text-muted)',
+              fontFamily: 'var(--font-sans)',
+              lineHeight: 1.5,
+              maxWidth: 200,
+            }}
+          >
+            Engine scannt NQ und ES auf ORB, POC, VWAP, Session-Muster.
+          </span>
+        )}
+      </div>
     </div>
   )
 }

@@ -4,6 +4,7 @@ import { motion } from 'framer-motion'
 import { LogIn, ArrowRight, BarChart2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { blurReveal, fadeInUp, scaleIn, viewportOnce } from '@/lib/animations'
+import { CHECKOUT_URL } from '@/lib/app-urls'
 
 // ─── FinalCTA ─────────────────────────────────────────────────────────────────
 
@@ -113,15 +114,16 @@ export function FinalCTA() {
           className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4"
         >
           <motion.a
-            href="http://localhost:5174/login"
+            href={CHECKOUT_URL}
             variants={scaleIn}
             whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.98 }}
             transition={{ duration: 0.2 }}
             className={cn(
               'font-display group relative flex cursor-pointer items-center gap-2.5 overflow-hidden',
-              'rounded-xl bg-ice px-10 py-4 text-lg font-bold text-arctic-base',
+              'rounded-xl bg-ice px-10 py-4 text-lg font-bold text-arctic-base min-h-[44px]',
               'transition-all duration-200 hover:bg-ice-light',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ice/60 focus-visible:ring-offset-2 focus-visible:ring-offset-arctic-base',
             )}
             onMouseEnter={(e) => {
               e.currentTarget.style.boxShadow =

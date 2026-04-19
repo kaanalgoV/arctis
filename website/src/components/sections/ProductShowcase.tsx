@@ -99,7 +99,7 @@ function CandlestickChart() {
           <span className="font-display text-sm font-semibold text-frost-white tracking-tight">
             NQ &mdash; E-mini Nasdaq 100
           </span>
-          <span className="text-frost-muted text-xs font-mono">21,847.50</span>
+          <span className="text-frost-muted text-xs font-mono">26,840.50</span>
           <span className="text-profit text-xs font-mono">+0.34%</span>
         </div>
         <div className="flex items-center gap-1">
@@ -107,7 +107,8 @@ function CandlestickChart() {
             <button
               key={tf}
               className={cn(
-                'px-2 py-0.5 rounded text-xs font-display font-medium transition-colors',
+                'px-2 py-0.5 rounded text-xs font-display font-medium transition-colors cursor-pointer',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ice/60 focus-visible:ring-offset-1 focus-visible:ring-offset-arctic-base',
                 i === 1
                   ? 'bg-ice-muted text-ice border border-ice/20'
                   : 'text-frost-muted hover:text-frost-secondary',
@@ -123,7 +124,7 @@ function CandlestickChart() {
       <div className="flex flex-1 min-h-0 overflow-hidden">
         {/* Y-axis labels */}
         <div className="flex flex-col justify-between py-2 pr-2 pl-3 w-16 shrink-0">
-          {[21880, 21860, 21840, 21820, 21800].map((price) => (
+          {[26880, 26860, 26840, 26820, 26800].map((price) => (
             <span
               key={price}
               className="text-frost-muted/50 text-[10px] font-mono leading-none"
@@ -456,19 +457,19 @@ function BiasDashboard() {
 
 function SessionView() {
   const sessionStats = [
-    { label: 'Open', value: '21,748', delta: null },
-    { label: 'VWAP', value: '21,821', delta: '+73' },
-    { label: 'POC', value: '21,808', delta: null },
+    { label: 'Open', value: '26,748', delta: null },
+    { label: 'VWAP', value: '26,821', delta: '+73' },
+    { label: 'POC', value: '26,808', delta: null },
   ]
 
   // Range bar: normalize high/low/current to 0-100
-  const sessionLow = 21734
-  const sessionHigh = 21892
+  const sessionLow = 26734
+  const sessionHigh = 26892
   const sessionRange = sessionHigh - sessionLow
-  const current = 21847
+  const current = 26847
   const currentPct = ((current - sessionLow) / sessionRange) * 100
-  const vwapPct = ((21821 - sessionLow) / sessionRange) * 100
-  const pocPct = ((21808 - sessionLow) / sessionRange) * 100
+  const vwapPct = ((26821 - sessionLow) / sessionRange) * 100
+  const pocPct = ((26808 - sessionLow) / sessionRange) * 100
 
   const phases = [
     { label: 'Pre-Market', pct: 17, color: 'bg-frost-border' },
@@ -499,9 +500,9 @@ function SessionView() {
         {/* Key levels */}
         <div className="grid grid-cols-3 gap-3">
           {[
-            { label: 'Session High', value: '21,892', color: 'text-profit' },
-            { label: 'Current', value: '21,847', color: 'text-ice' },
-            { label: 'Session Low', value: '21,734', color: 'text-loss' },
+            { label: 'Session High', value: '26,892', color: 'text-profit' },
+            { label: 'Current', value: '26,847', color: 'text-ice' },
+            { label: 'Session Low', value: '26,734', color: 'text-loss' },
           ].map(({ label, value, color }) => (
             <div
               key={label}
@@ -534,9 +535,9 @@ function SessionView() {
         {/* Price range bar */}
         <div className="flex flex-col gap-2">
           <div className="flex justify-between text-[10px] font-mono">
-            <span className="text-loss/70">21,734</span>
+            <span className="text-loss/70">26,734</span>
             <span className="text-frost-muted/50">Price Range</span>
-            <span className="text-profit/70">21,892</span>
+            <span className="text-profit/70">26,892</span>
           </div>
           <div className="relative h-5 rounded-full bg-arctic-secondary/80 border border-frost-border-subtle/30 overflow-visible">
             {/* Range fill */}
@@ -755,7 +756,8 @@ function ProductShowcase() {
                   onClick={() => setActiveTab(tab.id)}
                   className={cn(
                     'relative px-5 py-2.5 rounded-xl cursor-pointer text-sm font-display font-medium',
-                    'flex items-center gap-2 transition-colors duration-200',
+                    'flex items-center gap-2 transition-colors duration-200 min-h-[44px]',
+                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ice/60 focus-visible:ring-offset-2 focus-visible:ring-offset-arctic-base',
                     isActive
                       ? 'text-frost-white'
                       : 'text-frost-muted hover:text-frost-secondary bg-transparent',
@@ -842,7 +844,7 @@ function ProductShowcase() {
               </div>
               <div className="flex-1 flex justify-center">
                 <div className="glass rounded-md px-4 py-0.5 flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-ice/40" />
+                  <div className="w-1.5 h-1.5 rounded-full bg-ice/60 animate-pulse" />
                   <span className="text-frost-muted/50 text-xs font-mono">
                     arctis.app — LIVE
                   </span>

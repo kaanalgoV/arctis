@@ -70,6 +70,12 @@ function ReplayMockUI() {
           45% { content: '12:00'; }
           60% { content: '13:30'; }
         }
+        @media (prefers-reduced-motion: reduce) {
+          * {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+          }
+        }
       `}</style>
 
       {/* Top bar with date + speed */}
@@ -97,7 +103,7 @@ function ReplayMockUI() {
           {['1x', '5x', '10x', '25x'].map((speed, i) => (
             <button
               key={speed}
-              className={`rounded px-2.5 py-1 font-mono text-[10px] transition-colors ${
+              className={`rounded px-2.5 py-1 font-mono text-[10px] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ice/60 focus-visible:ring-offset-1 focus-visible:ring-offset-arctic-base ${
                 i === 1
                   ? 'bg-ice/20 text-ice'
                   : 'text-frost-muted hover:text-frost-secondary'
@@ -171,7 +177,7 @@ function ReplayMockUI() {
 
           {/* Zone lines */}
           <line x1="0" y1="28" x2="310" y2="28" stroke="#5AAED8" strokeWidth="1" strokeDasharray="2 2" opacity="0.3" />
-          <text x="6" y="24" fill="#5AAED8" fontSize="9" fontFamily="monospace" opacity="0.5">POC 23,180</text>
+          <text x="6" y="24" fill="#5AAED8" fontSize="9" fontFamily="monospace" opacity="0.5">POC 26,840</text>
 
           {/* EMA line on revealed portion */}
           <polyline
@@ -194,14 +200,20 @@ function ReplayMockUI() {
       {/* Progress bar with controls */}
       <div className="flex items-center gap-3 border-t border-frost-border-subtle px-5 py-3.5">
         {/* Play button */}
-        <button className="flex size-8 items-center justify-center rounded-md bg-ice/15 text-ice transition-colors hover:bg-ice/25">
+        <button
+          aria-label="Play replay"
+          className="flex size-8 items-center justify-center rounded-md bg-ice/15 text-ice transition-colors hover:bg-ice-light/30 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ice/60 focus-visible:ring-offset-2 focus-visible:ring-offset-arctic-base"
+        >
           <svg width="12" height="14" viewBox="0 0 12 14" fill="currentColor">
             <path d="M0 0L12 7L0 14V0Z" />
           </svg>
         </button>
 
         {/* Step buttons */}
-        <button className="flex size-8 items-center justify-center rounded-md text-frost-muted transition-colors hover:text-frost-secondary hover:bg-arctic-secondary">
+        <button
+          aria-label="Step forward"
+          className="flex size-8 items-center justify-center rounded-md text-frost-muted transition-colors hover:text-frost-secondary hover:bg-arctic-secondary cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ice/60 focus-visible:ring-offset-2 focus-visible:ring-offset-arctic-base"
+        >
           <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor">
             <path d="M2 2v10l5-5L2 2zM7 2v10l5-5L7 2z" />
           </svg>

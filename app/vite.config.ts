@@ -4,7 +4,15 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import path from 'path'
 
+import fs from 'fs'
+
+// Read version from package.json so it's available at build time
+const pkg = JSON.parse(fs.readFileSync('./package.json', 'utf-8'))
+
 export default defineConfig({
+  define: {
+    __APP_VERSION__: JSON.stringify(pkg.version),
+  },
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {

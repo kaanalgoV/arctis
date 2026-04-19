@@ -126,6 +126,10 @@ async def get_signals(
     from arctis.analysis.signals import detect_signals
     from arctis.analysis.naked_poc import find_naked_pocs
     from arctis.analysis.key_levels import find_key_levels
+    from arctis.analysis.indicators import calculate_ema_ribbon
+    from arctis.analysis.velocity import calculate_velocity
+    from arctis.analysis.auction import calculate_auction_quality
+    from arctis.analysis.vwap import calculate_vwap
 
     bars = _load_bars(market, timeframe)
 
@@ -161,10 +165,76 @@ async def get_signals(
             ib_high = z.high
             ib_low = z.low
 
-    # Determine bias state
+    # Determine bias state — feed ALL five components so non-trending
+    # days don't collapse to RANGE score=0 and block every signal.
+    # Without this fix, detect_signals sees bias_state="RANGE" bias_score=0
+    # and most signals fail the confluence threshold, causing the endpoint
+    # to return zero setups even when VWAP/EMA/velocity are clearly tilted.
     swings = detect_swings(bars)
     trend = classify_trend(swings)
-    bias = calculate_bias_state(bars, trend=trend.value)
+
+    price = bars[-1].close
+
+    try:
+        vel_list = calculate_velocity(bars)
+        velocity_scale = vel_list[-1].signed_scale if vel_list else 0
+    except Exception:
+        velocity_scale = 0
+
+    try:
+        auction = calculate_auction_quality(bars)
+        auction_quality = auction.quality_label if auction else "moderat"
+    except Exception:
+        auction_quality = "moderat"
+
+    try:
+        vwap_list = calculate_vwap(bars)
+        vwap_value = vwap_list[-1].vwap if vwap_list else None
+    except Exception:
+        vwap_value = None
+
+    if vwap_value:
+        diff_pct = (price - vwap_value) / vwap_value * 100
+        if diff_pct > 0.15:
+            vwap_position = "weit_oben"
+        elif diff_pct > 0.02:
+            vwap_position = "above"
+        elif diff_pct < -0.15:
+            vwap_position = "weit_unten"
+        elif diff_pct < -0.02:
+            vwap_position = "below"
+        else:
+            vwap_position = "at"
+    else:
+        vwap_position = "at"
+
+    try:
+        ema_list = calculate_ema_ribbon(bars)
+        if ema_list:
+            last_ema = ema_list[-1]
+            if price > last_ema.ema9 > last_ema.ema21:
+                ema_alignment = "bullish"
+            elif price < last_ema.ema9 < last_ema.ema21:
+                ema_alignment = "bearish"
+            elif last_ema.ema9 > last_ema.ema21:
+                ema_alignment = "slightly_bullish"
+            elif last_ema.ema9 < last_ema.ema21:
+                ema_alignment = "slightly_bearish"
+            else:
+                ema_alignment = "mixed"
+        else:
+            ema_alignment = "mixed"
+    except Exception:
+        ema_alignment = "mixed"
+
+    bias = calculate_bias_state(
+        bars,
+        trend=trend.value,
+        velocity_scale=velocity_scale,
+        auction_quality=auction_quality,
+        vwap_position=vwap_position,
+        ema_alignment=ema_alignment,
+    )
 
     # Naked POCs
     try:
@@ -195,6 +265,7 @@ async def get_signals(
         ib_low=ib_low,
         naked_pocs=naked_poc_prices,
         key_levels=kl_dicts,
+        vwap=vwap_value,
         market_root=market.value,
     )
 

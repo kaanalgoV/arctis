@@ -106,7 +106,16 @@ feat:, fix:, refactor:, docs:, test:
 ## Development Environment
 
 Start engine:
-  cd engine && uvicorn arctis.main:app --port 28080 --reload
+  # Standard (fast, ~120 ms latency):
+  cd engine && .venv/Scripts/python.exe -m uvicorn arctis.main:app --port 28080
+  # Dev with auto-reload (15x slower due to file-watch overhead — only use
+  # while actively editing backend files):
+  cd engine && .venv/Scripts/python.exe -m uvicorn arctis.main:app --port 28080 --reload
+
+Caches in the engine:
+  - fetch_bars / fetch_bars_as_models: 1.5–2.0 s TTL (arctis/db.py)
+  - /api/snapshot response cache: 2.0 s TTL (arctis/routes/snapshot.py)
+  These collapse the polling storm when the frontend hits the engine every 5 s.
 
 Start frontend:
   cd app && pnpm dev   (runs on :5174 via VITE_DEV_PORT=5174)

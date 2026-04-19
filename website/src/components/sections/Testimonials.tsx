@@ -67,13 +67,26 @@ const TESTIMONIALS: Testimonial[] = [
 function StarRating() {
   return (
     <div className="flex items-center gap-0.5" aria-label="5 out of 5 stars">
+      <style>{`
+        @keyframes starFadeIn {
+          from { opacity: 0; transform: translateY(2px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          [data-star] { animation: none !important; opacity: 1 !important; }
+        }
+      `}</style>
       {Array.from({ length: 5 }).map((_, i) => (
         <Star
           key={i}
+          data-star
           size={14}
           strokeWidth={0}
           fill="currentColor"
           className="text-ice"
+          style={{
+            animation: `starFadeIn 0.4s ease-out ${i * 0.08}s both`,
+          }}
         />
       ))}
     </div>
@@ -97,8 +110,8 @@ function FeaturedQuote({
         'glass-card relative overflow-hidden',
         'flex flex-col',
         'p-8 lg:p-12 rounded-2xl',
-        'transition-transform duration-300 ease-out',
-        'hover:-translate-y-0.5',
+        'transition-[transform,box-shadow,border-color] duration-300 ease-out',
+        'hover:-translate-y-0.5 hover:ring-1 hover:ring-ice/30',
       )}
     >
       {/* Accent top border */}
@@ -189,8 +202,8 @@ function TestimonialCard({
         'glass-card',
         'flex flex-col',
         'p-6 rounded-2xl',
-        'transition-transform duration-300 ease-out',
-        'hover:-translate-y-0.5',
+        'transition-[transform,border-color] duration-300 ease-out',
+        'hover:-translate-y-0.5 hover:border-ice/30',
       )}
     >
       {/* Stars at top */}

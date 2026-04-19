@@ -1,0 +1,978 @@
+{
+  "NQ_1min": {
+    "total_trades": 6,
+    "wins": 4,
+    "losses": 2,
+    "win_rate": 0.667,
+    "avg_r": 1.0,
+    "profit_factor": 4.0,
+    "by_type": {
+      "orb_break": {
+        "trades": 6,
+        "wins": 4,
+        "win_rate": 0.667,
+        "avg_r": 1.0
+      }
+    },
+    "by_confidence": {
+      "high": {
+        "trades": 6,
+        "win_rate": 0.667,
+        "avg_r": 1.0
+      }
+    },
+    "daily_counts": [
+      {
+        "date": "2026-03-31",
+        "signals": 0,
+        "bias_midday": "midday state=LONG score=5"
+      },
+      {
+        "date": "2026-04-01",
+        "signals": 0,
+        "bias_midday": "midday state=RANGE_LONG score=3"
+      },
+      {
+        "date": "2026-04-02",
+        "signals": 0,
+        "bias_midday": "midday state=RANGE_LONG score=3"
+      },
+      {
+        "date": "2026-04-06",
+        "signals": 0,
+        "bias_midday": "midday state=RANGE_LONG score=4"
+      },
+      {
+        "date": "2026-04-07",
+        "signals": 0,
+        "bias_midday": "midday state=LONG score=5"
+      },
+      {
+        "date": "2026-04-08",
+        "signals": 0,
+        "bias_midday": "midday state=LONG score=5"
+      },
+      {
+        "date": "2026-04-09",
+        "signals": 1,
+        "bias_midday": "midday state=RANGE score=-1"
+      },
+      {
+        "date": "2026-04-10",
+        "signals": 2,
+        "bias_midday": "midday state=RANGE_SHORT score=-3"
+      },
+      {
+        "date": "2026-04-13",
+        "signals": 0,
+        "bias_midday": "midday state=LONG score=5"
+      },
+      {
+        "date": "2026-04-14",
+        "signals": 1,
+        "bias_midday": "midday state=RANGE_LONG score=2"
+      },
+      {
+        "date": "2026-04-15",
+        "signals": 1,
+        "bias_midday": "midday state=RANGE score=1"
+      },
+      {
+        "date": "2026-04-16",
+        "signals": 1,
+        "bias_midday": "midday state=RANGE_LONG score=2"
+      },
+      {
+        "date": "2026-04-17",
+        "signals": 0,
+        "bias_midday": "midday state=LONG score=5"
+      }
+    ],
+    "sample_trades": [
+      {
+        "type": "orb_break",
+        "dir": "long",
+        "entry": 25069.25,
+        "stop": 25064.25,
+        "target": 25257.0,
+        "exit": 25064.25,
+        "r": -1.0,
+        "won": false,
+        "bars": 13,
+        "date": "2026-04-09",
+        "confidence": "high",
+        "reason": "stop"
+      },
+      {
+        "type": "orb_break",
+        "dir": "short",
+        "entry": 25324.5,
+        "stop": 25329.5,
+        "target": 24789.25,
+        "exit": 25329.5,
+        "r": -1.0,
+        "won": false,
+        "bars": 1,
+        "date": "2026-04-10",
+        "confidence": "high",
+        "reason": "stop"
+      },
+      {
+        "type": "orb_break",
+        "dir": "long",
+        "entry": 25335.0,
+        "stop": 25330.0,
+        "target": 25345.0,
+        "exit": 25345.0,
+        "r": 2.0,
+        "won": true,
+        "bars": 1,
+        "date": "2026-04-10",
+        "confidence": "high",
+        "reason": "target"
+      },
+      {
+        "type": "orb_break",
+        "dir": "long",
+        "entry": 25710.5,
+        "stop": 25705.5,
+        "target": 25720.5,
+        "exit": 25720.5,
+        "r": 2.0,
+        "won": true,
+        "bars": 1,
+        "date": "2026-04-14",
+        "confidence": "high",
+        "reason": "target"
+      },
+      {
+        "type": "orb_break",
+        "dir": "long",
+        "entry": 26026.25,
+        "stop": 26021.25,
+        "target": 26036.25,
+        "exit": 26036.25,
+        "r": 2.0,
+        "won": true,
+        "bars": 1,
+        "date": "2026-04-15",
+        "confidence": "high",
+        "reason": "target"
+      },
+      {
+        "type": "orb_break",
+        "dir": "long",
+        "entry": 26404.5,
+        "stop": 26399.5,
+        "target": 26414.5,
+        "exit": 26414.5,
+        "r": 2.0,
+        "won": true,
+        "bars": 1,
+        "date": "2026-04-16",
+        "confidence": "high",
+        "reason": "target"
+      }
+    ]
+  },
+  "NQ_5min": {
+    "total_trades": 1,
+    "wins": 1,
+    "losses": 0,
+    "win_rate": 1.0,
+    "avg_r": 9.15,
+    "profit_factor": "inf",
+    "by_type": {
+      "orb_break": {
+        "trades": 1,
+        "wins": 1,
+        "win_rate": 1.0,
+        "avg_r": 9.15
+      }
+    },
+    "by_confidence": {
+      "medium": {
+        "trades": 1,
+        "win_rate": 1.0,
+        "avg_r": 9.15
+      }
+    },
+    "daily_counts": [
+      {
+        "date": "2026-03-31",
+        "signals": 0,
+        "bias_midday": "midday state=LONG score=6"
+      },
+      {
+        "date": "2026-04-01",
+        "signals": 0,
+        "bias_midday": "midday state=LONG score=5"
+      },
+      {
+        "date": "2026-04-02",
+        "signals": 0,
+        "bias_midday": "midday state=LONG score=6"
+      },
+      {
+        "date": "2026-04-06",
+        "signals": 0,
+        "bias_midday": "midday state=SHORT score=-6"
+      },
+      {
+        "date": "2026-04-07",
+        "signals": 0,
+        "bias_midday": "midday state=RANGE_LONG score=2"
+      },
+      {
+        "date": "2026-04-08",
+        "signals": 0,
+        "bias_midday": "midday state=RANGE_LONG score=2"
+      },
+      {
+        "date": "2026-04-09",
+        "signals": 0,
+        "bias_midday": "midday state=LONG score=5"
+      },
+      {
+        "date": "2026-04-10",
+        "signals": 1,
+        "bias_midday": "midday state=RANGE_SHORT score=-3"
+      },
+      {
+        "date": "2026-04-13",
+        "signals": 0,
+        "bias_midday": "midday state=LONG score=5"
+      },
+      {
+        "date": "2026-04-14",
+        "signals": 0,
+        "bias_midday": "midday state=LONG score=5"
+      },
+      {
+        "date": "2026-04-15",
+        "signals": 0,
+        "bias_midday": "midday state=RANGE score=0"
+      },
+      {
+        "date": "2026-04-16",
+        "signals": 0,
+        "bias_midday": "midday state=RANGE_SHORT score=-2"
+      },
+      {
+        "date": "2026-04-17",
+        "signals": 0,
+        "bias_midday": "midday state=RANGE_LONG score=2"
+      }
+    ],
+    "sample_trades": [
+      {
+        "type": "orb_break",
+        "dir": "short",
+        "entry": 25315.5,
+        "stop": 25320.5,
+        "target": 25269.75,
+        "exit": 25269.75,
+        "r": 9.15,
+        "won": true,
+        "bars": 1,
+        "date": "2026-04-10",
+        "confidence": "medium",
+        "reason": "target"
+      }
+    ]
+  },
+  "ES_1min": {
+    "total_trades": 17,
+    "wins": 9,
+    "losses": 8,
+    "win_rate": 0.529,
+    "avg_r": 1.067,
+    "profit_factor": 3.308,
+    "by_type": {
+      "daily_breakout": {
+        "trades": 1,
+        "wins": 0,
+        "win_rate": 0.0,
+        "avg_r": -0.86
+      },
+      "orb_break": {
+        "trades": 15,
+        "wins": 9,
+        "win_rate": 0.6,
+        "avg_r": 1.333
+      },
+      "poc_rejection": {
+        "trades": 1,
+        "wins": 0,
+        "win_rate": 0.0,
+        "avg_r": -1.0
+      }
+    },
+    "by_confidence": {
+      "high": {
+        "trades": 15,
+        "win_rate": 0.533,
+        "avg_r": 0.869
+      },
+      "medium": {
+        "trades": 2,
+        "win_rate": 0.5,
+        "avg_r": 2.55
+      }
+    },
+    "daily_counts": [
+      {
+        "date": "2026-03-31",
+        "signals": 3,
+        "bias_midday": "midday state=LONG score=5"
+      },
+      {
+        "date": "2026-04-01",
+        "signals": 1,
+        "bias_midday": "midday state=RANGE_LONG score=3"
+      },
+      {
+        "date": "2026-04-02",
+        "signals": 0,
+        "bias_midday": "midday state=RANGE_LONG score=3"
+      },
+      {
+        "date": "2026-04-06",
+        "signals": 1,
+        "bias_midday": "midday state=LONG score=5"
+      },
+      {
+        "date": "2026-04-07",
+        "signals": 1,
+        "bias_midday": "midday state=LONG score=5"
+      },
+      {
+        "date": "2026-04-08",
+        "signals": 1,
+        "bias_midday": "midday state=RANGE_LONG score=3"
+      },
+      {
+        "date": "2026-04-09",
+        "signals": 3,
+        "bias_midday": "midday state=RANGE score=1"
+      },
+      {
+        "date": "2026-04-10",
+        "signals": 1,
+        "bias_midday": "midday state=RANGE_SHORT score=-3"
+      },
+      {
+        "date": "2026-04-13",
+        "signals": 1,
+        "bias_midday": "midday state=RANGE_LONG score=3"
+      },
+      {
+        "date": "2026-04-14",
+        "signals": 1,
+        "bias_midday": "midday state=RANGE_LONG score=2"
+      },
+      {
+        "date": "2026-04-15",
+        "signals": 1,
+        "bias_midday": "midday state=RANGE score=1"
+      },
+      {
+        "date": "2026-04-16",
+        "signals": 2,
+        "bias_midday": "midday state=RANGE_LONG score=2"
+      },
+      {
+        "date": "2026-04-17",
+        "signals": 1,
+        "bias_midday": "midday state=LONG score=5"
+      }
+    ],
+    "sample_trades": [
+      {
+        "type": "daily_breakout",
+        "dir": "long",
+        "entry": 6482.0,
+        "stop": 6458.0,
+        "target": 6530.0,
+        "exit": 6461.25,
+        "r": -0.86,
+        "won": false,
+        "bars": 60,
+        "date": "2026-03-31",
+        "confidence": "high",
+        "reason": "timeout"
+      },
+      {
+        "type": "orb_break",
+        "dir": "short",
+        "entry": 6456.5,
+        "stop": 6461.5,
+        "target": 6427.0,
+        "exit": 6461.5,
+        "r": -1.0,
+        "won": false,
+        "bars": 7,
+        "date": "2026-03-31",
+        "confidence": "high",
+        "reason": "stop"
+      },
+      {
+        "type": "orb_break",
+        "dir": "long",
+        "entry": 6467.0,
+        "stop": 6462.0,
+        "target": 6477.0,
+        "exit": 6477.0,
+        "r": 2.0,
+        "won": true,
+        "bars": 1,
+        "date": "2026-03-31",
+        "confidence": "high",
+        "reason": "target"
+      },
+      {
+        "type": "orb_break",
+        "dir": "long",
+        "entry": 6620.0,
+        "stop": 6615.0,
+        "target": 6630.0,
+        "exit": 6615.0,
+        "r": -1.0,
+        "won": false,
+        "bars": 1,
+        "date": "2026-04-01",
+        "confidence": "high",
+        "reason": "stop"
+      },
+      {
+        "type": "orb_break",
+        "dir": "long",
+        "entry": 6635.25,
+        "stop": 6630.25,
+        "target": 6645.25,
+        "exit": 6630.25,
+        "r": -1.0,
+        "won": false,
+        "bars": 11,
+        "date": "2026-04-06",
+        "confidence": "high",
+        "reason": "stop"
+      },
+      {
+        "type": "orb_break",
+        "dir": "short",
+        "entry": 6619.75,
+        "stop": 6624.75,
+        "target": 6567.0,
+        "exit": 6589.25,
+        "r": 6.1,
+        "won": true,
+        "bars": 60,
+        "date": "2026-04-07",
+        "confidence": "medium",
+        "reason": "timeout"
+      },
+      {
+        "type": "orb_break",
+        "dir": "short",
+        "entry": 6819.75,
+        "stop": 6824.75,
+        "target": 6636.25,
+        "exit": 6799.25,
+        "r": 4.1,
+        "won": true,
+        "bars": 60,
+        "date": "2026-04-08",
+        "confidence": "high",
+        "reason": "timeout"
+      },
+      {
+        "type": "orb_break",
+        "dir": "short",
+        "entry": 6810.0,
+        "stop": 6815.0,
+        "target": 6743.0,
+        "exit": 6815.0,
+        "r": -1.0,
+        "won": false,
+        "bars": 35,
+        "date": "2026-04-09",
+        "confidence": "high",
+        "reason": "stop"
+      },
+      {
+        "type": "poc_rejection",
+        "dir": "long",
+        "entry": 6815.5,
+        "stop": 6811.25,
+        "target": 6847.25,
+        "exit": 6811.25,
+        "r": -1.0,
+        "won": false,
+        "bars": 10,
+        "date": "2026-04-09",
+        "confidence": "high",
+        "reason": "stop"
+      },
+      {
+        "type": "orb_break",
+        "dir": "long",
+        "entry": 6820.5,
+        "stop": 6815.5,
+        "target": 6847.25,
+        "exit": 6847.25,
+        "r": 5.35,
+        "won": true,
+        "bars": 34,
+        "date": "2026-04-09",
+        "confidence": "high",
+        "reason": "target"
+      },
+      {
+        "type": "orb_break",
+        "dir": "long",
+        "entry": 6879.5,
+        "stop": 6874.5,
+        "target": 6889.5,
+        "exit": 6874.5,
+        "r": -1.0,
+        "won": false,
+        "bars": 5,
+        "date": "2026-04-10",
+        "confidence": "high",
+        "reason": "stop"
+      },
+      {
+        "type": "orb_break",
+        "dir": "long",
+        "entry": 6838.5,
+        "stop": 6833.5,
+        "target": 6848.5,
+        "exit": 6848.5,
+        "r": 2.0,
+        "won": true,
+        "bars": 1,
+        "date": "2026-04-13",
+        "confidence": "high",
+        "reason": "target"
+      },
+      {
+        "type": "orb_break",
+        "dir": "long",
+        "entry": 6954.5,
+        "stop": 6949.5,
+        "target": 6964.5,
+        "exit": 6964.5,
+        "r": 2.0,
+        "won": true,
+        "bars": 1,
+        "date": "2026-04-14",
+        "confidence": "high",
+        "reason": "target"
+      },
+      {
+        "type": "orb_break",
+        "dir": "long",
+        "entry": 7019.5,
+        "stop": 7014.5,
+        "target": 7029.5,
+        "exit": 7029.5,
+        "r": 2.0,
+        "won": true,
+        "bars": 10,
+        "date": "2026-04-15",
+        "confidence": "high",
+        "reason": "target"
+      },
+      {
+        "type": "orb_break",
+        "dir": "short",
+        "entry": 7062.75,
+        "stop": 7067.75,
+        "target": 6987.5,
+        "exit": 7060.5,
+        "r": 0.45,
+        "won": true,
+        "bars": 60,
+        "date": "2026-04-16",
+        "confidence": "high",
+        "reason": "timeout"
+      },
+      {
+        "type": "orb_break",
+        "dir": "long",
+        "entry": 7073.25,
+        "stop": 7068.25,
+        "target": 7083.25,
+        "exit": 7068.25,
+        "r": -1.0,
+        "won": false,
+        "bars": 11,
+        "date": "2026-04-16",
+        "confidence": "medium",
+        "reason": "stop"
+      },
+      {
+        "type": "orb_break",
+        "dir": "long",
+        "entry": 7132.5,
+        "stop": 7127.5,
+        "target": 7142.5,
+        "exit": 7142.5,
+        "r": 2.0,
+        "won": true,
+        "bars": 1,
+        "date": "2026-04-17",
+        "confidence": "high",
+        "reason": "target"
+      }
+    ]
+  },
+  "ES_5min": {
+    "total_trades": 17,
+    "wins": 11,
+    "losses": 6,
+    "win_rate": 0.647,
+    "avg_r": 1.153,
+    "profit_factor": 4.267,
+    "by_type": {
+      "orb_break": {
+        "trades": 12,
+        "wins": 9,
+        "win_rate": 0.75,
+        "avg_r": 1.7
+      },
+      "daily_breakout": {
+        "trades": 4,
+        "wins": 2,
+        "win_rate": 0.5,
+        "avg_r": 0.05
+      },
+      "poc_rejection": {
+        "trades": 1,
+        "wins": 0,
+        "win_rate": 0.0,
+        "avg_r": -1.0
+      }
+    },
+    "by_confidence": {
+      "medium": {
+        "trades": 8,
+        "win_rate": 0.75,
+        "avg_r": 1.831
+      },
+      "high": {
+        "trades": 9,
+        "win_rate": 0.556,
+        "avg_r": 0.55
+      }
+    },
+    "daily_counts": [
+      {
+        "date": "2026-03-31",
+        "signals": 0,
+        "bias_midday": "midday state=LONG score=6"
+      },
+      {
+        "date": "2026-04-01",
+        "signals": 0,
+        "bias_midday": "midday state=LONG score=5"
+      },
+      {
+        "date": "2026-04-02",
+        "signals": 1,
+        "bias_midday": "midday state=LONG score=6"
+      },
+      {
+        "date": "2026-04-06",
+        "signals": 2,
+        "bias_midday": "midday state=SHORT score=-6"
+      },
+      {
+        "date": "2026-04-07",
+        "signals": 2,
+        "bias_midday": "midday state=RANGE_LONG score=3"
+      },
+      {
+        "date": "2026-04-08",
+        "signals": 3,
+        "bias_midday": "midday state=LONG score=5"
+      },
+      {
+        "date": "2026-04-09",
+        "signals": 2,
+        "bias_midday": "midday state=RANGE_LONG score=3"
+      },
+      {
+        "date": "2026-04-10",
+        "signals": 2,
+        "bias_midday": "midday state=RANGE_SHORT score=-3"
+      },
+      {
+        "date": "2026-04-13",
+        "signals": 1,
+        "bias_midday": "midday state=LONG score=5"
+      },
+      {
+        "date": "2026-04-14",
+        "signals": 0,
+        "bias_midday": "midday state=LONG score=5"
+      },
+      {
+        "date": "2026-04-15",
+        "signals": 1,
+        "bias_midday": "midday state=RANGE_LONG score=3"
+      },
+      {
+        "date": "2026-04-16",
+        "signals": 2,
+        "bias_midday": "midday state=SHORT score=-6"
+      },
+      {
+        "date": "2026-04-17",
+        "signals": 1,
+        "bias_midday": "midday state=RANGE_LONG score=2"
+      }
+    ],
+    "sample_trades": [
+      {
+        "type": "orb_break",
+        "dir": "long",
+        "entry": 6584.5,
+        "stop": 6579.5,
+        "target": 6653.75,
+        "exit": 6624.0,
+        "r": 7.9,
+        "won": true,
+        "bars": 30,
+        "date": "2026-04-02",
+        "confidence": "medium",
+        "reason": "timeout"
+      },
+      {
+        "type": "orb_break",
+        "dir": "short",
+        "entry": 6634.0,
+        "stop": 6639.0,
+        "target": 6622.0,
+        "exit": 6622.0,
+        "r": 2.4,
+        "won": true,
+        "bars": 1,
+        "date": "2026-04-06",
+        "confidence": "high",
+        "reason": "target"
+      },
+      {
+        "type": "orb_break",
+        "dir": "long",
+        "entry": 6644.5,
+        "stop": 6639.5,
+        "target": 6654.5,
+        "exit": 6650.75,
+        "r": 1.25,
+        "won": true,
+        "bars": 30,
+        "date": "2026-04-06",
+        "confidence": "medium",
+        "reason": "timeout"
+      },
+      {
+        "type": "orb_break",
+        "dir": "long",
+        "entry": 6615.5,
+        "stop": 6610.5,
+        "target": 6623.0,
+        "exit": 6623.0,
+        "r": 1.5,
+        "won": true,
+        "bars": 1,
+        "date": "2026-04-07",
+        "confidence": "medium",
+        "reason": "target"
+      },
+      {
+        "type": "orb_break",
+        "dir": "short",
+        "entry": 6605.0,
+        "stop": 6610.0,
+        "target": 6596.5,
+        "exit": 6610.0,
+        "r": -1.0,
+        "won": false,
+        "bars": 5,
+        "date": "2026-04-07",
+        "confidence": "high",
+        "reason": "stop"
+      },
+      {
+        "type": "daily_breakout",
+        "dir": "long",
+        "entry": 6819.0,
+        "stop": 6809.5,
+        "target": 6838.0,
+        "exit": 6809.5,
+        "r": -1.0,
+        "won": false,
+        "bars": 18,
+        "date": "2026-04-08",
+        "confidence": "medium",
+        "reason": "stop"
+      },
+      {
+        "type": "orb_break",
+        "dir": "long",
+        "entry": 6822.0,
+        "stop": 6817.0,
+        "target": 6832.0,
+        "exit": 6817.0,
+        "r": -1.0,
+        "won": false,
+        "bars": 3,
+        "date": "2026-04-08",
+        "confidence": "high",
+        "reason": "stop"
+      },
+      {
+        "type": "orb_break",
+        "dir": "short",
+        "entry": 6811.5,
+        "stop": 6816.5,
+        "target": 6651.0,
+        "exit": 6816.5,
+        "r": -1.0,
+        "won": false,
+        "bars": 7,
+        "date": "2026-04-08",
+        "confidence": "high",
+        "reason": "stop"
+      },
+      {
+        "type": "poc_rejection",
+        "dir": "short",
+        "entry": 6814.5,
+        "stop": 6822.0,
+        "target": 6743.0,
+        "exit": 6822.0,
+        "r": -1.0,
+        "won": false,
+        "bars": 16,
+        "date": "2026-04-09",
+        "confidence": "high",
+        "reason": "stop"
+      },
+      {
+        "type": "daily_breakout",
+        "dir": "long",
+        "entry": 6847.5,
+        "stop": 6855.25,
+        "target": 6863.0,
+        "exit": 6863.0,
+        "r": 2.0,
+        "won": true,
+        "bars": 1,
+        "date": "2026-04-09",
+        "confidence": "medium",
+        "reason": "target"
+      },
+      {
+        "type": "daily_breakout",
+        "dir": "long",
+        "entry": 6876.25,
+        "stop": 6866.0,
+        "target": 6896.75,
+        "exit": 6866.0,
+        "r": -1.0,
+        "won": false,
+        "bars": 6,
+        "date": "2026-04-10",
+        "confidence": "medium",
+        "reason": "stop"
+      },
+      {
+        "type": "orb_break",
+        "dir": "short",
+        "entry": 6867.0,
+        "stop": 6872.0,
+        "target": 6825.25,
+        "exit": 6855.25,
+        "r": 2.35,
+        "won": true,
+        "bars": 60,
+        "date": "2026-04-10",
+        "confidence": "high",
+        "reason": "timeout"
+      },
+      {
+        "type": "orb_break",
+        "dir": "long",
+        "entry": 6850.0,
+        "stop": 6845.0,
+        "target": 6860.0,
+        "exit": 6860.0,
+        "r": 2.0,
+        "won": true,
+        "bars": 1,
+        "date": "2026-04-13",
+        "confidence": "high",
+        "reason": "target"
+      },
+      {
+        "type": "orb_break",
+        "dir": "long",
+        "entry": 7023.5,
+        "stop": 7018.5,
+        "target": 7033.5,
+        "exit": 7033.5,
+        "r": 2.0,
+        "won": true,
+        "bars": 4,
+        "date": "2026-04-15",
+        "confidence": "high",
+        "reason": "target"
+      },
+      {
+        "type": "daily_breakout",
+        "dir": "long",
+        "entry": 7070.25,
+        "stop": 7047.5,
+        "target": 7115.75,
+        "exit": 7074.75,
+        "r": 0.2,
+        "won": true,
+        "bars": 60,
+        "date": "2026-04-16",
+        "confidence": "high",
+        "reason": "timeout"
+      },
+      {
+        "type": "orb_break",
+        "dir": "long",
+        "entry": 7065.5,
+        "stop": 7060.5,
+        "target": 7075.5,
+        "exit": 7075.5,
+        "r": 2.0,
+        "won": true,
+        "bars": 1,
+        "date": "2026-04-16",
+        "confidence": "medium",
+        "reason": "target"
+      },
+      {
+        "type": "orb_break",
+        "dir": "long",
+        "entry": 7149.5,
+        "stop": 7144.5,
+        "target": 7159.5,
+        "exit": 7159.5,
+        "r": 2.0,
+        "won": true,
+        "bars": 1,
+        "date": "2026-04-17",
+        "confidence": "medium",
+        "reason": "target"
+      }
+    ]
+  }
+}

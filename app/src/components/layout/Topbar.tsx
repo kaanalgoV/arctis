@@ -47,11 +47,12 @@ function Pill({ label, isActive, onClick }: PillProps) {
 type ConnectionStatus = 'connected' | 'reconnecting' | 'offline'
 
 interface ConnectionBadgeProps {
-  /** Accepts boolean (legacy) or a three-state string. */
+  /** Accepts boolean (legacy) or a three-state string. Live = actual live feed active. */
+  liveFeed?: boolean
   isConnected: boolean | ConnectionStatus
 }
 
-function ConnectionBadge({ isConnected }: ConnectionBadgeProps) {
+function ConnectionBadge({ isConnected, liveFeed }: ConnectionBadgeProps) {
   // Normalise to three-state
   const status: ConnectionStatus =
     isConnected === true || isConnected === 'connected'
@@ -65,17 +66,17 @@ function ConnectionBadge({ isConnected }: ConnectionBadgeProps) {
       <div className="flex items-center gap-1.5">
         <div className="relative flex items-center justify-center w-3 h-3">
           <motion.span
-            className="absolute inset-0 rounded-full bg-[var(--color-profit)]"
+            className={`absolute inset-0 rounded-full ${liveFeed ? 'bg-[var(--color-profit)]' : 'bg-[var(--color-accent)]'}`}
             animate={{ scale: [1, 1.7], opacity: [0.4, 0] }}
             transition={{ duration: 1.6, repeat: Infinity, ease: 'easeOut' }}
           />
           <span
-            className="relative w-1.5 h-1.5 rounded-full bg-[var(--color-profit)]"
-            style={{ boxShadow: '0 0 8px var(--color-profit)' }}
+            className={`relative w-1.5 h-1.5 rounded-full ${liveFeed ? 'bg-[var(--color-profit)]' : 'bg-[var(--color-accent)]'}`}
+            style={{ boxShadow: liveFeed ? '0 0 8px var(--color-profit)' : '0 0 8px var(--color-accent)' }}
           />
         </div>
-        <span className="font-mono text-[11px] font-medium text-[var(--color-profit)] leading-none">
-          LIVE
+        <span className={`font-mono text-[11px] font-medium leading-none ${liveFeed ? 'text-[var(--color-profit)]' : 'text-[var(--color-accent)]'}`}>
+          {liveFeed ? 'LIVE' : 'ONLINE'}
         </span>
       </div>
     )
@@ -137,6 +138,7 @@ interface TopbarProps {
   /** Previous session close price to determine up/down color */
   prevSessionClose?: number | null
   isConnected?: boolean | ConnectionStatus
+  liveFeed?: boolean
   rightPanelOpen?: boolean
   onToggleRightPanel?: () => void
   hudVisible?: boolean
@@ -154,6 +156,7 @@ export function Topbar({
   priceChange,
   prevSessionClose,
   isConnected = 'offline',
+  liveFeed = false,
   rightPanelOpen,
   onToggleRightPanel,
   hudVisible,
@@ -340,7 +343,7 @@ export function Topbar({
       {/* Right: Connection badge, Settings */}
       <div className="flex items-center gap-3 shrink-0 ml-auto">
         {/* Connection badge */}
-        <ConnectionBadge isConnected={isConnected} />
+        <ConnectionBadge isConnected={isConnected} liveFeed={liveFeed} />
 
         {/* Divider */}
         <div className="w-px h-4 bg-[var(--color-border-subtle)]" />

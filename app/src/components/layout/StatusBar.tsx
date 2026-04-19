@@ -39,7 +39,7 @@ export function StatusBar({
   latencyMs = 0,
   barsLoaded = 0,
   lastUpdate = '--:--:--',
-  version = '0.1.0',
+  version = __APP_VERSION__,
   replay,
   liveFeed = false,
   liveProvider = null,
@@ -70,8 +70,12 @@ export function StatusBar({
     ? 'Reconnecting'
     : 'OFFLINE'
 
-  // Status label always muted — only the dot carries the color signal
-  const statusTextColor = 'text-[var(--color-text-muted)]'
+  // Status label — connected gets secondary color, offline stays muted
+  const statusTextColor = isConnected
+    ? 'text-[var(--color-text-secondary)]'
+    : isReconnecting
+    ? 'text-[var(--color-warning)]'
+    : 'text-[var(--color-loss)]'
 
   // Format last bar timestamp for display
   const lastBarDisplay = lastBarTs != null
@@ -90,7 +94,7 @@ export function StatusBar({
         'flex items-center h-full w-full px-3',
         'bg-[var(--color-surface-void)]',
         'border-t border-[var(--color-border-subtle)]',
-        'font-mono text-[var(--text-2xs,10px)] text-[var(--color-text-muted)]',
+        'font-mono text-[11px] text-[var(--color-text-muted)]',
       )}
     >
       {/* Left: Connection status or REPLAY badge or LIVE badge */}
@@ -166,8 +170,8 @@ export function StatusBar({
             <span className="text-[var(--color-border)] mx-0.5 leading-none">|</span>
             <span className="leading-none text-[var(--color-text-muted)]">
               Latency:{' '}
-              <span className="text-[var(--color-text-muted)]">
-                {isConnected ? `${effectiveLatencyMs}ms` : '—'}
+              <span className={isConnected ? 'text-[var(--color-text-secondary)]' : 'text-[var(--color-text-muted)] opacity-50'}>
+                {effectiveLatencyMs > 0 ? `${effectiveLatencyMs}ms` : '—'}
               </span>
             </span>
           </>

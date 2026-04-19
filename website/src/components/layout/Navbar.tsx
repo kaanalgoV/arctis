@@ -6,6 +6,7 @@ import { motion, AnimatePresence, useScroll, useMotionValueEvent } from 'framer-
 import { Menu, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { fadeInDown } from '@/lib/animations'
+import { LOGIN_URL, CHECKOUT_URL } from '@/lib/app-urls'
 
 // ─── Types ────────────────────────────────────────────────
 
@@ -76,7 +77,7 @@ function NavLinkItem({ label, href }: NavLink) {
   return (
     <Link
       href={href}
-      className="font-sans text-sm font-medium tracking-wide uppercase text-frost-secondary hover:text-frost-white transition-colors duration-200"
+      className="font-sans text-sm font-medium tracking-wide uppercase text-frost-secondary hover:text-frost-white transition-colors duration-200 cursor-pointer rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ice/60 focus-visible:ring-offset-2 focus-visible:ring-offset-arctic-base"
     >
       {label}
     </Link>
@@ -140,25 +141,39 @@ function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
                 <Link
                   href={link.href}
                   onClick={onClose}
-                  className="flex items-center py-3 font-sans text-sm font-medium tracking-wide uppercase text-frost-secondary hover:text-frost-white transition-colors duration-200 border-b border-frost-border-subtle last:border-0"
+                  className="flex items-center py-3 font-sans text-sm font-medium tracking-wide uppercase text-frost-secondary hover:text-frost-white transition-colors duration-200 border-b border-frost-border-subtle last:border-0 cursor-pointer min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ice/60 focus-visible:ring-offset-2 focus-visible:ring-offset-arctic-base rounded-sm"
                 >
                   {link.label}
                 </Link>
               </motion.div>
             ))}
 
-            <motion.div variants={mobileItemVariants} className="pt-4">
+            <motion.div variants={mobileItemVariants} className="pt-4 grid gap-2">
               <a
-                href="http://localhost:5174/login"
+                href={CHECKOUT_URL}
                 onClick={onClose}
                 className={cn(
                   'w-full block text-center bg-ice text-arctic-base font-display font-semibold text-sm',
-                  'px-5 py-3 rounded-lg',
+                  'px-5 py-3 rounded-lg min-h-[44px] cursor-pointer',
                   'transition-colors duration-200 ease-out',
                   'hover:bg-ice-light',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ice/60 focus-visible:ring-offset-2 focus-visible:ring-offset-arctic-base',
                 )}
               >
-                Anmelden
+                Jetzt starten
+              </a>
+              <a
+                href={LOGIN_URL}
+                onClick={onClose}
+                className={cn(
+                  'w-full block text-center font-sans font-medium text-sm tracking-wide uppercase',
+                  'text-frost-secondary hover:text-frost-white',
+                  'px-5 py-3 rounded-lg border border-frost-border-subtle min-h-[44px] cursor-pointer',
+                  'transition-colors duration-200',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ice/60 focus-visible:ring-offset-2 focus-visible:ring-offset-arctic-base',
+                )}
+              >
+                Login
               </a>
             </motion.div>
           </nav>
@@ -240,7 +255,7 @@ export function Navbar() {
           {/* ── Logo ── */}
           <Link
             href="/"
-            className="flex items-center gap-2.5 group shrink-0"
+            className="flex items-center gap-2.5 group shrink-0 cursor-pointer rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ice/60 focus-visible:ring-offset-2 focus-visible:ring-offset-arctic-base"
             aria-label="ARCTIS — Home"
           >
             <IceCrystalIcon />
@@ -257,23 +272,39 @@ export function Navbar() {
           </nav>
 
           {/* ── Desktop CTA ── */}
-          <div className="hidden md:flex items-center">
+          <div className="hidden md:flex items-center gap-3">
             <a
-              href="http://localhost:5174/login"
+              href={LOGIN_URL}
               className={cn(
-                'bg-ice text-arctic-base font-display font-semibold text-sm',
-                'px-5 py-2.5 rounded-lg',
-                'transition-colors duration-200 ease-out',
-                'hover:bg-ice-light',
+                'font-sans font-medium text-sm tracking-wide uppercase cursor-pointer rounded-sm',
+                'text-frost-secondary hover:text-frost-white',
+                'transition-colors duration-200',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ice/60 focus-visible:ring-offset-2 focus-visible:ring-offset-arctic-base',
               )}
             >
-              Anmelden
+              Login
+            </a>
+            <a
+              href={CHECKOUT_URL}
+              className={cn(
+                'group relative inline-flex items-center gap-1.5 cursor-pointer',
+                'font-display font-semibold text-sm',
+                'text-frost-white',
+                'px-4 py-2 rounded-lg',
+                'border border-frost-border-subtle hover:border-ice/60',
+                'bg-frost-surface/40 hover:bg-frost-surface/70',
+                'transition-all duration-200 ease-out',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ice/60 focus-visible:ring-offset-2 focus-visible:ring-offset-arctic-base',
+              )}
+            >
+              <span className="h-1.5 w-1.5 rounded-full bg-ice shadow-[0_0_8px_rgba(92,184,240,0.7)]" aria-hidden="true" />
+              Jetzt starten
             </a>
           </div>
 
           {/* ── Mobile Hamburger ── */}
           <motion.button
-            className="md:hidden relative flex items-center justify-center w-9 h-9 rounded-lg text-frost-secondary hover:text-frost-white hover:bg-frost-border-subtle transition-colors duration-200"
+            className="md:hidden relative flex items-center justify-center w-11 h-11 rounded-lg text-frost-secondary hover:text-frost-white hover:bg-frost-border-subtle transition-colors duration-200 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ice/60 focus-visible:ring-offset-2 focus-visible:ring-offset-arctic-base"
             onClick={() => setMobileOpen((v) => !v)}
             aria-expanded={mobileOpen}
             aria-label={mobileOpen ? 'Close navigation menu' : 'Open navigation menu'}

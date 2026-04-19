@@ -138,10 +138,19 @@ def build_market_context(
         price_age = float("inf")
         current_price = bars[-1].close if bars else None
 
-    # --- Session (always real wall-clock) ---
-    session_ctx = get_session_context()
-    session = session_ctx["current_session"]
-    is_rth = session_ctx["is_rth"]
+    # --- Session: use sim timestamp during replay, wall-clock otherwise ---
+    from arctis.routes._common import get_sim
+    _sim = get_sim()
+    if _sim.active and _sim.market == market_root:
+        _ref_ts = bars[-1].timestamp if bars else int(time.time())
+        _ref_session = classify_session(_ref_ts)
+        session = _ref_session.value
+        _RTH = {"ny_open", "midday", "afternoon", "power_hour"}
+        is_rth = session in _RTH
+    else:
+        session_ctx = get_session_context()
+        session = session_ctx["current_session"]
+        is_rth = session_ctx["is_rth"]
 
     # --- Bar metadata ---
     bars_count = len(bars)

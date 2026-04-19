@@ -1,6 +1,6 @@
-import { useState, useCallback, useMemo, useEffect, type FormEvent } from 'react'
+import { useState, useCallback, useMemo, useEffect, useRef, type FormEvent } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Loader2, AlertCircle, Copy, CheckCircle2, Lock, Shield, Sparkles } from 'lucide-react'
+import { Loader2, AlertCircle, Copy, CheckCircle2, Lock, Shield, Sparkles, LogIn, Mail, LifeBuoy } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useSettingsStore } from '@/store/settings'
 
@@ -80,6 +80,36 @@ function formatCardExpiry(value: string): string {
 }
 
 // ---------------------------------------------------------------------------
+// Card brand detection
+// ---------------------------------------------------------------------------
+
+function detectCardBrand(cardNumber: string): 'visa' | 'mastercard' | 'amex' | null {
+  const digits = cardNumber.replace(/\D/g, '')
+  if (!digits) return null
+  const first = digits[0]
+  if (first === '4') return 'visa'
+  if (first === '5') return 'mastercard'
+  if (first === '3') return 'amex'
+  return null
+}
+
+const CARD_BRAND_LABEL: Record<'visa' | 'mastercard' | 'amex', string> = {
+  visa: 'VISA',
+  mastercard: 'MASTERCARD',
+  amex: 'AMEX',
+}
+
+// ---------------------------------------------------------------------------
+// Email validation
+// ---------------------------------------------------------------------------
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+function isEmailValid(email: string): boolean {
+  return EMAIL_RE.test(email.trim())
+}
+
+// ---------------------------------------------------------------------------
 // Keyframes
 // ---------------------------------------------------------------------------
 
@@ -144,6 +174,29 @@ const KEYFRAMES = `
     from { opacity: 0; transform: translateY(10px); }
     to { opacity: 1; transform: translateY(0); }
   }
+  @keyframes checkoutShake {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-4px); }
+    40% { transform: translateX(4px); }
+    60% { transform: translateX(-3px); }
+    80% { transform: translateX(3px); }
+  }
+  @keyframes checkoutBadgePulseOnce {
+    0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(92,184,240,0.4); }
+    50% { transform: scale(1.08); box-shadow: 0 0 0 6px rgba(92,184,240,0); }
+  }
+  @keyframes checkoutStepBorderPulse {
+    0% { box-shadow: 0 0 0 0 rgba(92,184,240,0.55); }
+    100% { box-shadow: 0 0 0 8px rgba(92,184,240,0); }
+  }
+  @keyframes checkoutSubmitSweep {
+    0%   { transform: translateX(-120%); }
+    100% { transform: translateX(120%); }
+  }
+  @keyframes checkoutFadeIn {
+    from { opacity: 0; transform: scale(0.85); }
+    to   { opacity: 1; transform: scale(1); }
+  }
 
   [data-checkout-root] input::placeholder {
     color: #3D444D !important;
@@ -153,6 +206,19 @@ const KEYFRAMES = `
     border-color: #5CB8F0 !important;
     box-shadow: 0 0 0 2px rgba(92,184,240,0.20) !important;
     outline: none;
+  }
+
+  [data-checkout-root] input[data-error="true"] {
+    border-color: rgba(248, 113, 113, 0.40) !important;
+  }
+
+  [data-checkout-root] input[data-error="true"]:focus {
+    border-color: rgba(248, 113, 113, 0.60) !important;
+    box-shadow: 0 0 0 2px rgba(248, 113, 113, 0.20) !important;
+  }
+
+  [data-checkout-root] [data-shake="true"] {
+    animation: checkoutShake 0.4s ease-out;
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -180,7 +246,7 @@ const PARTICLES = Array.from({ length: 12 }, (_, i) => ({
 
 const PLAN_INFO = {
   monthly: { label: '49€/Monat', total: '49€/Monat', interval: 'Monatlich' },
-  annual: { label: '39€/Monat (jaehrlich)', total: '468€/Jahr (spare 120€)', interval: 'Jaehrlich' },
+  annual: { label: '39€/Monat (jährlich)', total: '468€/Jahr (spare 120€)', interval: 'Jährlich' },
 } as const
 
 // ---------------------------------------------------------------------------
@@ -267,14 +333,14 @@ export function CheckoutPage() {
     if (!form.firstName.trim()) e.firstName = 'Vorname ist erforderlich'
     if (!form.lastName.trim()) e.lastName = 'Nachname ist erforderlich'
     if (!form.email.trim()) e.email = 'E-Mail ist erforderlich'
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = 'Ungueltige E-Mail-Adresse'
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = 'Ungültige E-Mail-Adresse'
 
     if (paymentMethod === 'sepa') {
       const rawIban = cleanIBAN(form.iban)
       if (!rawIban) e.iban = 'IBAN ist erforderlich'
       else if (rawIban.length < 15) e.iban = 'IBAN ist zu kurz'
       if (!form.accountHolder.trim()) e.accountHolder = 'Kontoinhaber ist erforderlich'
-      if (!form.sepaConsent) e.sepaConsent = 'SEPA-Einzugsermaechtigung ist erforderlich'
+      if (!form.sepaConsent) e.sepaConsent = 'SEPA-Einzugsermächtigung ist erforderlich'
     } else {
       const cardClean = form.cardNumber.replace(/\s/g, '')
       if (!cardClean) e.cardNumber = 'Kartennummer ist erforderlich'
@@ -344,6 +410,63 @@ export function CheckoutPage() {
   }, [form, plan, paymentMethod, validate, engineUrl])
 
   const planInfo = useMemo(() => PLAN_INFO[plan], [plan])
+
+  // --- Stepper progression -------------------------------------------------
+  // 1 Plan (always done once plan chosen — plan has default, so always ≥ step 2)
+  // 2 Daten (firstName + lastName + valid email)
+  // 3 Zahlung (valid payment inputs for selected method)
+  // 4 Fertig (after success)
+  const currentStep = useMemo(() => {
+    if (success) return 4
+    const dataDone =
+      form.firstName.trim().length > 0 &&
+      form.lastName.trim().length > 0 &&
+      isEmailValid(form.email)
+    if (!dataDone) return 2
+    const paymentDone =
+      paymentMethod === 'sepa'
+        ? cleanIBAN(form.iban).length >= 15 &&
+          form.accountHolder.trim().length > 0 &&
+          form.sepaConsent
+        : form.cardNumber.replace(/\s/g, '').length >= 13 &&
+          form.cardExpiry.length >= 5 &&
+          form.cardCvv.length >= 3 &&
+          form.cardHolder.trim().length > 0
+    return paymentDone ? 4 : 3
+  }, [success, form, paymentMethod])
+
+  // One-shot border pulse on current step when it changes
+  const prevStepRef = useRef(currentStep)
+  const [pulsedStep, setPulsedStep] = useState<number | null>(null)
+  useEffect(() => {
+    if (prevStepRef.current !== currentStep) {
+      setPulsedStep(currentStep)
+      prevStepRef.current = currentStep
+      const t = setTimeout(() => setPulsedStep(null), 800)
+      return () => clearTimeout(t)
+    }
+  }, [currentStep])
+
+  // Error shake: trigger once when errors become non-empty
+  const [shakeKey, setShakeKey] = useState(0)
+  const prevErrCountRef = useRef(0)
+  useEffect(() => {
+    const count = Object.values(errors).filter(Boolean).length
+    if (count > prevErrCountRef.current) {
+      setShakeKey((k) => k + 1)
+    }
+    prevErrCountRef.current = count
+  }, [errors])
+
+  // Card brand detection
+  const cardBrand = useMemo(() => detectCardBrand(form.cardNumber), [form.cardNumber])
+  // IBAN DE badge trigger
+  const ibanIsDE = useMemo(() => {
+    const clean = cleanIBAN(form.iban)
+    return clean.length >= 2 && clean.startsWith('DE')
+  }, [form.iban])
+  // Email validity
+  const emailValid = useMemo(() => isEmailValid(form.email), [form.email])
 
   const nextBilling = useMemo(() => {
     const d = new Date()
@@ -487,48 +610,101 @@ export function CheckoutPage() {
 
         {/* --- Progress Indicator --- */}
         {!success && (
-          <div className="mb-6">
+          <div className="mb-6" aria-label="Checkout Fortschritt">
             <div className="flex items-center justify-between">
               {[
                 { num: 1, label: 'Plan' },
                 { num: 2, label: 'Daten' },
                 { num: 3, label: 'Zahlung' },
                 { num: 4, label: 'Fertig' },
-              ].map((step, i) => (
-                <div key={step.num} className="flex items-center" style={{ flex: i < 3 ? 1 : 'none' }}>
-                  <div className="flex flex-col items-center gap-1">
-                    <div
-                      className="flex items-center justify-center rounded-full transition-all duration-300"
-                      style={{
-                        width: 24,
-                        height: 24,
-                        fontSize: '10px',
-                        fontWeight: 700,
-                        fontFamily: 'var(--font-mono)',
-                        background: i < 3 ? 'rgba(92,184,240,0.15)' : 'rgba(92,184,240,0.06)',
-                        color: i < 3 ? '#5CB8F0' : '#3D444D',
-                        border: `1px solid ${i < 3 ? 'rgba(92,184,240,0.3)' : 'rgba(92,184,240,0.08)'}`,
-                      }}
-                    >
-                      {step.num}
+              ].map((step, i) => {
+                const completed = step.num < currentStep
+                const active = step.num === currentStep
+                const visible = completed || active
+                const connectorFill = Math.max(
+                  0,
+                  Math.min(1, (currentStep - step.num)),
+                )
+                return (
+                  <div
+                    key={step.num}
+                    className="flex items-center"
+                    style={{ flex: i < 3 ? 1 : 'none' }}
+                  >
+                    <div className="flex flex-col items-center gap-1">
+                      <div
+                        className="flex items-center justify-center rounded-full transition-all duration-300"
+                        style={{
+                          width: 24,
+                          height: 24,
+                          fontSize: '10px',
+                          fontWeight: 700,
+                          fontFamily: 'var(--font-mono)',
+                          background: completed
+                            ? 'rgba(52,211,153,0.15)'
+                            : active
+                              ? 'rgba(92,184,240,0.18)'
+                              : 'rgba(92,184,240,0.06)',
+                          color: completed
+                            ? '#34D399'
+                            : active
+                              ? '#5CB8F0'
+                              : '#3D444D',
+                          border: `1px solid ${completed ? 'rgba(52,211,153,0.35)' : active ? 'rgba(92,184,240,0.45)' : 'rgba(92,184,240,0.08)'}`,
+                          animation: pulsedStep === step.num && active
+                            ? 'checkoutStepBorderPulse 0.8s ease-out'
+                            : undefined,
+                        }}
+                        aria-current={active ? 'step' : undefined}
+                      >
+                        {completed ? (
+                          <CheckCircle2
+                            size={14}
+                            style={{
+                              color: '#34D399',
+                              animation: 'checkoutFadeIn 0.25s ease-out',
+                            }}
+                          />
+                        ) : (
+                          step.num
+                        )}
+                      </div>
+                      <span
+                        style={{
+                          fontSize: '9px',
+                          color: visible ? (completed ? '#34D399' : '#5CB8F0') : '#3D444D',
+                          transition: 'color 0.3s ease',
+                        }}
+                      >
+                        {step.label}
+                      </span>
                     </div>
-                    <span style={{ fontSize: '9px', color: i < 3 ? '#5CB8F0' : '#3D444D' }}>
-                      {step.label}
-                    </span>
+                    {i < 3 && (
+                      <div
+                        className="flex-1 mx-2 relative"
+                        style={{
+                          height: 1,
+                          background: 'rgba(92,184,240,0.06)',
+                          overflow: 'hidden',
+                        }}
+                      >
+                        <motion.div
+                          initial={false}
+                          animate={{ scaleX: connectorFill }}
+                          transition={{ duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}
+                          style={{
+                            position: 'absolute',
+                            inset: 0,
+                            transformOrigin: 'left center',
+                            background:
+                              'linear-gradient(90deg, rgba(52,211,153,0.6) 0%, rgba(92,184,240,0.5) 100%)',
+                          }}
+                        />
+                      </div>
+                    )}
                   </div>
-                  {i < 3 && (
-                    <div
-                      className="flex-1 mx-2"
-                      style={{
-                        height: 1,
-                        background: i < 2
-                          ? 'rgba(92,184,240,0.2)'
-                          : 'rgba(92,184,240,0.06)',
-                      }}
-                    />
-                  )}
-                </div>
-              ))}
+                )
+              })}
             </div>
           </div>
         )}
@@ -572,7 +748,10 @@ export function CheckoutPage() {
                       strokeWidth="2"
                       fill="none"
                       strokeDasharray="120"
-                      style={{ animation: 'checkoutCircleDraw 0.6s ease-out 0.2s both' }}
+                      style={{
+                        animation:
+                          'checkoutCircleDraw 0.7s cubic-bezier(0.65,0,0.35,1) 0.1s both',
+                      }}
                     />
                     <polyline
                       points="14,23 19,28 30,16"
@@ -582,7 +761,10 @@ export function CheckoutPage() {
                       strokeLinejoin="round"
                       fill="none"
                       strokeDasharray="36"
-                      style={{ animation: 'checkoutDrawCheck 0.4s ease-out 0.6s both' }}
+                      style={{
+                        animation:
+                          'checkoutDrawCheck 0.5s cubic-bezier(0.65,0,0.35,1) 0.7s both',
+                      }}
                     />
                   </svg>
                 </div>
@@ -661,7 +843,7 @@ export function CheckoutPage() {
                 <div style={{ height: '1px', background: 'rgba(92,184,240,0.06)', margin: '10px 0' }} />
 
                 <div className="flex justify-between" style={{ fontSize: '12px', color: '#6E7681' }}>
-                  <span>Naechste Abbuchung</span>
+                  <span>Nächste Abbuchung</span>
                   <span style={{ color: '#F0F6FC', fontFamily: 'var(--font-mono)' }}>
                     {success.nextBillingDate}
                   </span>
@@ -687,7 +869,7 @@ export function CheckoutPage() {
                 }}
               >
                 <p style={{ fontSize: '11px', color: '#FFB400', lineHeight: 1.5 }}>
-                  Speichere dein Passwort! Du erhaeltst es spaeter auch per E-Mail.
+                  Speichere dein Passwort! Du erhältst es später auch per E-Mail.
                 </p>
               </div>
 
@@ -710,6 +892,26 @@ export function CheckoutPage() {
               >
                 Zum Dashboard
               </a>
+
+              {/* 3 next-steps */}
+              <div style={{ height: '20px' }} />
+              <div className="w-full grid grid-cols-1 gap-2">
+                <NextStepRow
+                  icon={<LogIn size={14} style={{ color: '#5CB8F0' }} />}
+                  label="Login"
+                  value="app.arctis.io/login"
+                />
+                <NextStepRow
+                  icon={<Mail size={14} style={{ color: '#5CB8F0' }} />}
+                  label="Bestätigung"
+                  value={success.loginEmail}
+                />
+                <NextStepRow
+                  icon={<LifeBuoy size={14} style={{ color: '#5CB8F0' }} />}
+                  label="Support"
+                  value="support@arctis.io"
+                />
+              </div>
             </motion.div>
           ) : (
             <motion.div key="form">
@@ -775,10 +977,30 @@ export function CheckoutPage() {
                   </div>
                 </div>
                 <span
-                  className="font-semibold"
-                  style={{ fontSize: '15px', color: '#5CB8F0', fontFamily: 'var(--font-mono)' }}
+                  className="font-semibold tabular-nums"
+                  style={{
+                    fontSize: '15px',
+                    color: '#5CB8F0',
+                    fontFamily: 'var(--font-mono)',
+                    fontVariantNumeric: 'tabular-nums',
+                    display: 'inline-flex',
+                    alignItems: 'baseline',
+                    overflow: 'hidden',
+                  }}
                 >
-                  {plan === 'annual' ? '39€' : '49€'}<span style={{ fontSize: '11px', color: '#6E7681' }}>/Mo</span>
+                  <AnimatePresence mode="wait" initial={false}>
+                    <motion.span
+                      key={plan}
+                      initial={{ opacity: 0, y: -6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 6 }}
+                      transition={{ duration: 0.2 }}
+                      style={{ display: 'inline-block' }}
+                    >
+                      {plan === 'annual' ? '39€' : '49€'}
+                    </motion.span>
+                  </AnimatePresence>
+                  <span style={{ fontSize: '11px', color: '#6E7681', marginLeft: 2 }}>/Mo</span>
                 </span>
               </div>
 
@@ -796,8 +1018,28 @@ export function CheckoutPage() {
                   Sichere Zahlung
                 </span>
                 <span style={{ fontSize: '10px', color: '#6E7681' }}>
-                  &mdash; 256-bit SSL verschluesselt
+                  &mdash; 256-bit SSL verschlüsselt
                 </span>
+              </div>
+
+              {/* --- 14-day money-back guarantee --- */}
+              <div
+                className="w-full flex items-start gap-2.5 py-3 px-3 rounded-lg"
+                style={{
+                  marginTop: '10px',
+                  background: 'rgba(92,184,240,0.04)',
+                  border: '1px solid rgba(92,184,240,0.12)',
+                }}
+              >
+                <Shield size={14} style={{ color: '#5CB8F0', marginTop: 2 }} />
+                <div>
+                  <div style={{ fontSize: '12px', color: '#F0F6FC', fontWeight: 600 }}>
+                    14 Tage Geld-zurück-Garantie
+                  </div>
+                  <div style={{ fontSize: '11px', color: '#6E7681', marginTop: 2, lineHeight: 1.4 }}>
+                    Nicht überzeugt? Volle Rückerstattung innerhalb von 14 Tagen — eine Email genügt.
+                  </div>
+                </div>
               </div>
 
               <div style={{ height: '24px' }} />
@@ -837,7 +1079,7 @@ export function CheckoutPage() {
                   <PlanButton
                     active={plan === 'annual'}
                     onClick={() => setPlan('annual')}
-                    label="Jaehrlich"
+                    label="Jährlich"
                     detail="39€/Mo"
                     badge="Empfohlen"
                   />
@@ -875,8 +1117,8 @@ export function CheckoutPage() {
                 <div aria-hidden="true" style={{ height: '1px', background: 'rgba(92,184,240,0.06)' }} />
                 <div style={{ height: '24px' }} />
 
-                {/* --- Section 2: Persoenliche Daten --- */}
-                <SectionLabel>Persoenliche Daten</SectionLabel>
+                {/* --- Section 2: Persönliche Daten --- */}
+                <SectionLabel>Persönliche Daten</SectionLabel>
                 <div style={{ height: '12px' }} />
 
                 <div className="grid grid-cols-2 gap-3">
@@ -888,6 +1130,7 @@ export function CheckoutPage() {
                     error={errors.firstName}
                     placeholder="Max"
                     autoComplete="given-name"
+                    shakeKey={shakeKey}
                   />
                   <FieldGroup
                     id="checkout-lastname"
@@ -897,6 +1140,7 @@ export function CheckoutPage() {
                     error={errors.lastName}
                     placeholder="Mustermann"
                     autoComplete="family-name"
+                    shakeKey={shakeKey}
                   />
                 </div>
 
@@ -911,6 +1155,24 @@ export function CheckoutPage() {
                   error={errors.email}
                   placeholder="name@beispiel.de"
                   autoComplete="email"
+                  shakeKey={shakeKey}
+                  adornmentWidthPx={18}
+                  adornment={
+                    <AnimatePresence>
+                      {emailValid && (
+                        <motion.span
+                          key="email-ok"
+                          initial={{ opacity: 0, scale: 0.8 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.8 }}
+                          transition={{ duration: 0.2 }}
+                          className="flex items-center"
+                        >
+                          <CheckCircle2 size={16} style={{ color: '#34D399' }} />
+                        </motion.span>
+                      )}
+                    </AnimatePresence>
+                  }
                 />
 
                 {/* --- Divider --- */}
@@ -922,28 +1184,68 @@ export function CheckoutPage() {
                 <SectionLabel>Zahlungsdaten</SectionLabel>
                 <div style={{ height: '12px' }} />
 
-                {/* Payment method toggle */}
-                <div className="flex gap-2" style={{ marginBottom: '16px' }}>
-                  <PaymentToggle
-                    active={paymentMethod === 'sepa'}
-                    onClick={() => setPaymentMethod('sepa')}
-                    label="SEPA-Lastschrift"
-                  />
-                  <PaymentToggle
-                    active={paymentMethod === 'credit_card'}
-                    onClick={() => setPaymentMethod('credit_card')}
-                    label="Kreditkarte"
-                  />
+                {/* Payment method toggle — segmented with motion.layoutId */}
+                <div
+                  role="tablist"
+                  aria-label="Zahlungsmethode"
+                  className="relative flex gap-1 rounded-lg p-1"
+                  style={{
+                    marginBottom: '16px',
+                    background: 'rgba(22, 28, 38, 0.6)',
+                    border: '1px solid rgba(92,184,240,0.08)',
+                  }}
+                >
+                  {(
+                    [
+                      { key: 'sepa' as const, label: 'SEPA-Lastschrift' },
+                      { key: 'credit_card' as const, label: 'Kreditkarte' },
+                    ]
+                  ).map((tab) => {
+                    const active = paymentMethod === tab.key
+                    return (
+                      <button
+                        key={tab.key}
+                        type="button"
+                        role="tab"
+                        aria-selected={active}
+                        onClick={() => setPaymentMethod(tab.key)}
+                        className="relative flex-1 rounded-md px-3 py-2 text-center cursor-pointer transition-colors duration-200"
+                        style={{
+                          fontSize: '12px',
+                          fontWeight: 500,
+                          color: active ? '#F0F6FC' : '#6E7681',
+                          background: 'transparent',
+                          zIndex: 1,
+                        }}
+                      >
+                        {active && (
+                          <motion.span
+                            layoutId="checkout-payment-tab"
+                            className="absolute inset-0 rounded-md"
+                            aria-hidden="true"
+                            style={{
+                              background: 'rgba(92,184,240,0.12)',
+                              border: '1px solid rgba(92,184,240,0.30)',
+                              boxShadow: '0 0 16px rgba(92,184,240,0.08)',
+                              zIndex: -1,
+                            }}
+                            transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                          />
+                        )}
+                        <span className="relative">{tab.label}</span>
+                      </button>
+                    )
+                  })}
                 </div>
 
                 <AnimatePresence mode="wait">
                   {paymentMethod === 'sepa' ? (
                     <motion.div
                       key="sepa"
-                      initial={{ opacity: 0, y: 6 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -6 }}
-                      transition={{ duration: 0.15 }}
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -20 }}
+                      transition={{ duration: 0.25, ease: [0.25, 0.46, 0.45, 0.94] }}
                     >
                       <FieldGroup
                         id="checkout-iban"
@@ -955,6 +1257,33 @@ export function CheckoutPage() {
                         autoComplete="off"
                         mono
                         sensitive
+                        shakeKey={shakeKey}
+                        adornmentWidthPx={28}
+                        adornment={
+                          <AnimatePresence>
+                            {ibanIsDE && (
+                              <motion.span
+                                key="iban-de"
+                                initial={{ opacity: 0, scale: 0.8 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.8 }}
+                                transition={{ duration: 0.2 }}
+                                className="flex items-center rounded px-1.5 py-0.5"
+                                style={{
+                                  background: 'rgba(92,184,240,0.12)',
+                                  border: '1px solid rgba(92,184,240,0.25)',
+                                  fontSize: '9px',
+                                  fontWeight: 700,
+                                  letterSpacing: '0.08em',
+                                  color: '#5CB8F0',
+                                  fontFamily: 'var(--font-mono)',
+                                }}
+                              >
+                                DE
+                              </motion.span>
+                            )}
+                          </AnimatePresence>
+                        }
                       />
 
                       <div style={{ height: '14px' }} />
@@ -967,6 +1296,7 @@ export function CheckoutPage() {
                         error={errors.accountHolder}
                         placeholder="Max Mustermann"
                         autoComplete="name"
+                        shakeKey={shakeKey}
                       />
 
                       <div style={{ height: '14px' }} />
@@ -981,7 +1311,7 @@ export function CheckoutPage() {
                           style={{ width: 16, height: 16 }}
                         />
                         <span style={{ fontSize: '12px', color: '#6E7681', lineHeight: 1.5 }}>
-                          Ich ermaechtige Arctis, Zahlungen von meinem Konto mittels
+                          Ich ermächtige Arctis, Zahlungen von meinem Konto mittels
                           SEPA-Lastschrift einzuziehen.
                         </span>
                       </label>
@@ -994,10 +1324,10 @@ export function CheckoutPage() {
                   ) : (
                     <motion.div
                       key="credit_card"
-                      initial={{ opacity: 0, y: 6 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -6 }}
-                      transition={{ duration: 0.15 }}
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -20 }}
+                      transition={{ duration: 0.25, ease: [0.25, 0.46, 0.45, 0.94] }}
                     >
                       <FieldGroup
                         id="checkout-card-number"
@@ -1009,6 +1339,33 @@ export function CheckoutPage() {
                         autoComplete="cc-number"
                         mono
                         sensitive
+                        shakeKey={shakeKey}
+                        adornmentWidthPx={cardBrand ? (cardBrand === 'mastercard' ? 70 : 44) : 0}
+                        adornment={
+                          <AnimatePresence>
+                            {cardBrand && (
+                              <motion.span
+                                key={`brand-${cardBrand}`}
+                                initial={{ opacity: 0, scale: 0.8, y: -2 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 0.8, y: -2 }}
+                                transition={{ duration: 0.2 }}
+                                className="rounded px-1.5 py-0.5"
+                                style={{
+                                  background: 'rgba(92,184,240,0.10)',
+                                  border: '1px solid rgba(92,184,240,0.22)',
+                                  fontSize: '9px',
+                                  fontWeight: 700,
+                                  letterSpacing: '0.08em',
+                                  color: '#5CB8F0',
+                                  fontFamily: 'var(--font-mono)',
+                                }}
+                              >
+                                {CARD_BRAND_LABEL[cardBrand]}
+                              </motion.span>
+                            )}
+                          </AnimatePresence>
+                        }
                       />
 
                       <div style={{ height: '14px' }} />
@@ -1023,6 +1380,7 @@ export function CheckoutPage() {
                           placeholder="MM/YY"
                           autoComplete="cc-exp"
                           mono
+                          shakeKey={shakeKey}
                         />
                         <FieldGroup
                           id="checkout-card-cvv"
@@ -1036,6 +1394,7 @@ export function CheckoutPage() {
                           mono
                           maxLength={3}
                           sensitive
+                          shakeKey={shakeKey}
                         />
                       </div>
 
@@ -1049,6 +1408,7 @@ export function CheckoutPage() {
                         error={errors.cardHolder}
                         placeholder="Max Mustermann"
                         autoComplete="cc-name"
+                        shakeKey={shakeKey}
                       />
                     </motion.div>
                   )}
@@ -1064,17 +1424,30 @@ export function CheckoutPage() {
                 <div style={{ height: '12px' }} />
 
                 <div
-                  className="rounded-xl px-4 py-3 flex flex-col gap-2"
+                  className="rounded-xl px-4 py-3 flex flex-col gap-2.5"
                   style={{
                     background: 'rgba(22, 28, 38, 0.8)',
                     border: '1px solid rgba(92,184,240,0.08)',
                   }}
                 >
-                  <SummaryRow label="Plan" value="Arctis Pro" />
-                  <SummaryRow label="Preis" value={planInfo.total} mono />
-                  <SummaryRow label="Zahlungsintervall" value={planInfo.interval} />
-                  <SummaryRow label="Zahlungsmethode" value={paymentMethod === 'sepa' ? 'SEPA-Lastschrift' : 'Kreditkarte'} />
-                  <SummaryRow label="Naechste Abbuchung" value={nextBilling} />
+                  <SummaryRow
+                    label="Plan"
+                    value={`Arctis Pro — ${planInfo.interval}`}
+                  />
+                  <SummaryRow
+                    label="Preis"
+                    value={
+                      plan === 'annual'
+                        ? '39€/Mo (468€/Jahr, spare 120€)'
+                        : '49€/Mo'
+                    }
+                    mono
+                  />
+                  <SummaryRow
+                    label="Nächste Abbuchung"
+                    value={nextBilling}
+                    mono
+                  />
                 </div>
 
                 <div style={{ height: '24px' }} />
@@ -1083,10 +1456,11 @@ export function CheckoutPage() {
                 <button
                   type="submit"
                   disabled={isLoading}
+                  aria-busy={isLoading}
                   className={cn(
                     'w-full h-12 rounded-xl text-sm font-semibold relative overflow-hidden',
                     'transition-all duration-200 flex items-center justify-center gap-2',
-                    'disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer',
+                    'disabled:opacity-35 disabled:cursor-not-allowed cursor-pointer',
                     'group',
                     'hover:brightness-105 hover:-translate-y-px',
                   )}
@@ -1100,7 +1474,7 @@ export function CheckoutPage() {
                     if (!isLoading) {
                       e.currentTarget.style.boxShadow =
                         '0 0 40px rgba(92,184,240,0.30), 0 6px 20px rgba(0,0,0,0.4)'
-                      // Trigger shimmer
+                      // Trigger hover shimmer
                       const shimmer = e.currentTarget.querySelector('[data-shimmer]') as HTMLElement | null
                       if (shimmer) shimmer.style.transform = 'translateX(100%)'
                     }
@@ -1112,7 +1486,7 @@ export function CheckoutPage() {
                     if (shimmer) shimmer.style.transform = 'translateX(-100%)'
                   }}
                 >
-                  {/* Shimmer overlay */}
+                  {/* Hover shimmer overlay */}
                   <span
                     data-shimmer=""
                     aria-hidden="true"
@@ -1121,40 +1495,63 @@ export function CheckoutPage() {
                       transition: 'transform 0.7s ease-out',
                     }}
                   />
+                  {/* Loading shimmer sweep */}
+                  {isLoading && (
+                    <span
+                      aria-hidden="true"
+                      className="pointer-events-none absolute inset-0"
+                      style={{
+                        background:
+                          'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.22) 50%, transparent 100%)',
+                        animation: 'checkoutSubmitSweep 1.2s linear infinite',
+                      }}
+                    />
+                  )}
                   {isLoading ? (
-                    <Loader2 size={16} className="animate-spin" />
+                    <>
+                      <Loader2 size={16} className="animate-spin" />
+                      <span>Wird verarbeitet…</span>
+                    </>
                   ) : (
-                    'Kostenpflichtig abonnieren'
+                    <>
+                      <Lock size={14} aria-hidden="true" />
+                      <span>Kostenpflichtig abonnieren</span>
+                    </>
                   )}
                 </button>
 
-                <div style={{ height: '16px' }} />
-
-                {/* --- Trust badges with SVG icons --- */}
-                <div className="flex items-center justify-center gap-5">
-                  <div className="flex items-center gap-1.5">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#3D444D" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                    </svg>
-                    <span style={{ fontSize: '10px', color: '#3D444D' }}>Verschluesselt</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#3D444D" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-                    </svg>
-                    <span style={{ fontSize: '10px', color: '#3D444D' }}>{paymentMethod === 'sepa' ? 'SEPA-Lastschrift' : 'Kreditkarte'}</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#3D444D" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                      <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-                      <line x1="16" y1="2" x2="16" y2="6" />
-                      <line x1="8" y1="2" x2="8" y2="6" />
-                      <line x1="3" y1="10" x2="21" y2="10" />
-                    </svg>
-                    <span style={{ fontSize: '10px', color: '#3D444D' }}>Jederzeit kuendbar</span>
-                  </div>
+                {/* Trust-signal row — payment method logos */}
+                <div style={{ height: '12px' }} />
+                <div className="flex items-center justify-center gap-2">
+                  <span style={{ fontSize: '10px', color: '#6E7681', marginRight: 4 }}>
+                    Bezahlt mit
+                  </span>
+                  {['VISA', 'MASTERCARD', 'SEPA'].map((b) => (
+                    <span
+                      key={b}
+                      className="rounded px-1.5 py-0.5 tabular-nums"
+                      style={{
+                        fontSize: '9px',
+                        fontWeight: 700,
+                        letterSpacing: '0.08em',
+                        color: '#6E7681',
+                        background: 'rgba(92,184,240,0.04)',
+                        border: '1px solid rgba(92,184,240,0.08)',
+                        fontFamily: 'var(--font-mono)',
+                      }}
+                    >
+                      {b}
+                    </span>
+                  ))}
                 </div>
+                <div style={{ height: '6px' }} />
+                <p
+                  className="text-center"
+                  style={{ fontSize: '10px', color: '#3D444D', letterSpacing: '0.02em' }}
+                >
+                  Kein Abo-Kleingedrucktes · Jederzeit kündbar
+                </p>
+
               </form>
             </motion.div>
           )}
@@ -1213,7 +1610,11 @@ function PlanButton({ active, onClick, label, detail, badge }: PlanButtonProps) 
       {badge && active && (
         <span
           className="absolute -top-2.5 right-3 rounded-full px-2.5 py-0.5 text-[9px] font-bold tracking-wide"
-          style={{ background: '#5CB8F0', color: '#0A0D12' }}
+          style={{
+            background: '#5CB8F0',
+            color: '#0A0D12',
+            animation: 'checkoutBadgePulseOnce 1.2s ease-out 0.2s 1',
+          }}
         >
           {badge}
         </span>
@@ -1249,32 +1650,6 @@ function PlanButton({ active, onClick, label, detail, badge }: PlanButtonProps) 
   )
 }
 
-interface PaymentToggleProps {
-  active: boolean
-  onClick: () => void
-  label: string
-}
-
-function PaymentToggle({ active, onClick, label }: PaymentToggleProps) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="flex-1 rounded-lg px-3 py-2 text-center cursor-pointer transition-[background,border-color,color,box-shadow] duration-300 ease-out"
-      style={{
-        fontSize: '12px',
-        fontWeight: 500,
-        background: active ? 'rgba(92,184,240,0.10)' : 'rgba(22, 28, 38, 0.5)',
-        border: `1px solid ${active ? 'rgba(92,184,240,0.25)' : 'rgba(92,184,240,0.06)'}`,
-        color: active ? '#F0F6FC' : '#6E7681',
-        boxShadow: active ? '0 0 16px rgba(92,184,240,0.05)' : 'none',
-      }}
-    >
-      {label}
-    </button>
-  )
-}
-
 interface FieldGroupProps {
   id: string
   label: string
@@ -1287,9 +1662,49 @@ interface FieldGroupProps {
   mono?: boolean
   maxLength?: number
   sensitive?: boolean
+  adornment?: React.ReactNode
+  adornmentWidthPx?: number
+  shakeKey?: number
 }
 
-function FieldGroup({ id, label, value, onChange, error, placeholder, type = 'text', autoComplete, mono, maxLength, sensitive }: FieldGroupProps) {
+function FieldGroup({
+  id,
+  label,
+  value,
+  onChange,
+  error,
+  placeholder,
+  type = 'text',
+  autoComplete,
+  mono,
+  maxLength,
+  sensitive,
+  adornment,
+  adornmentWidthPx,
+  shakeKey,
+}: FieldGroupProps) {
+  const inputRef = useRef<HTMLInputElement | null>(null)
+  const prevErrorRef = useRef<string | undefined>(error)
+  const prevShakeKeyRef = useRef(shakeKey ?? 0)
+
+  // Trigger shake on first-show of this field's error
+  useEffect(() => {
+    const hadErrorBefore = Boolean(prevErrorRef.current)
+    const hasErrorNow = Boolean(error)
+    const globalBumped = (shakeKey ?? 0) !== prevShakeKeyRef.current
+    if (hasErrorNow && (!hadErrorBefore || globalBumped)) {
+      const el = inputRef.current
+      if (el) {
+        el.setAttribute('data-shake', 'true')
+        const t = setTimeout(() => el.removeAttribute('data-shake'), 420)
+        return () => clearTimeout(t)
+      }
+    }
+    prevErrorRef.current = error
+    prevShakeKeyRef.current = shakeKey ?? 0
+  }, [error, shakeKey])
+
+  const padRight = adornment ? Math.max(36, (adornmentWidthPx ?? 0) + 16) : undefined
   return (
     <div>
       <label
@@ -1310,24 +1725,45 @@ function FieldGroup({ id, label, value, onChange, error, placeholder, type = 'te
           {label}
         </span>
       </label>
-      <input
-        id={id}
-        type={type}
-        className="w-full h-11 px-3.5 rounded-lg text-[13px] transition-all duration-200"
-        style={{
-          background: 'rgba(22, 28, 38, 0.8)',
-          border: `1px solid ${error ? 'rgba(248, 113, 113, 0.3)' : 'rgba(92,184,240,0.08)'}`,
-          color: '#F0F6FC',
-          fontFamily: mono ? 'var(--font-mono)' : undefined,
-        }}
-        placeholder={placeholder}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        autoComplete={autoComplete}
-        maxLength={maxLength}
-      />
+      <div className="relative">
+        <input
+          ref={inputRef}
+          id={id}
+          type={type}
+          className="w-full h-11 rounded-lg text-[13px] transition-all duration-200"
+          style={{
+            background: 'rgba(22, 28, 38, 0.8)',
+            border: `1px solid ${error ? 'rgba(248, 113, 113, 0.4)' : 'rgba(92,184,240,0.08)'}`,
+            color: '#F0F6FC',
+            fontFamily: mono ? 'var(--font-mono)' : undefined,
+            paddingLeft: '14px',
+            paddingRight: padRight ? `${padRight}px` : '14px',
+          }}
+          data-error={error ? 'true' : 'false'}
+          placeholder={placeholder}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          autoComplete={autoComplete}
+          maxLength={maxLength}
+          aria-invalid={error ? 'true' : 'false'}
+          aria-describedby={error ? `${id}-error` : undefined}
+        />
+        {adornment && (
+          <div
+            aria-hidden="true"
+            className="absolute top-1/2 -translate-y-1/2 flex items-center pointer-events-none"
+            style={{ right: 10 }}
+          >
+            {adornment}
+          </div>
+        )}
+      </div>
       {error && (
-        <p role="alert" style={{ fontSize: '11px', color: '#F87171', marginTop: '4px' }}>
+        <p
+          id={`${id}-error`}
+          role="alert"
+          style={{ fontSize: '11px', color: '#F87171', marginTop: '4px' }}
+        >
           {error}
         </p>
       )}
@@ -1335,15 +1771,56 @@ function FieldGroup({ id, label, value, onChange, error, placeholder, type = 'te
   )
 }
 
+function NextStepRow({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+  return (
+    <div
+      className="flex items-center gap-3 rounded-lg px-3 py-2"
+      style={{
+        background: 'rgba(22, 28, 38, 0.6)',
+        border: '1px solid rgba(92,184,240,0.06)',
+      }}
+    >
+      <div
+        className="flex items-center justify-center rounded-md shrink-0"
+        style={{
+          width: 28,
+          height: 28,
+          background: 'rgba(92,184,240,0.08)',
+          border: '1px solid rgba(92,184,240,0.12)',
+        }}
+      >
+        {icon}
+      </div>
+      <div className="min-w-0 text-left">
+        <div style={{ fontSize: '10px', color: '#6E7681', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+          {label}
+        </div>
+        <div
+          className="truncate"
+          style={{
+            fontSize: '12px',
+            color: '#F0F6FC',
+            fontFamily: 'var(--font-mono)',
+          }}
+        >
+          {value}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function SummaryRow({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
-    <div className="flex justify-between" style={{ fontSize: '12px' }}>
+    <div className="flex justify-between items-center gap-4" style={{ fontSize: '12px' }}>
       <span style={{ color: '#6E7681' }}>{label}</span>
       <span
+        className="text-right tabular-nums"
         style={{
           color: '#F0F6FC',
           fontWeight: 500,
           fontFamily: mono ? 'var(--font-mono)' : undefined,
+          fontVariantNumeric: 'tabular-nums',
         }}
       >
         {value}

@@ -92,7 +92,7 @@ async def scan_markets(timeframe: str = Query(default="15min")):
 
     for root in [MarketRoot.NQ, MarketRoot.ES]:
         try:
-            bars = fetch_bars_as_models(market=root.value, days=5, timeframe=timeframe)
+            bars = fetch_bars_as_models(market=root.value, days=31, timeframe=timeframe)
             if not bars:
                 continue
 

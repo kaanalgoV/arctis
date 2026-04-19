@@ -125,7 +125,7 @@ export async function fetchCumDelta(market: string, timeframe: string, days: num
 export async function fetchSnapshot(
   market: string,
   timeframe = '15min',
-  days = 31,
+  days = 14,
 ) {
   return fetchJSON('/api/snapshot', {
     market,

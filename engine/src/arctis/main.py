@@ -120,8 +120,11 @@ class Simulation:
             return self.all_bars
         n = self.visible_bar_count()
         if n >= self.total_bars:
-            self.active = False
-            self.paused = False
+            # Pause at end instead of deactivating — keeps sim context for analysis
+            self.start_bar_index = self.total_bars
+            self._manual_offset = 0
+            self.paused = True
+            n = self.total_bars
         return self.all_bars[:n]
 
     def get_sim_timestamp(self) -> int:
@@ -344,10 +347,7 @@ async def get_db_bars(
     from arctis.models import OHLCVBar
     raw = fetch_bars(symbol=symbol, days=days)
     if not raw:
-        return JSONResponse(
-            status_code=404,
-            content={"error": f"Keine Bars fuer Symbol '{symbol}' gefunden."},
-        )
+        return {"symbol": symbol, "timeframe": timeframe, "bars_count": 0, "bars": []}
     if timeframe == "1min":
         return {"symbol": symbol, "timeframe": timeframe, "bars_count": len(raw), "bars": raw}
     # Convert dicts to OHLCVBar, aggregate, then return as dicts

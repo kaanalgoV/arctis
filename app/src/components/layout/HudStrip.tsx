@@ -48,13 +48,14 @@ function MetricPill({ label, value }: MetricPillProps) {
   )
 }
 
-function Divider() {
+function Divider({ variant = 'subtle' }: { variant?: 'subtle' | 'group' }) {
   return (
     <div
       className="w-px shrink-0 self-center"
       style={{
-        height: '12px',
-        backgroundColor: 'var(--color-border-subtle)',
+        height: variant === 'group' ? '16px' : '10px',
+        backgroundColor: variant === 'group' ? 'var(--color-border)' : 'var(--color-border-subtle)',
+        opacity: variant === 'group' ? 0.9 : 0.6,
       }}
     />
   )
@@ -389,6 +390,24 @@ export function HudStrip({
     )
   }
 
+  // ── Semantic grouping ─────────────────────────────────────────────────────
+  // Group 1: Price (live price + change) — highest visual weight, leftmost.
+  // Group 2: Market state (RVOL, RSI, DIV, EMA, VWAP) — the core indicator read.
+  // Group 3: Context (SESSION, BARS) — orientation / metadata, rightmost.
+  const priceGroup: React.ReactNode[] = []
+  const stateGroup: React.ReactNode[] = []
+  const contextGroup: React.ReactNode[] = []
+
+  metrics.forEach((m) => {
+    if (!m || typeof m !== 'object' || !('key' in m)) return
+    const key = (m as { key: string }).key
+    if (key === 'price') priceGroup.push(m)
+    else if (key === 'session' || key === 'bars') contextGroup.push(m)
+    else stateGroup.push(m)
+  })
+
+  const groups = [priceGroup, stateGroup, contextGroup].filter((g) => g.length > 0)
+
   return (
     <div
       className={cn(
@@ -400,15 +419,24 @@ export function HudStrip({
         height: 'var(--hudstrip-height, 32px)',
         paddingLeft: '16px',
         paddingRight: '16px',
-        gap: '8px',
+        gap: '16px',
       }}
       role="region"
       aria-label="HUD metrics strip"
     >
-      {metrics.map((metric, index) => (
-        <div key={index} className="flex items-center" style={{ gap: '8px' }}>
-          {index > 0 && <Divider />}
-          {metric}
+      {groups.map((group, gi) => (
+        <div
+          key={gi}
+          className="flex items-center"
+          style={{ gap: '10px' }}
+        >
+          {gi > 0 && <Divider variant="group" />}
+          {group.map((m, i) => (
+            <div key={i} className="flex items-center" style={{ gap: '10px' }}>
+              {i > 0 && <Divider variant="subtle" />}
+              {m}
+            </div>
+          ))}
         </div>
       ))}
     </div>
